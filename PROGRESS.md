@@ -67,6 +67,35 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
 
 ---
 
+## 🎯 Instruções Imediatas para a Próxima IA (O Que Fazer Agora)
+
+> **Atenção Próxima IA:**
+> Leia obrigatoriamente [`PRODUTO.md`](./PRODUTO.md) antes de qualquer implementação. Ele contém a especificação exaustiva das regras de negócio, ciclo de agenda, fila de espera/troca, ferramenta "Estou atrasado" e cenários de teste.
+
+### 📍 Próxima Fase: Fase 8 — Sistema de Agenda Semanal do Barbeiro & Home Dinâmica
+
+#### 1. Banco de Dados / Supabase (`scripts/schema.sql`):
+- Criar migração/tabelas para suportar o ciclo semanal e a fila:
+  - `agendas_semanais` (`id`, `data_inicio`, `data_fim`, `status` ['em_preparacao', 'programada', 'aberta'], `data_abertura_programada`, `notificar_abertura`, `notificar_antecedencia_minutos`)
+  - `dias_agenda` (`id`, `agenda_semana_id`, `data`, `ativo`)
+  - `fila_espera` (`id`, `cliente_id`, `servico_id`, `dias_preferidos`, `horarios_preferidos`, `status` ['aguardando', 'ofertado', 'atendido', 'cancelado'], `created_at`)
+  - `fila_troca` (`id`, `agendamento_id`, `dias_desejados`, `horarios_desejados`, `status` ['aguardando', 'trocado', 'cancelado'])
+  - `ofertas_fila` (`id`, `fila_espera_id`, `slot_data_hora`, `expira_em`, `status` ['pendente', 'aceita', 'recusada', 'expirada'])
+  - `atrasos_agenda` (`id`, `data`, `minutos_atraso`, `normalizado_em`, `created_at`)
+
+#### 2. Painel do Barbeiro:
+- Criar a tela/fluxo **"Preparar Agenda"** (Terça a Domingo, toggle de dias, botão "Usar semana passada", programação de abertura para segunda-feira às 18h/19h/20h/21h).
+- Implementar na tela `(barbeiro)/hoje.tsx` a ação **"Estou atrasado"** (+10, +15, +20, +30 min e "Agenda normalizada").
+
+#### 3. Experiência do Cliente:
+- Transformar a Home `app/(app)/(tabs)/index.tsx` em **Home Dinâmica**:
+  - Estado 1: Agenda Programada (contagem/data de abertura + ativar lembrete)
+  - Estado 2: Agenda Aberta (dias com vagas + botão "Seu de sempre")
+  - Estado 3: Agenda Lotada (mensagem acolhedora + botão "Entrar na fila de espera")
+  - Estado 4: Com Agendamento Ativo (card de destaque com status, rota, reagendar, cancelar e "Quero outro horário / Fila de troca")
+
+---
+
 ## Decisões Tomadas
 
 | Decisão | Motivo |
@@ -77,4 +106,5 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
 | Calendário semanal (Ter–Dom) em vez de calendário mensal | O escopo original proíbe explicitamente calendário mensal. A barbearia tem agenda semanal com 4 slots fixos de manhã (08–11h). |
 | Tarde fora do sistema de agendamento | Regra operacional: tarde funciona por ordem de chegada física, sem agendamento digital nesta versão. |
 | Paywall / RevenueCat cancelado | Sem sentido para app de barbearia dedicado. Monetização é B2B (operador paga), não assinatura de usuário final. |
+
 
