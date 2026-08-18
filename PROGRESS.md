@@ -96,6 +96,30 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
 
 ---
 
+## Fase 8 — Agenda Semanal, Home Dinâmica e Base de Notificações (EM ANDAMENTO)
+- `scripts/schema.sql`: agendas semanais, dias, slots, fila de espera, fila de troca, ofertas temporárias, atrasos, tokens/notificações e RLS.
+- `scripts/schema.sql`: função `reservar_slot` com validação de agenda aberta, concorrência de horário e limite semanal.
+- `hooks/useAgendaSemanal.ts`: leitura da agenda contextual, próxima agenda do barbeiro e contagem de notificações não lidas.
+- `app/(app)/(barbeiro)/preparar-agenda.tsx`: preparação da próxima semana e abertura programada.
+- `app/(app)/(barbeiro)/hoje.tsx`: ação “Estou atrasado” e normalização.
+- `app/(app)/(tabs)/index.tsx`: Home contextual para atendimento, agenda programada, agenda aberta ou semana lotada.
+- `npm run typecheck` passou; lint passou com 5 avisos preexistentes de imports não usados.
+- `app/(app)/lista-espera/index.tsx`: fila funcional com serviço, dias e horários preferidos, persistida no Supabase.
+- `scripts/schema.sql` + `app/(app)/lista-espera/oferta.tsx`: aceite de oferta com expiração, lock do slot e criação atômica do agendamento via `aceitar_oferta_fila`.
+- `scripts/schema.sql`: cancelamento dispara busca da próxima pessoa compatível e cria oferta/notificação via `oferecer_proxima_vaga`.
+- `app/(app)/notificacoes.tsx`: central de notificações com leitura e deep link para ofertas da fila.
+- `app/(app)/agendamento/confirmacao.tsx`: usa `reservar_slot` quando a agenda semanal já estiver migrada.
+- `supabase/functions/process-notifications/index.ts`: Edge Function local preparada para entregar notificações via Expo Push usando tokens ativos.
+- Publicação remota bloqueada: o ref do Supabase presente no `.env` não aparece na lista de projetos da conta autenticada do CLI; nenhum projeto alternativo foi alterado.
+- `agenda_lembretes`: base para o cliente ativar lembrete da abertura da agenda; Home agora grava essa preferência.
+- Lint atualizado: 3 avisos preexistentes de imports não usados.
+
+### Próxima continuação da Fase 8
+- Aplicar o schema no Supabase de staging, com autorização específica para mutação remota.
+- Implementar push e lembretes via Edge Function.
+- Integrar a fila/oferta à tela existente, substituindo dados fixos e o `TODO`.
+- Validar reserva concorrente e cenários críticos em staging.
+
 ## Decisões Tomadas
 
 | Decisão | Motivo |
@@ -106,5 +130,3 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
 | Calendário semanal (Ter–Dom) em vez de calendário mensal | O escopo original proíbe explicitamente calendário mensal. A barbearia tem agenda semanal com 4 slots fixos de manhã (08–11h). |
 | Tarde fora do sistema de agendamento | Regra operacional: tarde funciona por ordem de chegada física, sem agendamento digital nesta versão. |
 | Paywall / RevenueCat cancelado | Sem sentido para app de barbearia dedicado. Monetização é B2B (operador paga), não assinatura de usuário final. |
-
-

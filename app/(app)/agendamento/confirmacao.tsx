@@ -35,6 +35,17 @@ export default function TelaConfirmacao() {
 
   async function inserirAgendamento(servicoId: string, barbeiroId: string, dataHoraIso: string) {
     if (!session?.user?.id) return { error: new Error('Usuário não autenticado.') };
+    const { data: slot } = await supabase
+      .from('slots_agenda')
+      .select('id')
+      .eq('barbeiro_id', barbeiroId)
+      .eq('data_hora', dataHoraIso)
+      .eq('ativo', true)
+      .maybeSingle();
+    if (slot?.id) {
+      const { error } = await supabase.rpc('reservar_slot', { p_slot_id: slot.id, p_cliente_id: session.user.id, p_servico_id: servicoId });
+      return { error };
+    }
     const { error } = await supabase
       .from('agendamentos')
       .insert({

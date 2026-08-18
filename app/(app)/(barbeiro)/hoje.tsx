@@ -6,12 +6,16 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
+  TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Clock, Scissors, User } from 'lucide-react-native';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { usePainelBarbeiro, type AgendamentoBarbeiro } from '@/hooks/usePainelBarbeiro';
 import { usePerfil } from '@/hooks/usePerfil';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabase';
 
 const DIAS_SEMANA_EXT = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 const MESES_EXT = [
@@ -52,12 +56,21 @@ function CardAgendamento({ item }: { item: AgendamentoBarbeiro }) {
 }
 
 export default function TelaBarbeiroHoje() {
+  const { session } = useAuth();
   const { perfil } = usePerfil();
   const { agendamentosHoje, carregando, recarregar } = usePainelBarbeiro();
 
   const agora = new Date();
   const dataFormatada = `${DIAS_SEMANA_EXT[agora.getDay()]}, ${agora.getDate()} de ${MESES_EXT[agora.getMonth()]}`;
   const primeiroNome = perfil?.nome_completo?.split(' ')[0] || 'Barbeiro';
+
+  async function definirAtraso(minutos: number) {
+    if (!session?.user?.id) return;
+    const data = agora.toISOString().slice(0, 10);
+    const { error } = await supabase.from('atrasos_agenda').upsert({ barbeiro_id: session.user.id, data, minutos_atraso: minutos, normalizado_em: minutos === 0 ? new Date().toISOString() : null }, { onConflict: 'barbeiro_id,data' });
+    if (error) Alert.alert('Não foi possível atualizar', error.message);
+    else Alert.alert(minutos === 0 ? 'Agenda normalizada' : 'Atraso registrado', minutos === 0 ? 'Os clientes voltarão a ver os horários normais.' : `${minutos} minutos adicionados à previsão da manhã.`);
+  }
 
   const faturamentoDia = agendamentosHoje.reduce((acc, a) => acc + Number(a.servico.preco), 0);
   const faturamentoFormatado = faturamentoDia.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -96,6 +109,20 @@ export default function TelaBarbeiroHoje() {
 
         {/* ─── Agenda de hoje ─── */}
         <Text style={styles.secaoTitulo}>Agenda de hoje</Text>
+
+        <View style={styles.atrasoBox}>
+          <Text style={styles.atrasoTitulo}>Estou atrasado</Text>
+          <View style={styles.atrasoOpcoes}>
+            {[10, 15, 20, 30].map((minutos) => (
+              <TouchableOpacity key={minutos} style={styles.atrasoBotao} onPress={() => definirAtraso(minutos)}>
+                <Text style={styles.atrasoTexto}>+{minutos} min</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.normalizarBotao} onPress={() => definirAtraso(0)}>
+              <Text style={styles.normalizarTexto}>Normalizar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {carregando && agendamentosHoje.length === 0 ? (
           <View style={styles.loadingContainer}>
@@ -191,6 +218,13 @@ const styles = StyleSheet.create({
     fontSize: FontSize.bodyMd,
     color: Colors.textoSecundario,
   },
+  atrasoBox: { backgroundColor: Colors.superficie, borderRadius: Radii.md, padding: Spacing.md, gap: Spacing.sm },
+  atrasoTitulo: { fontFamily: FontFamily.semiBold, fontSize: FontSize.bodyMd, color: Colors.textoPrimario },
+  atrasoOpcoes: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs },
+  atrasoBotao: { paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, borderRadius: Radii.sm, backgroundColor: Colors.amarelo },
+  atrasoTexto: { fontFamily: FontFamily.semiBold, fontSize: FontSize.bodySm, color: Colors.fundo },
+  normalizarBotao: { paddingHorizontal: Spacing.sm, paddingVertical: Spacing.xs, borderRadius: Radii.sm, borderWidth: 1, borderColor: Colors.verde },
+  normalizarTexto: { fontFamily: FontFamily.semiBold, fontSize: FontSize.bodySm, color: Colors.verde },
   cardAgendamento: {
     flexDirection: 'row',
     alignItems: 'center',
