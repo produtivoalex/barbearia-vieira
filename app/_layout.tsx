@@ -105,6 +105,7 @@ export default function RootLayout() {
       <StatusBar style="light" backgroundColor={Colors.fundo} />
       <ControleRotas />
       <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
         <Stack.Screen name="(pre-auth)" />
         <Stack.Screen name="(app)" />
       </Stack>
