@@ -32,22 +32,26 @@ export default function TelaLogin() {
   const [carregando, setCarregando] = useState(false);
   const [carregandoGoogle, setCarregandoGoogle] = useState(false);
 
-  // Redirect URI gerado automaticamente pelo Expo
-  // Em dev Expo Go:  exp://127.0.0.1:8081/--/auth/callback
-  // Em prod:         barbearia-vieira://auth/callback
   const redirectUri = AuthSession.makeRedirectUri({ scheme: 'barbearia-vieira', path: 'auth/callback' });
 
-  const [, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
-    // CONFIGURAÇÃO NECESSÁRIA: adicione as chaves no .env
-    // EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS     → iOS Client ID do Google Cloud Console
-    // EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID → Android Client ID
-    // EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB     → Web Client ID (usado no Expo Go)
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
-    redirectUri,
-    scopes: ['openid', 'profile', 'email'],
-  });
+  // Google Auth só ativo se as chaves estiverem configuradas no .env
+  const googleConfigured = !!(
+    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID ||
+    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS ||
+    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB
+  );
+
+  const [, googleResponse, promptGoogleAsync] = Google.useAuthRequest(
+    googleConfigured
+      ? {
+          iosClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS,
+          androidClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID,
+          webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
+          redirectUri,
+          scopes: ['openid', 'profile', 'email'],
+        }
+      : undefined
+  );
 
   useEffect(() => {
     async function processarRespostaGoogle() {
@@ -168,29 +172,32 @@ export default function TelaLogin() {
               <ActivityIndicator color={Colors.vermelho} style={styles.loader} />
             )}
 
-            {/* Divisor */}
-            <View style={styles.divisorRow}>
-              <View style={styles.divisorLinha} />
-              <Text style={styles.divisorTexto}>ou</Text>
-              <View style={styles.divisorLinha} />
-            </View>
+            {/* Divisor + Botão Google (só aparecem se Google estiver configurado) */}
+            {googleConfigured && (
+              <>
+                <View style={styles.divisorRow}>
+                  <View style={styles.divisorLinha} />
+                  <Text style={styles.divisorTexto}>ou</Text>
+                  <View style={styles.divisorLinha} />
+                </View>
 
-            {/* Botão Google */}
-            <TouchableOpacity
-              style={[styles.botaoGoogle, carregandoGoogle && styles.botaoDesabilitado]}
-              onPress={handleGoogle}
-              activeOpacity={0.8}
-              disabled={carregandoGoogle}
-            >
-              {carregandoGoogle ? (
-                <ActivityIndicator size="small" color={Colors.azulBarbeiro} />
-              ) : (
-                <Text style={styles.botaoGoogleIcone}>G</Text>
-              )}
-              <Text style={styles.botaoGoogleTexto}>
-                {carregandoGoogle ? 'Aguardando Google...' : 'Entrar com Google'}
-              </Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.botaoGoogle, carregandoGoogle && styles.botaoDesabilitado]}
+                  onPress={handleGoogle}
+                  activeOpacity={0.8}
+                  disabled={carregandoGoogle}
+                >
+                  {carregandoGoogle ? (
+                    <ActivityIndicator size="small" color={Colors.azulBarbeiro} />
+                  ) : (
+                    <Text style={styles.botaoGoogleIcone}>G</Text>
+                  )}
+                  <Text style={styles.botaoGoogleTexto}>
+                    {carregandoGoogle ? 'Aguardando Google...' : 'Entrar com Google'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
 
           {/* Rodapé */}
