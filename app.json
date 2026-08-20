@@ -40,10 +40,24 @@
           "imageWidth": 200
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#D32F2F"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2c798ab7-548b-41eb-bac2-eebe05d8d3cf"
+      }
+    },
+    "owner": "produtivoalex"
   }
 }

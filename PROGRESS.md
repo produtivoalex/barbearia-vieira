@@ -91,42 +91,41 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
 - Configurado `href: null` para `preparar-agenda` em `app/(app)/(barbeiro)/_layout.tsx` para evitar aba fantasma no painel do barbeiro.
 - `tsc --noEmit` ✅ (0 erros)
 
+### ✅ Fase 11 — Configuração de CRONs, RPCs e Preparação de Builds (CONCLUÍDA)
+- **`scripts/configurar_crons.sql`** e **`supabase/migrations/20260820_fase10_crons_e_ajustes.sql`** criados:
+  - Configuração de agendamento via `pg_cron` e `pg_net` para `auto-open-agenda` (`*/5 * * * *`) e `process-notifications` (`* * * * *`).
+  - Refinamento da RPC `confirmar_presenca` para compatibilidade ampla com `status in ('pendente', 'agendado')`.
+  - Adicionada política de atualização RLS para agendamentos do cliente.
+- **`eas.json`** criado com perfis de `development`, `preview` e `production`.
+- **`app.json`** atualizado com o plugin `expo-notifications` (ícone e cor corporativa `#D32F2F`).
+- `tsc --noEmit` ✅ (0 erros)
+
 ---
 
-## 🎯 Instruções Imediatas para a Próxima IA (O Que Fazer Agora)
+## 🎯 Instruções Imediatas (Como Executar / Testar Agora)
 
-> **Atenção Próxima IA:**
-> 1. Leia [`PRODUTO.md`](./PRODUTO.md) para entender todas as regras de negócio e cenários críticos de teste.
-> 2. O app está 100% compilável (`npx tsc --noEmit` retorna 0 erros) e as migrações SQL já estão aplicadas no Supabase.
+### 1. Aplicar CRONs no Supabase
+Execute o script [`scripts/configurar_crons.sql`](./scripts/configurar_crons.sql) no SQL Editor do seu Supabase Dashboard substituindo `<SUA_SUPABASE_URL>` e `<SUA_SUPABASE_SERVICE_ROLE_KEY>`.
 
-### 📍 Novos Passos / Tarefas Pendentes:
-
-#### 1. Configurar CRON no Supabase Dashboard (Backend)
-- Registrar os agendamentos das Edge Functions já deployadas:
-  - `auto-open-agenda`: executar a cada minuto ou a cada 5 minutos (`*/5 * * * *`) para verificar se há agendas programadas que atingiram o horário de abertura (`data_abertura_programada <= NOW()`).
-  - `process-notifications`: executar a cada minuto (`* * * * *`) para processar notificações pendentes e disparar push via Expo API.
-- Isso pode ser feito via extensão `pg_cron` / `pg_net` ou via agendador HTTP externo (ex: Cron-Job.org / Supabase Scheduled Functions).
-
-#### 2. Validação e Testes Ponta a Ponta dos Fluxos de Usuário
-Executar ou validar os seguintes fluxos no app:
+### 2. Validação dos Fluxos Ponta a Ponta
 - **Fluxo do Cliente**:
-  1. Cadastro e Login.
-  2. Escolha de serviço e seleção de slot na grade matinal (08h - 11h).
-  3. Confirmação do agendamento e visualização na aba "Agenda".
-  4. Confirmação de presença via botão na aba "Agenda".
-  5. Entrada na lista de espera caso a semana esteja cheia.
+  1. Cadastro e Login (`/` e `/cadastro`).
+  2. Escolha de serviço e slot matinal (08:00–11:00) em `/(app)/(tabs)/servicos` e `agendamento/horario`.
+  3. Confirmação do agendamento (`agendamento/confirmacao`) e visualização na aba "Agenda" (`/(app)/(tabs)/agenda`).
+  4. Botão "Confirmar presença" na aba "Agenda".
+  5. Fila de espera em `/(app)/lista-espera`.
 - **Fluxo do Barbeiro**:
-  1. Login com conta de perfil `role = 'barbeiro'`.
-  2. Ver agendamentos do dia na aba "Hoje" e da semana na aba "Agenda".
-  3. Acionar ferramenta "Estou atrasado" (+10, +15, +20, +30 min ou Normalizar).
-  4. Acessar "Mais" -> "Preparar próxima agenda", definir dias ativos e horário de abertura na segunda-feira.
-  5. Consultar histórico de clientes na aba "Clientes".
+  1. Login com conta `role = 'barbeiro'`.
+  2. Visualização do dia em `/(app)/(barbeiro)/hoje` com métricas e botão "Estou atrasado".
+  3. Visualização semanal em `/(app)/(barbeiro)/semana`.
+  4. Preparação da próxima semana em `/(app)/(barbeiro)/preparar-agenda` com toggle de dias e horário de abertura.
+  5. Histórico e métricas de clientes em `/(app)/(barbeiro)/clientes`.
 
-#### 3. Geração de Development Build (Opcional / Produção)
-- Como o `expo-notifications` remoto exige Development Build (removido do Expo Go no SDK 53+), quando o usuário desejar testar push real no dispositivo físico, executar:
-  ```bash
-  npx eas build --profile development --platform android
-  ```
+### 3. Gerar Development Build para Push Notifications Remotas Reais
+Como as notificações push remotas foram descontinuadas no Expo Go no SDK 53+, execute quando desejar testar em dispositivo físico:
+```bash
+npx eas build --profile development --platform android
+```
 
 ---
 
@@ -139,3 +138,5 @@ Executar ou validar os seguintes fluxos no app:
 | Push Notifications com fallback no Expo Go | `usePushNotifications` detecta Expo Go e evita chamadas bloqueantes a tokens remotos. |
 | Calendário semanal matinal (Ter–Dom, 08h-11h) | Regra operacional da barbearia: slots de 1h de manhã, tarde por ordem de chegada. |
 | Monetização B2B | Barbeiro paga pelo serviço da plataforma; cliente final não paga assinatura. |
+| Agendamento CRON via pg_cron + pg_net | Automatiza abertura de agendas e envio contínuo de lembretes direto no PostgreSQL. |
+
