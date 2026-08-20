@@ -8,7 +8,7 @@ import { FontAssets } from '@/theme';
 import { Colors } from '@/theme/colors';
 import { useAuth } from '@/hooks/useAuth';
 import { usePerfil } from '@/hooks/usePerfil';
-import 'react-native-reanimated';
+
 
 SplashScreen.preventAutoHideAsync();
 
