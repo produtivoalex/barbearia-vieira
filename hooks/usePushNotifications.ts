@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './useAuth';
 
@@ -15,6 +16,11 @@ Notifications.setNotificationHandler({
     priority: Notifications.AndroidNotificationPriority.HIGH,
   }),
 });
+
+// Detecta se está rodando no Expo Go (push remoto removido no SDK 53+)
+function isExpoGo(): boolean {
+  return Constants.executionEnvironment === 'storeClient';
+}
 
 export function usePushNotifications() {
   const { session } = useAuth();
@@ -45,6 +51,12 @@ export function usePushNotifications() {
   );
 
   const solicitarPermissao = useCallback(async () => {
+    // Push remoto não disponível no Expo Go desde SDK 53 — silencioso, sem crash
+    if (isExpoGo()) {
+      console.info('[usePushNotifications] Expo Go detectado: push remoto indisponível. Use um Development Build.');
+      return null;
+    }
+
     try {
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('default', {
@@ -82,7 +94,7 @@ export function usePushNotifications() {
   }, [registrarTokenNoBanco]);
 
   useEffect(() => {
-    if (!usuarioId) return;
+    if (!usuarioId || isExpoGo()) return;
 
     // Verifica permissão existente ao autenticar
     Notifications.getPermissionsAsync()
@@ -102,7 +114,8 @@ export function usePushNotifications() {
   return {
     expoPushToken,
     permissaoStatus,
-    temPermissao: permissaoStatus === Notifications.PermissionStatus.GRANTED,
+    // No Expo Go, considera sem permissão (push indisponível)
+    temPermissao: !isExpoGo() && permissaoStatus === Notifications.PermissionStatus.GRANTED,
     solicitarPermissao,
   };
 }

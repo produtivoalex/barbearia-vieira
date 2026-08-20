@@ -34,11 +34,14 @@ export default function TelaLogin() {
 
   const redirectUri = AuthSession.makeRedirectUri({ scheme: 'barbearia-vieira', path: 'auth/callback' });
 
-  // Google Auth só ativo se as chaves estiverem configuradas no .env
-  const googleConfigured = !!(
-    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID ||
-    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS ||
-    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB
+  // Google Auth: verificação por plataforma para evitar crash de "clientId must be defined"
+  // O hook valida o ID específico da plataforma atual (androidClientId no Android, iosClientId no iOS)
+  const googleConfigured = (
+    Platform.OS === 'android'
+      ? !!process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID
+      : Platform.OS === 'ios'
+      ? !!process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS
+      : !!process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB
   );
 
   const [, googleResponse, promptGoogleAsync] = Google.useAuthRequest(
