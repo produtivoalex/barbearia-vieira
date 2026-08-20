@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Calendar, Clock, Scissors, ChevronRight } from 'lucide-react-native';
-import { ControleSegmentado } from '@/components';
+import { ControleSegmentado, IlustracaoServico } from '@/components';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { useMeusAgendamentos, type AgendamentoCompleto } from '@/hooks/useMeusAgendamentos';
 
@@ -101,9 +101,10 @@ export default function TelaAgenda() {
 
         {/* Linha inferior: serviço + barbeiro + preço */}
         <View style={styles.cardCorpo}>
-          <View style={styles.iconeServico}>
-            <Scissors size={18} color={Colors.ouro} />
-          </View>
+          <IlustracaoServico
+            nome={item.servico.nome}
+            tamanho={46}
+          />
           <View style={styles.infoServico}>
             <Text style={styles.nomeServico}>{item.servico.nome}</Text>
             <Text style={styles.nomeBarbeiro}>

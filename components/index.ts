@@ -13,3 +13,7 @@ export { HeaderApp } from './HeaderApp';
 export { Horario } from './Horario';
 export type { EstadoHorario } from './Horario';
 export { CabecalhoSecao } from './CabecalhoSecao';
+export { LogoBarbearia } from './LogoBarbearia';
+export { IlustracaoServico, identificarTipoServico } from './IlustracaoServico';
+export type { TipoServicoId } from './IlustracaoServico';
+export { IndicadorEtapas } from './IndicadorEtapas';

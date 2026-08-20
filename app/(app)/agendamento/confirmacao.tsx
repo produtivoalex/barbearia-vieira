@@ -9,8 +9,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { CheckCircle, AlertCircle } from 'lucide-react-native';
-import { Botao } from '@/components';
+import { CheckCircle, AlertCircle, Calendar, Clock, User, Sparkles } from 'lucide-react-native';
+import { Botao, IndicadorEtapas, IlustracaoServico } from '@/components';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -42,10 +42,16 @@ export default function TelaConfirmacao() {
       .eq('data_hora', dataHoraIso)
       .eq('ativo', true)
       .maybeSingle();
+
     if (slot?.id) {
-      const { error } = await supabase.rpc('reservar_slot', { p_slot_id: slot.id, p_cliente_id: session.user.id, p_servico_id: servicoId });
+      const { error } = await supabase.rpc('reservar_slot', {
+        p_slot_id: slot.id,
+        p_cliente_id: session.user.id,
+        p_servico_id: servicoId,
+      });
       return { error };
     }
+
     const { error } = await supabase
       .from('agendamentos')
       .insert({
@@ -85,16 +91,18 @@ export default function TelaConfirmacao() {
     }
 
     salvar();
-  // inserirAgendamento é definido no render — incluso session na dependência
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id, params.servicoId, params.barbeiroId, params.dataHoraIso]);
 
   const precoFormatado = params.servicoPreco
     ? Number(params.servicoPreco).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-    : null;
+    : 'R$ --';
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      {/* Indicador de 4 Etapas */}
+      <IndicadorEtapas etapaAtual={4} />
+
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {salvando ? (
           <View style={styles.loadingContainer}>
@@ -140,42 +148,72 @@ export default function TelaConfirmacao() {
 
             <Text style={styles.titulo}>Agendamento confirmado!</Text>
             <Text style={styles.subtitulo}>
-              Sua reserva foi realizada com sucesso.
+              Sua vaga na Barbearia Vieira está reservada com sucesso.
             </Text>
 
-            {/* Card de detalhes */}
+            {/* Card de detalhes com Ilustração */}
             <View style={styles.card}>
+              <View style={styles.cabecalhoServico}>
+                <IlustracaoServico
+                  id={params.servicoId}
+                  nome={params.servicoNome}
+                  tamanho={52}
+                />
+                <View style={styles.cabecalhoServicoInfo}>
+                  <Text style={styles.servicoNomeDestaque}>
+                    {params.servicoNome || 'Serviço'}
+                  </Text>
+                  <Text style={styles.servicoDuracaoDestaque}>
+                    Duração estimada: {params.servicoDuracao || '30'} min
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.divisor} />
+
               <View style={styles.detalheRow}>
-                <Text style={styles.detalheLabel}>Data e hora</Text>
+                <View style={styles.detalheIconeLabel}>
+                  <Calendar size={16} color={Colors.ouro} />
+                  <Text style={styles.detalheLabel}>Data e Horário</Text>
+                </View>
                 <Text style={styles.detalheValor}>{params.dataExibicao || 'Data selecionada'}</Text>
               </View>
+
               <View style={styles.divisor} />
+
               <View style={styles.detalheRow}>
-                <Text style={styles.detalheLabel}>Serviço</Text>
-                <Text style={styles.detalheValor}>{params.servicoNome || 'Serviço'}</Text>
+                <View style={styles.detalheIconeLabel}>
+                  <User size={16} color={Colors.textoSecundario} />
+                  <Text style={styles.detalheLabel}>Profissional</Text>
+                </View>
+                <Text style={styles.detalheValor}>{params.barbeiroNome || 'Barbeiro Vieira'}</Text>
               </View>
-              {precoFormatado && (
-                <>
-                  <View style={styles.divisor} />
-                  <View style={styles.detalheRow}>
-                    <Text style={styles.detalheLabel}>Valor</Text>
-                    <Text style={styles.detalheValorPreco}>{precoFormatado}</Text>
-                  </View>
-                </>
-              )}
+
               <View style={styles.divisor} />
+
               <View style={styles.detalheRow}>
-                <Text style={styles.detalheLabel}>Profissional</Text>
-                <Text style={styles.detalheValor}>{params.barbeiroNome || 'Barbearia Vieira'}</Text>
+                <View style={styles.detalheIconeLabel}>
+                  <Sparkles size={16} color={Colors.ouro} />
+                  <Text style={styles.detalheLabel}>Valor total</Text>
+                </View>
+                <Text style={styles.detalheValorPreco}>{precoFormatado}</Text>
               </View>
             </View>
 
-            {/* Ações */}
+            {/* Botões de Ação */}
             <Botao
               label="Ver meus agendamentos"
               onPress={() => router.replace('/(app)/(tabs)/agenda')}
               estiloContainer={styles.botao}
             />
+
+            <TouchableOpacity
+              style={styles.botaoVoltar}
+              onPress={() => router.replace('/(app)/(tabs)')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.botaoVoltarTexto}>Voltar para o Início</Text>
+            </TouchableOpacity>
           </>
         )}
       </ScrollView>
@@ -188,18 +226,18 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     padding: Spacing.telaH,
-    paddingBottom: Spacing.giant,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.lg,
+    paddingBottom: Spacing.giant,
+    gap: Spacing.md,
   },
   loadingContainer: {
     alignItems: 'center',
     gap: Spacing.md,
   },
   loadingTexto: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.bodyLg,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.bodyMd,
     color: Colors.textoSecundario,
   },
   erroContainer: {
@@ -208,7 +246,13 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   iconeContainer: {
-    marginBottom: Spacing.xs,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: Colors.verdeClaro,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: Spacing.xs,
   },
   titulo: {
     fontFamily: FontFamily.bold,
@@ -227,41 +271,70 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: Colors.superficie,
     borderRadius: Radii.lg,
-    padding: Spacing.xl,
+    padding: Spacing.lg,
     gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.borda,
     ...Shadows.card,
+  },
+  cabecalhoServico: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  cabecalhoServicoInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  servicoNomeDestaque: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.headingSm,
+    color: Colors.textoPrimario,
+  },
+  servicoDuracaoDestaque: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.bodySm,
+    color: Colors.textoSecundario,
   },
   detalheRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  detalheIconeLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   detalheLabel: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodyMd,
+    fontSize: FontSize.bodySm,
     color: Colors.textoSecundario,
   },
   detalheValor: {
     fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.bodyMd,
+    fontSize: FontSize.bodySm,
     color: Colors.textoPrimario,
   },
   detalheValorPreco: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
+    fontSize: FontSize.bodyLg,
     color: Colors.ouro,
   },
   divisor: {
     height: 1,
     backgroundColor: Colors.borda,
   },
-  botao: { width: '100%' },
+  botao: {
+    width: '100%',
+    marginTop: Spacing.xs,
+  },
   botaoVoltar: {
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.xs,
   },
   botaoVoltarTexto: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.bodyMd,
-    color: Colors.vermelho,
+    color: Colors.textoSecundario,
   },
 });

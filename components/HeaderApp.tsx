@@ -8,6 +8,8 @@ import {
 } from 'react-native';
 import { Colors, FontFamily, FontSize, Spacing } from '@/theme';
 
+import { LogoBarbearia } from './LogoBarbearia';
+
 interface HeaderAppProps {
   titulo?: string;
   subtitulo?: string;
@@ -33,10 +35,7 @@ export function HeaderApp({
 
       <View style={styles.centro}>
         {usarLogo ? (
-          // Placeholder do logo — substituir por <Image> quando tiver o asset
-          <View style={styles.logoPlaceholder}>
-            <Text style={styles.logoTexto}>BARBEARIA VIEIRA</Text>
-          </View>
+          <LogoBarbearia tamanho={32} variante="horizontal" mostrarTelefone={false} />
         ) : (
           <View>
             {titulo && (

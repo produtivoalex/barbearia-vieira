@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,16 +7,34 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  TextInput,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Scissors, ChevronRight, Clock } from 'lucide-react-native';
-import { useServicos, type Servico } from '@/hooks/useServicos';
+import {
+  Search,
+  Clock,
+  ChevronRight,
+  Sparkles,
+  Scissors,
+  X,
+} from 'lucide-react-native';
+import {
+  useServicos,
+  type Servico,
+  type CategoriaServico,
+  CATEGORIAS_CONFIG,
+  deduzirCategoria,
+} from '@/hooks/useServicos';
+import { IlustracaoServico } from '@/components';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 
 export default function TelaServicos() {
   const router = useRouter();
-  const { servicos, carregando, recarregar } = useServicos();
+  const [categoriaAtiva, setCategoriaAtiva] = useState<CategoriaServico>('todos');
+  const [busca, setBusca] = useState('');
+  const { todosServicos, carregando, recarregar } = useServicos();
 
   function handleSelecionarServico(servico: Servico) {
     router.push({
@@ -30,56 +48,177 @@ export default function TelaServicos() {
     });
   }
 
+  // Contagem por categoria
+  const contagemPorCategoria = useMemo(() => {
+    const mapa: Record<CategoriaServico, number> = {
+      todos: todosServicos.length,
+      cortes: 0,
+      combos: 0,
+      barba: 0,
+      sobrancelha: 0,
+      limpeza_de_pele: 0,
+    };
+    todosServicos.forEach((s) => {
+      const cat = s.categoria || deduzirCategoria(s.nome);
+      if (mapa[cat] !== undefined) {
+        mapa[cat] += 1;
+      }
+    });
+    return mapa;
+  }, [todosServicos]);
+
+  // Filtro composto: Categoria + Busca
+  const servicosFiltrados = useMemo(() => {
+    return todosServicos.filter((servico) => {
+      const cat = servico.categoria || deduzirCategoria(servico.nome);
+      const bateCategoria = categoriaAtiva === 'todos' || cat === categoriaAtiva;
+
+      if (!bateCategoria) return false;
+      if (!busca.trim()) return true;
+
+      const termo = busca.toLowerCase();
+      const nomeMatch = servico.nome.toLowerCase().includes(termo);
+      const descMatch = (servico.descricao || '').toLowerCase().includes(termo);
+      return nomeMatch || descMatch;
+    });
+  }, [todosServicos, categoriaAtiva, busca]);
+
   function renderServico({ item }: { item: Servico }) {
     const precoFormatado = Number(item.preco).toLocaleString('pt-BR', {
       style: 'currency',
       currency: 'BRL',
     });
 
+    const ehCombo = (item.categoria || deduzirCategoria(item.nome)) === 'combos';
+
     return (
       <TouchableOpacity
-        style={styles.cardServico}
+        style={[styles.cardServico, ehCombo && styles.cardCombo]}
         onPress={() => handleSelecionarServico(item)}
-        activeOpacity={0.7}
+        activeOpacity={0.75}
       >
-        <View style={styles.iconeServico}>
-          <Scissors size={20} color={Colors.ouro} />
-        </View>
+        {/* Ilustração Exclusiva do Serviço */}
+        <IlustracaoServico
+          id={item.id}
+          nome={item.nome}
+          categoria={item.categoria}
+          tamanho={56}
+        />
 
+        {/* Detalhes do Serviço */}
         <View style={styles.infoServico}>
-          <Text style={styles.nomeServico}>{item.nome}</Text>
+          <View style={styles.linhaNome}>
+            <Text style={styles.nomeServico}>{item.nome}</Text>
+            {ehCombo && (
+              <View style={styles.badgeVip}>
+                <Sparkles size={10} color={Colors.ouro} />
+                <Text style={styles.badgeVipTexto}>VIP</Text>
+              </View>
+            )}
+          </View>
+
           {item.descricao && (
             <Text style={styles.descricaoServico} numberOfLines={2}>
               {item.descricao}
             </Text>
           )}
+
           <View style={styles.detalhesLinha}>
-            <Clock size={14} color={Colors.textoSecundario} />
-            <Text style={styles.duracaoServico}>{item.duracao_minutos} min</Text>
+            <View style={styles.tempoPill}>
+              <Clock size={12} color={Colors.textoSecundario} />
+              <Text style={styles.duracaoServico}>{item.duracao_minutos} min</Text>
+            </View>
           </View>
         </View>
 
+        {/* Lado Direito: Preço e Botão */}
         <View style={styles.ladoDireito}>
           <Text style={styles.precoServico}>{precoFormatado}</Text>
-          <ChevronRight size={18} color={Colors.textoDesabilitado} />
+          <View style={styles.circuloSeta}>
+            <ChevronRight size={16} color={Colors.textoPrimario} />
+          </View>
         </View>
       </TouchableOpacity>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.titulo}>Escolha o serviço</Text>
+        <View>
+          <Text style={styles.subtituloBarbearia}>BARBEARIA VIEIRA</Text>
+          <Text style={styles.titulo}>Escolha o serviço</Text>
+        </View>
       </View>
 
-      {carregando && servicos.length === 0 ? (
+      {/* Barra de Pesquisa */}
+      <View style={styles.pesquisaContainer}>
+        <View style={styles.inputPesquisaWrapper}>
+          <Search size={18} color={Colors.textoSecundario} style={styles.iconePesquisa} />
+          <TextInput
+            style={styles.inputPesquisa}
+            placeholder="Buscar corte, barba ou combo..."
+            placeholderTextColor={Colors.textoDesabilitado}
+            value={busca}
+            onChangeText={setBusca}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {busca.length > 0 && (
+            <TouchableOpacity onPress={() => setBusca('')} style={styles.btnLimpar}>
+              <X size={16} color={Colors.textoSecundario} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Categorias em Rolagem Horizontal */}
+      <View style={styles.categoriasContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoriasScroll}
+        >
+          {CATEGORIAS_CONFIG.map((cat) => {
+            const ativa = categoriaAtiva === cat.id;
+            const qtd = contagemPorCategoria[cat.id] || 0;
+
+            return (
+              <TouchableOpacity
+                key={cat.id}
+                style={[styles.chipCategoria, ativa && styles.chipCategoriaAtivo]}
+                onPress={() => setCategoriaAtiva(cat.id)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.emojiCategoria}>{cat.iconeEmoji}</Text>
+                <Text style={[styles.textoCategoria, ativa && styles.textoCategoriaAtivo]}>
+                  {cat.label}
+                </Text>
+                <View style={[styles.badgeContagem, ativa && styles.badgeContagemAtiva]}>
+                  <Text
+                    style={[
+                      styles.textoContagem,
+                      ativa && styles.textoContagemAtiva,
+                    ]}
+                  >
+                    {qtd}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Lista de Serviços */}
+      {carregando && todosServicos.length === 0 ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.vermelho} />
         </View>
       ) : (
         <FlatList
-          data={servicos}
+          data={servicosFiltrados}
           keyExtractor={(item) => item.id}
           renderItem={renderServico}
           refreshControl={
@@ -93,9 +232,11 @@ export default function TelaServicos() {
           ListEmptyComponent={
             <View style={styles.vazio}>
               <Scissors size={48} color={Colors.textoDesabilitado} />
-              <Text style={styles.vazioTitulo}>Nenhum serviço disponível</Text>
+              <Text style={styles.vazioTitulo}>Nenhum serviço encontrado</Text>
               <Text style={styles.vazioSubtitulo}>
-                Não encontramos serviços ativos no momento. Puxe para atualizar.
+                {busca
+                  ? `Nenhum resultado para "${busca}". Tente outro termo.`
+                  : 'Nenhum serviço disponível nesta categoria.'}
               </Text>
             </View>
           }
@@ -111,14 +252,99 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: Spacing.telaH,
     paddingTop: Spacing.md,
-    paddingBottom: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borda,
+    paddingBottom: Spacing.sm,
+  },
+  subtituloBarbearia: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.labelXs,
+    color: Colors.ouro,
+    letterSpacing: 2,
+    marginBottom: 2,
   },
   titulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.displayMd,
     color: Colors.textoPrimario,
+  },
+  pesquisaContainer: {
+    paddingHorizontal: Spacing.telaH,
+    paddingVertical: Spacing.xs,
+  },
+  inputPesquisaWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.superficie,
+    borderRadius: Radii.full,
+    borderWidth: 1,
+    borderColor: Colors.borda,
+    paddingHorizontal: Spacing.md,
+    height: 46,
+  },
+  iconePesquisa: {
+    marginRight: Spacing.xs,
+  },
+  inputPesquisa: {
+    flex: 1,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.bodyMd,
+    color: Colors.textoPrimario,
+    height: '100%',
+  },
+  btnLimpar: {
+    padding: 4,
+  },
+  categoriasContainer: {
+    paddingVertical: Spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borda,
+  },
+  categoriasScroll: {
+    paddingHorizontal: Spacing.telaH,
+    gap: Spacing.xs,
+  },
+  chipCategoria: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: Radii.full,
+    backgroundColor: Colors.superficie,
+    borderWidth: 1,
+    borderColor: Colors.borda,
+  },
+  chipCategoriaAtivo: {
+    backgroundColor: Colors.vermelho,
+    borderColor: Colors.vermelhoClaro,
+  },
+  emojiCategoria: {
+    fontSize: 13,
+  },
+  textoCategoria: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.bodySm,
+    color: Colors.textoSecundario,
+  },
+  textoCategoriaAtivo: {
+    fontFamily: FontFamily.bold,
+    color: Colors.branco,
+  },
+  badgeContagem: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: Radii.full,
+    backgroundColor: Colors.superficie2,
+  },
+  badgeContagemAtiva: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  textoContagem: {
+    fontFamily: FontFamily.bold,
+    fontSize: 10,
+    color: Colors.textoSecundario,
+  },
+  textoContagemAtiva: {
+    color: Colors.branco,
   },
   loadingContainer: {
     flex: 1,
@@ -135,38 +361,69 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.superficie,
-    borderRadius: Radii.md,
+    borderRadius: Radii.lg,
     padding: Spacing.md,
-    gap: Spacing.sm,
+    gap: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.borda,
     ...Shadows.card,
   },
-  iconeServico: {
-    width: 40,
-    height: 40,
-    borderRadius: Radii.sm,
-    backgroundColor: Colors.superficie2,
-    alignItems: 'center',
-    justifyContent: 'center',
+  cardCombo: {
+    borderColor: 'rgba(203, 161, 74, 0.35)',
+    backgroundColor: '#1C1614',
   },
   infoServico: {
     flex: 1,
-    gap: 4,
+    gap: 3,
+  },
+  linhaNome: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
   },
   nomeServico: {
-    fontFamily: FontFamily.semiBold,
+    fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyLg,
     color: Colors.textoPrimario,
+  },
+  badgeVip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: 'rgba(203, 161, 74, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: Radii.full,
+    borderWidth: 1,
+    borderColor: Colors.ouro,
+  },
+  badgeVipTexto: {
+    fontFamily: FontFamily.bold,
+    fontSize: 9,
+    color: Colors.ouro,
+    letterSpacing: 0.5,
   },
   descricaoServico: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodySm,
     color: Colors.textoSecundario,
+    lineHeight: 18,
   },
   detalhesLinha: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: Spacing.xs,
     marginTop: 2,
+  },
+  tempoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.superficie2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: Radii.sm,
   },
   duracaoServico: {
     fontFamily: FontFamily.medium,
@@ -175,32 +432,39 @@ const styles = StyleSheet.create({
   },
   ladoDireito: {
     alignItems: 'flex-end',
-    gap: Spacing.xs,
+    justifyContent: 'center',
+    gap: 6,
   },
   precoServico: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyLg,
+    fontSize: FontSize.headingSm,
     color: Colors.ouro,
+  },
+  circuloSeta: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.superficie2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   vazio: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.xs,
-    paddingTop: Spacing.giant,
+    paddingVertical: Spacing.xxl,
+    gap: Spacing.sm,
   },
   vazioTitulo: {
-    fontFamily: FontFamily.semiBold,
+    fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyLg,
     color: Colors.textoPrimario,
-    textAlign: 'center',
-    marginTop: Spacing.xs,
   },
   vazioSubtitulo: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodyMd,
     color: Colors.textoSecundario,
     textAlign: 'center',
-    maxWidth: 280,
+    paddingHorizontal: Spacing.lg,
   },
 });

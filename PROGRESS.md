@@ -100,6 +100,28 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
 - **`app.json`** atualizado com o plugin `expo-notifications` (ícone e cor corporativa `#D32F2F`).
 - `tsc --noEmit` ✅ (0 erros)
 
+### ✅ Fase 12 — Identidade Visual Premium, Catálogo Real com Ilustrações e Social Login (CONCLUÍDA)
+- **Identidade Visual & Logo**:
+  - `components/LogoBarbearia.tsx`: componente vetorial de alta definição com selo circular dourado (`#CBA14A`), tesoura/navalhete em vetor ouro, tipografia institucional `"BARBEARIA VIEIRA"` e telefone `(86) 98190-7478`.
+  - Novos ícones premium gerados e atualizados em `assets/` (`icon.png`, `adaptive-icon.png`, `splash-icon.png`, `favicon.png`).
+- **Tela de Login com Google & Apple**:
+  - `app/(pre-auth)/index.tsx`: inclusão da Logo oficial, botões de login social **"Entrar com o Google"** e **"Iniciar sessão com a Apple"**, toggle de visibilidade de senha e divisor `"ou continue com"`.
+  - `app/(pre-auth)/cadastro.tsx`: formulário de cadastro refinado com a logo oficial e padrão estético escuro.
+- **Catálogo de 14 Serviços Reais & Ilustrações Exclusivas**:
+  - `components/IlustracaoServico.tsx`: ilustrações vetoriais personalizadas para cada serviço (Corte Degradê, Corte Navalhado, Corte Social, Social na Máquina, Combos VIP 1 a 6, Barba Desenhada, Barba Simples, Sobrancelha e Limpeza de Pele).
+  - `hooks/useServicos.ts`: catálogo completo tipado com categorias (`cortes`, `combos`, `barba`, `sobrancelha`, `limpeza_de_pele`) e fallback instantâneo.
+  - `supabase/migrations/20260820_fase12_servicos_reais.sql` e `scripts/schema.sql`: migração com o catálogo oficial.
+  - `app/(app)/(tabs)/servicos/index.tsx`: repaginada com filtro horizontal por categorias (com badges de contagem), barra de pesquisa instantânea e cards modernos com preço em destaque dourado e badges VIP.
+- **Fluxo de Agendamento com Indicador de Etapas**:
+  - `components/IndicadorEtapas.tsx`: barra de progresso com 4 etapas (`1 Serviço` ➜ `2 Data` ➜ `3 Horário` ➜ `4 Confirmar`).
+  - `app/(app)/agendamento/horario.tsx` e `confirmacao.tsx`: integrados com o indicador e cards de resumo com a ilustração do serviço.
+- **Tela de Perfil Executiva & Menos Poluída**:
+  - `app/(app)/(tabs)/perfil.tsx`: reestruturada em 3 seções limpas (Minha Conta, Barbearia Vieira, Informações), contato direto via WhatsApp `(86) 98190-7478` e logout com confirmação.
+- **Home & Agenda**:
+  - `app/(app)/(tabs)/index.tsx`: topo com a logo oficial da barbearia e atalhos rápidos.
+  - `app/(app)/(tabs)/agenda.tsx`: cards de agendamento exibindo a ilustração de cada serviço agendado.
+- `tsc --noEmit` ✅ (0 erros)
+
 ---
 
 ## 🎯 Instruções Imediatas (Como Executar / Testar Agora)

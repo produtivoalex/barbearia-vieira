@@ -13,8 +13,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Mail, Lock, User } from 'lucide-react-native';
-import { Botao } from '@/components';
+import { ChevronLeft, Mail, Lock, User, Eye, EyeOff } from 'lucide-react-native';
+import { Botao, LogoBarbearia } from '@/components';
 import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
 import { supabase } from '@/lib/supabase';
 
@@ -23,6 +23,7 @@ export default function TelaCadastro() {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
 
   async function handleCadastrar() {
@@ -36,10 +37,10 @@ export default function TelaCadastro() {
     }
     setCarregando(true);
     const { error } = await supabase.auth.signUp({
-      email,
+      email: email.trim().toLowerCase(),
       password: senha,
       options: {
-        data: { nome_completo: nome },
+        data: { nome_completo: nome.trim() },
       },
     });
     setCarregando(false);
@@ -47,9 +48,9 @@ export default function TelaCadastro() {
       Alert.alert('Erro ao cadastrar', error.message);
     } else {
       Alert.alert(
-        'Confirme seu e-mail',
-        'Enviamos um link de confirmação para ' + email + '. Verifique sua caixa de entrada.',
-        [{ text: 'OK', onPress: () => router.back() }]
+        'Conta criada com sucesso! 💈',
+        'Bem-vindo à Barbearia Vieira. Você já pode fazer seu login.',
+        [{ text: 'Fazer Login', onPress: () => router.back() }]
       );
     }
   }
@@ -65,19 +66,19 @@ export default function TelaCadastro() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
+          {/* Header com voltar */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.btnVoltar}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.btnVoltar} activeOpacity={0.7}>
               <ChevronLeft size={24} color={Colors.textoPrimario} />
             </TouchableOpacity>
-            <Text style={styles.headerTitulo}>Criar conta</Text>
+            <LogoBarbearia tamanho={44} variante="horizontal" mostrarTexto={false} />
             <View style={{ width: 40 }} />
           </View>
 
-          {/* Card */}
+          {/* Card de Cadastro */}
           <View style={styles.card}>
             <Text style={styles.titulo}>Crie sua conta</Text>
-            <Text style={styles.subtitulo}>Acesse sua agenda e histórico em qualquer dispositivo</Text>
+            <Text style={styles.subtitulo}>Acesse sua agenda e histórico de cortes em qualquer dispositivo</Text>
 
             {/* Nome */}
             <View style={styles.campoContainer}>
@@ -86,7 +87,7 @@ export default function TelaCadastro() {
                 <User size={18} color={Colors.textoSecundario} style={styles.inputIcone} />
                 <TextInput
                   style={styles.input}
-                  placeholder="João Silva"
+                  placeholder="Seu nome"
                   placeholderTextColor={Colors.textoDesabilitado}
                   autoCapitalize="words"
                   value={nome}
@@ -124,11 +125,22 @@ export default function TelaCadastro() {
                   style={styles.input}
                   placeholder="Mínimo 6 caracteres"
                   placeholderTextColor={Colors.textoDesabilitado}
-                  secureTextEntry
+                  secureTextEntry={!mostrarSenha}
                   value={senha}
                   onChangeText={setSenha}
                   selectionColor={Colors.vermelho}
                 />
+                <TouchableOpacity
+                  onPress={() => setMostrarSenha((v) => !v)}
+                  style={styles.btnOlho}
+                  activeOpacity={0.7}
+                >
+                  {mostrarSenha ? (
+                    <EyeOff size={18} color={Colors.textoSecundario} />
+                  ) : (
+                    <Eye size={18} color={Colors.textoSecundario} />
+                  )}
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -145,10 +157,10 @@ export default function TelaCadastro() {
           </View>
 
           {/* Rodapé */}
-          <TouchableOpacity onPress={() => router.back()} style={styles.rodape}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.rodape} activeOpacity={0.7}>
             <Text style={styles.rodapeTexto}>
               Já tem conta?{' '}
-              <Text style={styles.rodapeLink}>Entrar</Text>
+              <Text style={styles.rodapeLink}>Faça login</Text>
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -164,20 +176,23 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: Spacing.telaH,
     paddingBottom: Spacing.xxl,
-    gap: Spacing.xl,
-    justifyContent: 'center',
+    gap: Spacing.md,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Spacing.md,
+    paddingVertical: Spacing.md,
   },
-  btnVoltar: { width: 40, alignItems: 'flex-start' },
-  headerTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.headingSm,
-    color: Colors.textoPrimario,
+  btnVoltar: {
+    width: 40,
+    height: 40,
+    borderRadius: Radii.full,
+    backgroundColor: Colors.superficie,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.borda,
   },
   card: {
     width: '100%',
@@ -186,6 +201,8 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     gap: Spacing.md,
     ...Shadows.card,
+    borderWidth: 1,
+    borderColor: Colors.borda,
   },
   titulo: {
     fontFamily: FontFamily.bold,
@@ -223,14 +240,14 @@ const styles = StyleSheet.create({
     color: Colors.textoPrimario,
     height: '100%',
   },
+  btnOlho: { padding: 6 },
   botaoPrincipal: { width: '100%', marginTop: Spacing.xs },
   loader: { alignSelf: 'center' },
-  rodape: { paddingBottom: Spacing.md },
+  rodape: { paddingVertical: Spacing.md, alignItems: 'center' },
   rodapeTexto: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodyMd,
     color: Colors.textoSecundario,
-    textAlign: 'center',
   },
   rodapeLink: {
     fontFamily: FontFamily.semiBold,
