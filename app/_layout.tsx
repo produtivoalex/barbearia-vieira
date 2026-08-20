@@ -60,21 +60,26 @@ function ControleRotas() {
   }, [router]);
 
   useEffect(() => {
-    // Aguarda apenas o estado de autenticação; não bloqueia por perfil
-    // (o perfil pode ainda não existir logo após o cadastro)
+    // Aguarda autenticação carregar antes de qualquer redirecionamento
     if (carregando) return;
 
-    const naAreaProtegida = segments[0] === '(app)';
+    const naAreaApp   = segments[0] === '(app)';
+    const naPreAuth   = segments[0] === '(pre-auth)';
 
-    if (!autenticado && naAreaProtegida) {
-      router.replace('/(pre-auth)');
-    } else if (autenticado && !naAreaProtegida) {
-      // Se o perfil ainda está carregando, aguarda sem bloquear
-      if (carregandoPerfil) return;
-      if (perfil?.role === 'barbeiro') {
-        router.replace('/(app)/(barbeiro)/hoje' as Href);
-      } else {
-        router.replace('/(app)/(tabs)/index' as Href);
+    if (!autenticado) {
+      // Não autenticado: qualquer rota fora de (pre-auth) redireciona para login
+      if (!naPreAuth) {
+        router.replace('/(pre-auth)');
+      }
+    } else {
+      // Autenticado: direciona para a área correta se ainda não estiver nela
+      if (!naAreaApp) {
+        if (carregandoPerfil) return; // aguarda perfil sem bloquear
+        if (perfil?.role === 'barbeiro') {
+          router.replace('/(app)/(barbeiro)/hoje' as Href);
+        } else {
+          router.replace('/(app)/(tabs)/index' as Href);
+        }
       }
     }
   }, [autenticado, carregando, perfil, carregandoPerfil, segments, router]);
