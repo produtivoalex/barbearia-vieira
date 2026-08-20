@@ -5,7 +5,7 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
 
 ---
 
-## Estado Atual (Última Atualização: 17/08/2026)
+## Estado Atual (Última Atualização: 18/08/2026)
 
 ### ✅ Fase 1 — Integração Base com Supabase (CONCLUÍDA)
 - **`.env`** criado com as chaves reais (`EXPO_PUBLIC_SUPABASE_URL` e `EXPO_PUBLIC_SUPABASE_ANON_KEY`)
@@ -84,41 +84,31 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
   - `atrasos_agenda` (`id`, `data`, `minutos_atraso`, `normalizado_em`, `created_at`)
 
 #### 2. Painel do Barbeiro:
-- Criar a tela/fluxo **"Preparar Agenda"** (Terça a Domingo, toggle de dias, botão "Usar semana passada", programação de abertura para segunda-feira às 18h/19h/20h/21h).
-- Implementar na tela `(barbeiro)/hoje.tsx` a ação **"Estou atrasado"** (+10, +15, +20, +30 min e "Agenda normalizada").
-
-#### 3. Experiência do Cliente:
-- Transformar a Home `app/(app)/(tabs)/index.tsx` em **Home Dinâmica**:
-  - Estado 1: Agenda Programada (contagem/data de abertura + ativar lembrete)
-  - Estado 2: Agenda Aberta (dias com vagas + botão "Seu de sempre")
-  - Estado 3: Agenda Lotada (mensagem acolhedora + botão "Entrar na fila de espera")
-  - Estado 4: Com Agendamento Ativo (card de destaque com status, rota, reagendar, cancelar e "Quero outro horário / Fila de troca")
-
----
-
-## Fase 8 — Agenda Semanal, Home Dinâmica e Base de Notificações (EM ANDAMENTO)
+## ✅ Fase 8 — Agenda Semanal, Home Dinâmica e Base de Notificações (CONCLUÍDA)
 - `scripts/schema.sql`: agendas semanais, dias, slots, fila de espera, fila de troca, ofertas temporárias, atrasos, tokens/notificações e RLS.
 - `scripts/schema.sql`: função `reservar_slot` com validação de agenda aberta, concorrência de horário e limite semanal.
 - `hooks/useAgendaSemanal.ts`: leitura da agenda contextual, próxima agenda do barbeiro e contagem de notificações não lidas.
 - `app/(app)/(barbeiro)/preparar-agenda.tsx`: preparação da próxima semana e abertura programada.
-- `app/(app)/(barbeiro)/hoje.tsx`: ação “Estou atrasado” e normalização.
+- `app/(app)/(barbeiro)/hoje.tsx`: ação "Estou atrasado" e normalização.
 - `app/(app)/(tabs)/index.tsx`: Home contextual para atendimento, agenda programada, agenda aberta ou semana lotada.
-- `npm run typecheck` passou; lint passou com 5 avisos preexistentes de imports não usados.
 - `app/(app)/lista-espera/index.tsx`: fila funcional com serviço, dias e horários preferidos, persistida no Supabase.
-- `scripts/schema.sql` + `app/(app)/lista-espera/oferta.tsx`: aceite de oferta com expiração, lock do slot e criação atômica do agendamento via `aceitar_oferta_fila`.
-- `scripts/schema.sql`: cancelamento dispara busca da próxima pessoa compatível e cria oferta/notificação via `oferecer_proxima_vaga`.
+- `app/(app)/lista-espera/oferta.tsx`: aceite de oferta com expiração, lock do slot e criação atômica via `aceitar_oferta_fila`.
 - `app/(app)/notificacoes.tsx`: central de notificações com leitura e deep link para ofertas da fila.
 - `app/(app)/agendamento/confirmacao.tsx`: usa `reservar_slot` quando a agenda semanal já estiver migrada.
-- `supabase/functions/process-notifications/index.ts`: Edge Function local preparada para entregar notificações via Expo Push usando tokens ativos.
-- Publicação remota bloqueada: o ref do Supabase presente no `.env` não aparece na lista de projetos da conta autenticada do CLI; nenhum projeto alternativo foi alterado.
-- `agenda_lembretes`: base para o cliente ativar lembrete da abertura da agenda; Home agora grava essa preferência.
-- Lint atualizado: 3 avisos preexistentes de imports não usados.
+- `supabase/functions/process-notifications/index.ts`: Edge Function deployada no Supabase (ref fnvenkcpucpuucovunzf).
+- `supabase/migrations/20260818000000_schema_completo.sql`: migração aplicada remotamente via `supabase db push`.
+- `agenda_lembretes`: base para o cliente ativar lembrete da abertura da agenda.
+- `.env` recriado sem BOM com URL + anon key corretas (projeto fnvenkcpucpuucovunzf).
+- `scripts/schema.sql` corrigido: `uuid_generate_v4()` → `gen_random_uuid()` (PG17 nativo).
+- `tsc --noEmit` ✅ | `eslint` ✅ (3 avisos preexistentes de imports não usados)
 
-### Próxima continuação da Fase 8
-- Aplicar o schema no Supabase de staging, com autorização específica para mutação remota.
-- Implementar push e lembretes via Edge Function.
-- Integrar a fila/oferta à tela existente, substituindo dados fixos e o `TODO`.
-- Validar reserva concorrente e cenários críticos em staging.
+### Próxima Fase: Fase 9 — Notificações Push e Abertura Automática da Agenda
+- Implementar push real via Expo Push API na Edge Function `process-notifications`.
+- Configurar pg_cron (ou Supabase Scheduled Functions) para abertura automática da agenda no horário programado.
+- Implementar lembretes de atendimento (véspera + horas antes) com botão "Confirmar presença".
+- Lembrete ao barbeiro: se segunda-feira e agenda não preparada, disparar push.
+- Implementar deep links contextuais completos (notificação de oferta → tela de aceite).
+- Validar cenários críticos de teste do PRODUTO.md em staging.
 
 ## Decisões Tomadas
 

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments, type Href } from 'expo-router';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -31,9 +31,9 @@ function ControleRotas() {
       // Se o perfil ainda está carregando, aguarda sem bloquear
       if (carregandoPerfil) return;
       if (perfil?.role === 'barbeiro') {
-        router.replace('/(app)/(barbeiro)');
+        router.replace('/(app)/(barbeiro)/hoje' as Href);
       } else {
-        router.replace('/(app)/(tabs)');
+        router.replace('/(app)/(tabs)/index' as Href);
       }
     }
   }, [autenticado, carregando, perfil, carregandoPerfil, segments, router]);
