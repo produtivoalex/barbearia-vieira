@@ -25,42 +25,39 @@ import * as Google from 'expo-auth-session/providers/google';
 // Necessário para que o WebBrowser feche corretamente após o OAuth
 WebBrowser.maybeCompleteAuthSession();
 
-export default function TelaLogin() {
-  const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
+// ─────────────────────────────────────────────────────────────
+// Componente isolado que chama Google.useAuthRequest.
+// Só é MONTADO quando as chaves corretas para a plataforma
+// estão configuradas no .env — isso é crucial pois hooks
+// não podem ser chamados condicionalmente. Ao não montar
+// este componente, evitamos o crash "androidClientId must be
+// defined" mesmo sem configurar Google Auth.
+// ─────────────────────────────────────────────────────────────
+interface GoogleAuthProps {
+  onCarregando: (v: boolean) => void;
+}
+
+function BotaoGoogleAuth({ onCarregando }: GoogleAuthProps) {
   const [carregando, setCarregando] = useState(false);
-  const [carregandoGoogle, setCarregandoGoogle] = useState(false);
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: 'barbearia-vieira',
+    path: 'auth/callback',
+  });
 
-  const redirectUri = AuthSession.makeRedirectUri({ scheme: 'barbearia-vieira', path: 'auth/callback' });
-
-  // Google Auth: verificação por plataforma para evitar crash de "clientId must be defined"
-  // O hook valida o ID específico da plataforma atual (androidClientId no Android, iosClientId no iOS)
-  const googleConfigured = (
-    Platform.OS === 'android'
-      ? !!process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID
-      : Platform.OS === 'ios'
-      ? !!process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS
-      : !!process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB
-  );
-
-  const [, googleResponse, promptGoogleAsync] = Google.useAuthRequest(
-    googleConfigured
-      ? {
-          iosClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS,
-          androidClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID,
-          webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
-          redirectUri,
-          scopes: ['openid', 'profile', 'email'],
-        }
-      : undefined
-  );
+  const [, googleResponse, promptAsync] = Google.useAuthRequest({
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
+    redirectUri,
+    scopes: ['openid', 'profile', 'email'],
+  });
 
   useEffect(() => {
-    async function processarRespostaGoogle() {
+    async function processar() {
       if (googleResponse?.type !== 'success') return;
 
-      const idToken = googleResponse.params?.id_token ?? googleResponse.authentication?.idToken;
+      const idToken =
+        googleResponse.params?.id_token ?? googleResponse.authentication?.idToken;
       const accessToken = googleResponse.authentication?.accessToken;
 
       if (!idToken) {
@@ -68,22 +65,77 @@ export default function TelaLogin() {
         return;
       }
 
-      setCarregandoGoogle(true);
+      setCarregando(true);
+      onCarregando(true);
       const { error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
         token: idToken,
         access_token: accessToken,
       });
-      setCarregandoGoogle(false);
+      setCarregando(false);
+      onCarregando(false);
 
       if (error) {
         Alert.alert('Erro ao entrar com Google', error.message);
       }
       // Sucesso: ControleRotas em _layout.tsx redireciona automaticamente
     }
+    processar();
+  }, [googleResponse, onCarregando]);
 
-    processarRespostaGoogle();
-  }, [googleResponse]);
+  return (
+    <>
+      <View style={styles.divisorRow}>
+        <View style={styles.divisorLinha} />
+        <Text style={styles.divisorTexto}>ou</Text>
+        <View style={styles.divisorLinha} />
+      </View>
+
+      <TouchableOpacity
+        style={[styles.botaoGoogle, carregando && styles.botaoDesabilitado]}
+        onPress={() => promptAsync()}
+        activeOpacity={0.8}
+        disabled={carregando}
+      >
+        {carregando ? (
+          <ActivityIndicator size="small" color={Colors.azulBarbeiro} />
+        ) : (
+          <Text style={styles.botaoGoogleIcone}>G</Text>
+        )}
+        <Text style={styles.botaoGoogleTexto}>
+          {carregando ? 'Aguardando Google...' : 'Entrar com Google'}
+        </Text>
+      </TouchableOpacity>
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Verifica se as chaves do Google estão configuradas para a
+// plataforma atual. Só habilita Google Auth quando o ID
+// específico da plataforma está presente para evitar crash.
+// ─────────────────────────────────────────────────────────────
+function googleConfigurado(): boolean {
+  if (Platform.OS === 'android') {
+    return !!process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID;
+  }
+  if (Platform.OS === 'ios') {
+    return !!process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS;
+  }
+  return !!process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Tela principal de Login
+// ─────────────────────────────────────────────────────────────
+export default function TelaLogin() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [carregando, setCarregando] = useState(false);
+  const [carregandoGoogle, setCarregandoGoogle] = useState(false);
+
+  const temGoogle = googleConfigurado();
 
   async function handleLogin() {
     if (!email || !senha) {
@@ -91,16 +143,15 @@ export default function TelaLogin() {
       return;
     }
     setCarregando(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password: senha,
+    });
     setCarregando(false);
     if (error) {
       Alert.alert('Erro ao entrar', error.message);
     }
     // Sucesso: o ControleRotas em _layout.tsx redireciona automaticamente
-  }
-
-  async function handleGoogle() {
-    await promptGoogleAsync();
   }
 
   return (
@@ -175,36 +226,26 @@ export default function TelaLogin() {
               <ActivityIndicator color={Colors.vermelho} style={styles.loader} />
             )}
 
-            {/* Divisor + Botão Google (só aparecem se Google estiver configurado) */}
-            {googleConfigured && (
-              <>
-                <View style={styles.divisorRow}>
-                  <View style={styles.divisorLinha} />
-                  <Text style={styles.divisorTexto}>ou</Text>
-                  <View style={styles.divisorLinha} />
-                </View>
+            {/*
+              BotaoGoogleAuth só é montado quando as chaves corretas
+              da plataforma estão no .env. Não montar = hook nunca executa
+              = sem crash "androidClientId must be defined".
+            */}
+            {temGoogle && (
+              <BotaoGoogleAuth onCarregando={setCarregandoGoogle} />
+            )}
 
-                <TouchableOpacity
-                  style={[styles.botaoGoogle, carregandoGoogle && styles.botaoDesabilitado]}
-                  onPress={handleGoogle}
-                  activeOpacity={0.8}
-                  disabled={carregandoGoogle}
-                >
-                  {carregandoGoogle ? (
-                    <ActivityIndicator size="small" color={Colors.azulBarbeiro} />
-                  ) : (
-                    <Text style={styles.botaoGoogleIcone}>G</Text>
-                  )}
-                  <Text style={styles.botaoGoogleTexto}>
-                    {carregandoGoogle ? 'Aguardando Google...' : 'Entrar com Google'}
-                  </Text>
-                </TouchableOpacity>
-              </>
+            {/* Indicador de loading enquanto aguarda resposta Google */}
+            {carregandoGoogle && !temGoogle && (
+              <ActivityIndicator color={Colors.vermelho} style={styles.loader} />
             )}
           </View>
 
           {/* Rodapé */}
-          <TouchableOpacity onPress={() => router.push('/(pre-auth)/cadastro')} style={styles.rodape}>
+          <TouchableOpacity
+            onPress={() => router.push('/(pre-auth)/cadastro')}
+            style={styles.rodape}
+          >
             <Text style={styles.rodapeTexto}>
               Não tem conta?{' '}
               <Text style={styles.rodapeLink}>Cadastre-se</Text>

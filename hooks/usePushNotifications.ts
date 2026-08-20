@@ -5,7 +5,12 @@ import Constants from 'expo-constants';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './useAuth';
 
-// Configuração do comportamento de notificações recebidas com o app em primeiro plano
+// Detecta Expo Go: push remoto foi removido no SDK 53+
+// storeClient = Expo Go | bare = build proprio
+const isExpoGo = Constants.executionEnvironment === 'storeClient';
+
+// Configura o comportamento de notificações em foreground
+// Chamado apenas uma vez no nível de módulo (seguro para Expo Go)
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -17,11 +22,6 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// Detecta se está rodando no Expo Go (push remoto removido no SDK 53+)
-function isExpoGo(): boolean {
-  return Constants.executionEnvironment === 'storeClient';
-}
-
 export function usePushNotifications() {
   const { session } = useAuth();
   const usuarioId = session?.user?.id;
@@ -32,7 +32,8 @@ export function usePushNotifications() {
     async (token: string) => {
       if (!usuarioId) return;
       try {
-        const plataforma = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
+        const plataforma =
+          Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
         await supabase.from('notification_tokens').upsert(
           {
             usuario_id: usuarioId,
@@ -43,21 +44,24 @@ export function usePushNotifications() {
           },
           { onConflict: 'usuario_id,token' }
         );
-      } catch (error) {
-        console.warn('Erro ao salvar token de notificação:', error);
+      } catch (err) {
+        console.warn('[usePushNotifications] Erro ao salvar token:', err);
       }
     },
     [usuarioId]
   );
 
-  const solicitarPermissao = useCallback(async () => {
-    // Push remoto não disponível no Expo Go desde SDK 53 — silencioso, sem crash
-    if (isExpoGo()) {
-      console.info('[usePushNotifications] Expo Go detectado: push remoto indisponível. Use um Development Build.');
+  const solicitarPermissao = useCallback(async (): Promise<string | null> => {
+    // No Expo Go push remoto não está disponível desde SDK 53 — falha silenciosa
+    if (isExpoGo) {
+      console.info(
+        '[usePushNotifications] Expo Go detectado. Push remoto indisponível — use um Development Build para testar notificações.'
+      );
       return null;
     }
 
     try {
+      // Cria canal de notificação no Android (necessário para push funcionar)
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('default', {
           name: 'Barbearia Vieira',
@@ -67,10 +71,11 @@ export function usePushNotifications() {
         });
       }
 
-      const { status: statusExistente } = await Notifications.getPermissionsAsync();
-      let statusFinal = statusExistente;
+      // Verifica/solicita permissão
+      const { status: statusAtual } = await Notifications.getPermissionsAsync();
+      let statusFinal = statusAtual;
 
-      if (statusExistente !== Notifications.PermissionStatus.GRANTED) {
+      if (statusAtual !== Notifications.PermissionStatus.GRANTED) {
         const { status } = await Notifications.requestPermissionsAsync();
         statusFinal = status;
       }
@@ -81,6 +86,7 @@ export function usePushNotifications() {
         return null;
       }
 
+      // Obtém Expo Push Token
       const tokenData = await Notifications.getExpoPushTokenAsync().catch(() => null);
       if (tokenData?.data) {
         setExpoPushToken(tokenData.data);
@@ -88,15 +94,16 @@ export function usePushNotifications() {
         return tokenData.data;
       }
     } catch (err) {
-      console.warn('Não foi possível obter push token:', err);
+      console.warn('[usePushNotifications] Não foi possível obter push token:', err);
     }
     return null;
   }, [registrarTokenNoBanco]);
 
   useEffect(() => {
-    if (!usuarioId || isExpoGo()) return;
+    // Pula completamente no Expo Go
+    if (!usuarioId || isExpoGo) return;
 
-    // Verifica permissão existente ao autenticar
+    // Se já tem permissão, registra o token automaticamente ao autenticar
     Notifications.getPermissionsAsync()
       .then(async ({ status }) => {
         setPermissaoStatus(status);
@@ -108,14 +115,15 @@ export function usePushNotifications() {
           }
         }
       })
-      .catch((err) => console.warn('Erro ao verificar permissão de notificação:', err));
+      .catch((err) => console.warn('[usePushNotifications] Erro ao verificar permissão:', err));
   }, [usuarioId, registrarTokenNoBanco]);
 
   return {
     expoPushToken,
     permissaoStatus,
-    // No Expo Go, considera sem permissão (push indisponível)
-    temPermissao: !isExpoGo() && permissaoStatus === Notifications.PermissionStatus.GRANTED,
+    // No Expo Go, push não disponível — nunca mostra como "com permissão"
+    temPermissao: !isExpoGo && permissaoStatus === Notifications.PermissionStatus.GRANTED,
+    estaNoExpoGo: isExpoGo,
     solicitarPermissao,
   };
 }
