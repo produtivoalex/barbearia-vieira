@@ -1,25 +1,17 @@
 import { useEffect } from 'react';
-import { Stack, useRouter, useSegments, type Href } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet } from 'react-native';
-import Constants from 'expo-constants';
 import { FontAssets } from '@/theme';
 import { Colors } from '@/theme/colors';
 import { useAuth } from '@/hooks/useAuth';
 import { usePerfil } from '@/hooks/usePerfil';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
-
-// Importação dinâmica segura para expo-notifications
-// No Expo Go SDK 53+, push remoto foi removido, mas notificações locais
-// e listeners ainda funcionam — apenas getExpoPushTokenAsync falha.
 import * as Notifications from 'expo-notifications';
 
 SplashScreen.preventAutoHideAsync();
-
-// Verifica se está no Expo Go (não suporta push remoto desde SDK 53)
-const isExpoGo = Constants.executionEnvironment === 'storeClient';
 
 function ControleRotas() {
   const { autenticado, carregando } = useAuth();
@@ -31,27 +23,25 @@ function ControleRotas() {
   usePushNotifications();
 
   useEffect(() => {
-    // Listeners de notificações — safe em Expo Go para notificações locais.
-    // Notificações push remotas não chegam no Expo Go, mas o listener não crasha.
+    // Listener de cliques em notificações push (deep linking)
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const dados = response.notification.request.content.data as Record<string, unknown> | undefined;
       if (!dados) return;
 
       try {
         if (dados.tipo === 'agenda_aberta') {
-          router.push('/(app)/agendamento/horario' as Href);
+          router.push('/(app)/agendamento/horario');
         } else if (dados.tipo === 'oferta_fila' && dados.ofertaId) {
           router.push({
-            pathname: '/(app)/lista-espera/oferta' as any,
+            pathname: '/(app)/lista-espera/oferta',
             params: { ofertaId: dados.ofertaId as string },
           });
         } else if (dados.tipo === 'lembrete' || dados.tipo === 'atraso') {
-          router.push('/(app)/(tabs)/agenda' as Href);
+          router.push('/(app)/(tabs)/agenda');
         } else if (dados.tipo === 'barbeiro_sem_agenda') {
-          router.push('/(app)/(barbeiro)/preparar-agenda' as Href);
+          router.push('/(app)/(barbeiro)/preparar-agenda');
         }
       } catch (err) {
-        // Ignora erros de navegação (ex: tela não montada ainda)
         console.warn('[NotificationListener] erro de navegação:', err);
       }
     });
@@ -63,22 +53,25 @@ function ControleRotas() {
     // Aguarda autenticação carregar antes de qualquer redirecionamento
     if (carregando) return;
 
-    const naAreaApp   = segments[0] === '(app)';
-    const naPreAuth   = segments[0] === '(pre-auth)';
+    const grupoAtual = segments[0] as string | undefined;
+    const naAreaApp = grupoAtual === '(app)';
+    const naPreAuth = grupoAtual === '(pre-auth)';
 
     if (!autenticado) {
-      // Não autenticado: qualquer rota fora de (pre-auth) redireciona para login
+      // Se não autenticado e não está na área de pré-autenticação, redireciona para login
       if (!naPreAuth) {
         router.replace('/(pre-auth)');
       }
     } else {
-      // Autenticado: direciona para a área correta se ainda não estiver nela
+      // Se autenticado, aguarda carregar perfil para saber o role
+      if (carregandoPerfil) return;
+
+      // Se ainda não entrou na área (app) ou está na raiz / pre-auth
       if (!naAreaApp) {
-        if (carregandoPerfil) return; // aguarda perfil sem bloquear
         if (perfil?.role === 'barbeiro') {
-          router.replace('/(app)/(barbeiro)/hoje' as Href);
+          router.replace('/(app)/(barbeiro)/hoje');
         } else {
-          router.replace('/(app)/(tabs)/index' as Href);
+          router.replace('/(app)/(tabs)');
         }
       }
     }

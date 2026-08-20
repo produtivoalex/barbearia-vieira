@@ -60,6 +60,12 @@ export default function TabsBarbeiroLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="preparar-agenda"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
