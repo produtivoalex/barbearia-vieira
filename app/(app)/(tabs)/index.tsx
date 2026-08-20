@@ -2,12 +2,13 @@ import React from 'react';
 import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Bell, CalendarCheck, ChevronRight, Clock, ListPlus } from 'lucide-react-native';
+import { Bell, BellRing, CalendarCheck, ChevronRight, Clock, ListPlus } from 'lucide-react-native';
 import { Card, Botao } from '@/components';
-import { Colors, FontFamily, FontSize, Spacing } from '@/theme';
+import { Colors, FontFamily, FontSize, Spacing, Radii } from '@/theme';
 import { usePerfil } from '@/hooks/usePerfil';
 import { useMeusAgendamentos } from '@/hooks/useMeusAgendamentos';
 import { useAgendaSemanal, useNotificacoes } from '@/hooks/useAgendaSemanal';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 export default function TelaHome() {
   const router = useRouter();
@@ -15,11 +16,25 @@ export default function TelaHome() {
   const { proximos } = useMeusAgendamentos();
   const { agenda, carregando: carregandoAgenda, ativarLembrete } = useAgendaSemanal();
   const { naoLidas } = useNotificacoes();
+  const { temPermissao, solicitarPermissao } = usePushNotifications();
+
   const primeiroNome = perfil?.nome_completo?.split(' ')[0] || 'Bem-vindo';
   const proximo = proximos[0];
   const abertura = agenda?.data_abertura_programada
     ? new Date(agenda.data_abertura_programada).toLocaleString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })
     : 'Abertura em breve';
+
+  async function handleAtivarLembrete() {
+    if (!agenda) return;
+    if (!temPermissao) {
+      await solicitarPermissao();
+    }
+    const resultado = await ativarLembrete(agenda.id);
+    Alert.alert(
+      resultado.error ? 'Não foi possível ativar' : 'Lembrete ativado! 💈',
+      resultado.error?.message ?? 'Você receberá uma notificação assim que a agenda for aberta.'
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -35,6 +50,21 @@ export default function TelaHome() {
           <Text style={styles.titulo}>{carregandoPerfil ? 'Carregando...' : `Olá, ${primeiroNome}!`}</Text>
           <Text style={styles.subtitulo}>A sua agenda, mais simples.</Text>
         </View>
+
+        {/* Banner contextual de permissão de notificações se ainda não ativado */}
+        {!temPermissao && (
+          <View style={styles.bannerNotif}>
+            <BellRing size={20} color={Colors.ouro} />
+            <View style={styles.bannerNotifInfo}>
+              <Text style={styles.bannerNotifTitulo}>Fique por dentro</Text>
+              <Text style={styles.bannerNotifTexto}>Receba aviso de abertura da agenda e lembretes do corte.</Text>
+            </View>
+            <TouchableOpacity style={styles.bannerNotifBotao} onPress={solicitarPermissao} activeOpacity={0.8}>
+              <Text style={styles.bannerNotifBotaoTexto}>Ativar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <Card estilo={styles.card}>
           {proximo ? (
             <>
@@ -48,7 +78,7 @@ export default function TelaHome() {
               <View style={styles.linha}><Clock size={24} color={Colors.ouro} /><Text style={styles.cardTitulo}>Próxima agenda</Text></View>
               <Text style={styles.cardData}>{abertura}</Text>
               <Text style={styles.cardSubtitulo}>Ative um lembrete para saber quando os horários forem liberados.</Text>
-              <Botao label="Ativar lembrete" onPress={async () => { if (!agenda) return; const resultado = await ativarLembrete(agenda.id); Alert.alert(resultado.error ? 'Não foi possível ativar' : 'Lembrete ativado', resultado.error?.message ?? 'Avisaremos quando a agenda abrir.'); }} estiloContainer={styles.botao} />
+              <Botao label="Ativar lembrete" onPress={handleAtivarLembrete} estiloContainer={styles.botao} />
             </>
           ) : (
             <>
@@ -86,4 +116,39 @@ const styles = StyleSheet.create({
   botao: { width: '100%', marginTop: Spacing.xs },
   link: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 4, paddingVertical: Spacing.xs },
   linkTexto: { fontFamily: FontFamily.medium, fontSize: FontSize.bodyMd, color: Colors.vermelho },
+  bannerNotif: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.superficie2,
+    borderRadius: Radii.md,
+    padding: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.ouro,
+    gap: Spacing.xs,
+  },
+  bannerNotifInfo: {
+    flex: 1,
+  },
+  bannerNotifTitulo: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: FontSize.bodySm,
+    color: Colors.ouro,
+  },
+  bannerNotifTexto: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.labelXs,
+    color: Colors.textoSecundario,
+    marginTop: 2,
+  },
+  bannerNotifBotao: {
+    backgroundColor: Colors.ouro,
+    borderRadius: Radii.full,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 6,
+  },
+  bannerNotifBotaoTexto: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.labelXs,
+    color: Colors.fundo,
+  },
 });

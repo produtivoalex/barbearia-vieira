@@ -102,13 +102,28 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
 - `scripts/schema.sql` corrigido: `uuid_generate_v4()` → `gen_random_uuid()` (PG17 nativo).
 - `tsc --noEmit` ✅ | `eslint` ✅ (3 avisos preexistentes de imports não usados)
 
-### Próxima Fase: Fase 9 — Notificações Push e Abertura Automática da Agenda
-- Implementar push real via Expo Push API na Edge Function `process-notifications`.
-- Configurar pg_cron (ou Supabase Scheduled Functions) para abertura automática da agenda no horário programado.
-- Implementar lembretes de atendimento (véspera + horas antes) com botão "Confirmar presença".
-- Lembrete ao barbeiro: se segunda-feira e agenda não preparada, disparar push.
-- Implementar deep links contextuais completos (notificação de oferta → tela de aceite).
-- Validar cenários críticos de teste do PRODUTO.md em staging.
+### ✅ Fase 9 — Notificações Push e Abertura Automática da Agenda (CONCLUÍDA)
+- **`expo-notifications`** integrado para obter tokens de push Expo e registrar canais de notificação no Android.
+- **`hooks/usePushNotifications.ts`** — gerencia permissões e sincroniza tokens na tabela `notification_tokens` do Supabase.
+- **`supabase/migrations/20260820_fase9_notificacoes.sql`** — migração aplicada com sucesso no Supabase (`supabase db push`):
+  - Tabela `lembretes_agendados` com RLS e políticas de acesso.
+  - Trigger `tg_agendar_lembretes` gerando lembretes de véspera e 2h antes a cada novo agendamento.
+  - RPC `confirmar_presenca` para confirmação rápida pelo cliente.
+  - Trigger `tg_notificar_agenda_aberta` criando notificações de abertura para todos os clientes com token ativo.
+  - RPC `registrar_atraso_agenda` disparando notificações automáticas para clientes com horários no dia.
+- **Edge Function `process-notifications`** — aprimorada e deployada no Supabase para envio em lote de push notifications reais via Expo Push API + processamento de lembretes automáticos.
+- **Edge Function `auto-open-agenda`** — criada e deployada para abertura automática de agendas programadas e envio de lembrete nas segundas-feiras para barbeiros sem agenda preparada.
+- **`app/_layout.tsx`** — deep linking completo para notificações push (`agenda_aberta`, `oferta_fila`, `lembrete`, `atraso`, `barbeiro_sem_agenda`).
+- **`app/(app)/(tabs)/index.tsx`** — banner contextual para solicitar permissão de notificações e atalho com permissão ao ativar lembrete.
+- **`app/(app)/(tabs)/agenda.tsx`** — botão "Confirmar presença" em agendamentos pendentes com feedback visual.
+- **`app/(app)/(barbeiro)/hoje.tsx`** — ferramenta "Estou atrasado" conectada ao RPC e notificações reais.
+- `tsc --noEmit` ✅ | Bundle Android ✅ (2903 módulos)
+
+---
+
+## 🎯 Próximos Passos
+- Configurar cron schedules para `auto-open-agenda` e `process-notifications` no Supabase Dashboard (Database -> Extensions -> pg_cron ou HTTP Cron).
+- Realizar testes ponta a ponta com múltiplos dispositivos/contas em staging.
 
 ## Decisões Tomadas
 

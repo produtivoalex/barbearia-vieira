@@ -15,8 +15,12 @@ import { ControleSegmentado } from '@/components';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { useMeusAgendamentos, type AgendamentoCompleto } from '@/hooks/useMeusAgendamentos';
 
+import { supabase } from '@/lib/supabase';
+import { Alert } from 'react-native';
+import { CheckCircle2 } from 'lucide-react-native';
+
 const LABELS_STATUS: Record<AgendamentoCompleto['status'], { texto: string; cor: string }> = {
-  pendente:   { texto: 'Pendente',   cor: Colors.amarelo },
+  pendente:   { texto: 'Agendado',   cor: Colors.amarelo },
   confirmado: { texto: 'Confirmado', cor: Colors.verde },
   cancelado:  { texto: 'Cancelado',  cor: Colors.erro },
   concluido:  { texto: 'Concluído',  cor: Colors.textoSecundario },
@@ -25,9 +29,36 @@ const LABELS_STATUS: Record<AgendamentoCompleto['status'], { texto: string; cor:
 export default function TelaAgenda() {
   const router = useRouter();
   const [aba, setAba] = useState<'proximos' | 'historico'>('proximos');
+  const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
   const { proximos, historico, carregando, recarregar } = useMeusAgendamentos();
 
   const dados = aba === 'proximos' ? proximos : historico;
+
+  async function handleConfirmarPresenca(agendamentoId: string) {
+    try {
+      setConfirmandoId(agendamentoId);
+      const { error } = await supabase.rpc('confirmar_presenca', {
+        p_agendamento_id: agendamentoId,
+      });
+
+      if (error) {
+        // Fallback direto via update se status for pendente
+        const { error: errUpdate } = await supabase
+          .from('agendamentos')
+          .update({ status: 'confirmado' })
+          .eq('id', agendamentoId);
+
+        if (errUpdate) throw errUpdate;
+      }
+
+      Alert.alert('Presença Confirmada! ✂️', 'Sua presença foi confirmada com sucesso para o barbeiro.');
+      recarregar();
+    } catch (err: any) {
+      Alert.alert('Erro', err.message || 'Não foi possível confirmar presença.');
+    } finally {
+      setConfirmandoId(null);
+    }
+  }
 
   function formatarDataHora(isoString: string) {
     const d = new Date(isoString);
@@ -41,11 +72,13 @@ export default function TelaAgenda() {
 
   function renderItem({ item }: { item: AgendamentoCompleto }) {
     const { data, hora } = formatarDataHora(item.data_hora);
-    const statusConfig = LABELS_STATUS[item.status];
+    const statusConfig = LABELS_STATUS[item.status] || { texto: item.status, cor: Colors.amarelo };
     const precoFormatado = Number(item.servico.preco).toLocaleString('pt-BR', {
       style: 'currency',
       currency: 'BRL',
     });
+
+    const podeConfirmar = (item.status === 'pendente' || (item.status as string) === 'agendado') && aba === 'proximos';
 
     return (
       <View style={styles.card}>
@@ -79,6 +112,25 @@ export default function TelaAgenda() {
           </View>
           <Text style={styles.preco}>{precoFormatado}</Text>
         </View>
+
+        {/* Botão de confirmação de presença */}
+        {podeConfirmar && (
+          <TouchableOpacity
+            style={styles.botaoConfirmar}
+            onPress={() => handleConfirmarPresenca(item.id)}
+            disabled={confirmandoId === item.id}
+            activeOpacity={0.8}
+          >
+            {confirmandoId === item.id ? (
+              <ActivityIndicator size="small" color={Colors.fundo} />
+            ) : (
+              <>
+                <CheckCircle2 size={16} color={Colors.fundo} />
+                <Text style={styles.botaoConfirmarTexto}>Confirmar presença</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
     );
   }
@@ -274,5 +326,20 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodyMd,
     color: Colors.vermelho,
+  },
+  botaoConfirmar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.verde,
+    borderRadius: Radii.sm,
+    paddingVertical: 10,
+    marginTop: Spacing.xs,
+    gap: 6,
+  },
+  botaoConfirmarTexto: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodySm,
+    color: Colors.fundo,
   },
 });

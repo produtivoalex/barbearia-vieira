@@ -10,6 +10,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePerfil } from '@/hooks/usePerfil';
 
 
+import * as Notifications from 'expo-notifications';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+
 SplashScreen.preventAutoHideAsync();
 
 function ControleRotas() {
@@ -17,6 +20,32 @@ function ControleRotas() {
   const { perfil, carregandoPerfil } = usePerfil();
   const segments = useSegments();
   const router = useRouter();
+
+  // Inicializa registro de push token quando autenticado
+  usePushNotifications();
+
+  useEffect(() => {
+    // Listener de cliques em notificações push (deep linking)
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const dados = response.notification.request.content.data as Record<string, any> | undefined;
+      if (!dados) return;
+
+      if (dados.tipo === 'agenda_aberta') {
+        router.push('/(app)/agendamento/horario' as Href);
+      } else if (dados.tipo === 'oferta_fila' && dados.ofertaId) {
+        router.push({
+          pathname: '/(app)/lista-espera/oferta' as any,
+          params: { ofertaId: dados.ofertaId },
+        });
+      } else if (dados.tipo === 'lembrete' || dados.tipo === 'atraso') {
+        router.push('/(app)/(tabs)/agenda' as Href);
+      } else if (dados.tipo === 'barbeiro_sem_agenda') {
+        router.push('/(app)/(barbeiro)/preparar-agenda' as Href);
+      }
+    });
+
+    return () => subscription.remove();
+  }, [router]);
 
   useEffect(() => {
     // Aguarda apenas o estado de autenticação; não bloqueia por perfil

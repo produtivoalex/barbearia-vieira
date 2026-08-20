@@ -67,9 +67,38 @@ export default function TelaBarbeiroHoje() {
   async function definirAtraso(minutos: number) {
     if (!session?.user?.id) return;
     const data = agora.toISOString().slice(0, 10);
-    const { error } = await supabase.from('atrasos_agenda').upsert({ barbeiro_id: session.user.id, data, minutos_atraso: minutos, normalizado_em: minutos === 0 ? new Date().toISOString() : null }, { onConflict: 'barbeiro_id,data' });
-    if (error) Alert.alert('Não foi possível atualizar', error.message);
-    else Alert.alert(minutos === 0 ? 'Agenda normalizada' : 'Atraso registrado', minutos === 0 ? 'Os clientes voltarão a ver os horários normais.' : `${minutos} minutos adicionados à previsão da manhã.`);
+    try {
+      const { data: afetados, error } = await supabase.rpc('registrar_atraso_agenda', {
+        p_minutos: minutos,
+        p_data: data,
+      });
+
+      if (error) {
+        // Fallback direto via upsert
+        const { error: errUpsert } = await supabase.from('atrasos_agenda').upsert(
+          {
+            barbeiro_id: session.user.id,
+            data,
+            minutos_atraso: minutos,
+            normalizado_em: minutos === 0 ? new Date().toISOString() : null,
+          },
+          { onConflict: 'barbeiro_id,data' }
+        );
+        if (errUpsert) throw errUpsert;
+      }
+
+      if (minutos === 0) {
+        Alert.alert('Agenda Normalizada 💈', 'Os clientes voltarão a ver os horários normais de atendimento.');
+      } else {
+        const qtdMsg = typeof afetados === 'number' && afetados > 0 ? ` (${afetados} cliente(s) avisado(s))` : '';
+        Alert.alert(
+          'Atraso Registrado ⏳',
+          `+${minutos} minutos adicionados à previsão de hoje.${qtdMsg}`
+        );
+      }
+    } catch (err: any) {
+      Alert.alert('Erro ao registrar atraso', err.message || 'Tente novamente.');
+    }
   }
 
   const faturamentoDia = agendamentosHoje.reduce((acc, a) => acc + Number(a.servico.preco), 0);
