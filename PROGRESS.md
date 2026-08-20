@@ -121,11 +121,13 @@ Execute o script [`scripts/configurar_crons.sql`](./scripts/configurar_crons.sql
   4. Preparação da próxima semana em `/(app)/(barbeiro)/preparar-agenda` com toggle de dias e horário de abertura.
   5. Histórico e métricas de clientes em `/(app)/(barbeiro)/clientes`.
 
-### 3. Gerar Development Build para Push Notifications Remotas Reais
-Como as notificações push remotas foram descontinuadas no Expo Go no SDK 53+, execute quando desejar testar em dispositivo físico:
-```bash
-npx eas build --profile development --platform android
-```
+### 3. Development Build Gerado (Push Notifications Remotas Reais)
+- **EAS Build Link**: https://expo.dev/accounts/produtivoalexs-team/projects/barbearia-vieira/builds/0f36ea06-2001-4cec-8b9c-43a4bf8651a2
+- **Perfil**: `development` (Android APK com `expo-dev-client`)
+- **Como usar no celular**:
+  1. Acesse o link acima no celular ou escaneie o QR Code fornecido pelo EAS ao término da compilação.
+  2. Baixe e instale o APK (`barbearia-vieira.apk`).
+  3. Com o servidor local ativo (`npx expo start`), abra o app instalado no celular para carregar o bundle com suporte nativo total a push notifications remotas em background.
 
 ---
 
@@ -139,4 +141,6 @@ npx eas build --profile development --platform android
 | Calendário semanal matinal (Ter–Dom, 08h-11h) | Regra operacional da barbearia: slots de 1h de manhã, tarde por ordem de chegada. |
 | Monetização B2B | Barbeiro paga pelo serviço da plataforma; cliente final não paga assinatura. |
 | Agendamento CRON via pg_cron + pg_net | Automatiza abertura de agendas e envio contínuo de lembretes direto no PostgreSQL. |
+| Development Build com expo-dev-client | Permite testar notificações push nativas e segundo plano reais no aparelho físico. |
+
 
