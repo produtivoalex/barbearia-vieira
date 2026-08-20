@@ -122,7 +122,7 @@ Execute o script [`scripts/configurar_crons.sql`](./scripts/configurar_crons.sql
   5. Histórico e métricas de clientes em `/(app)/(barbeiro)/clientes`.
 
 ### 3. Development Build Gerado (Push Notifications Remotas Reais)
-- **EAS Build Link**: https://expo.dev/accounts/produtivoalexs-team/projects/barbearia-vieira/builds/0f36ea06-2001-4cec-8b9c-43a4bf8651a2
+- **EAS Build Link**: https://expo.dev/accounts/produtivoalexs-team/projects/barbearia-vieira/builds/cbf5b73c-eb73-46df-823c-efbc991c0e9a
 - **Perfil**: `development` (Android APK com `expo-dev-client`)
 - **Como usar no celular**:
   1. Acesse o link acima no celular ou escaneie o QR Code fornecido pelo EAS ao término da compilação.
