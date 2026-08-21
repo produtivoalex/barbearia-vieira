@@ -97,21 +97,18 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
   - Refinamento da RPC `confirmar_presenca` para compatibilidade ampla com `status in ('pendente', 'agendado')`.
   - Adicionada política de atualização RLS para agendamentos do cliente.
 - **`eas.json`** criado com perfis de `development`, `preview` e `production`.
-- **`app.json`** atualizado com o plugin `expo-notifications` (ícone e cor corporativa `#D32F2F`).
-- `tsc --noEmit` ✅ (0 erros)
-
-### ✅ Fase 13 — Logo Oficial Original, Ícones com Safe Zone, Serviços Fiéis e Modal Premium no Perfil (CONCLUÍDA)
-- **Logo Original & Ícones sem Cortes**:
-  - O brasão oficial da Barbearia Vieira (`assets/logo.png`) agora é utilizado diretamente em alta fidelidade.
-  - Geração de novos ícones de aplicativo com *safe-zone* calculada (`assets/icon.png`, `assets/adaptive-icon.png`, `assets/splash-icon.png`, `assets/favicon.png`) para evitar qualquer corte em launchers Android/iOS.
-  - `components/LogoBarbearia.tsx`: atualizado para exibir a imagem oficial do barbeiro com proporção perfeita.
-  - Atualização visual nas telas de Login (`app/(pre-auth)/index.tsx`), Cadastro (`app/(pre-auth)/cadastro.tsx`) e Tela de Início (`app/(app)/(tabs)/index.tsx`).
-- **Catálogo de Serviços Fiel ao Sistema Original**:
-  - `hooks/useServicos.ts`: alinhamento dos 14 serviços com os nomes, preços e descrições exatas do sistema web (`barbearia vieira agendamento.vercel.app`), incluindo Barba Simples a R$ 8,00 e descrições idênticas.
-  - `app/(app)/(tabs)/servicos/index.tsx`: reformulação dos cards para o padrão clean e elegante do anexo (nome à esquerda, preço à direita e descrição abaixo).
-  - `components/IndicadorEtapas.tsx`: indicador de 4 etapas limpo e focado (`1 Serviço`, `2 Data`, `3 Horário`, `4 Confirmar`).
+### ✅ Fase 13 — Logo Oficial Original, WhatsApp Direto no Login e Catálogo com 14 Serviços Ricos (CONCLUÍDA)
+- **Logo Original & Ícones com Safe Zone**:
+  - Brasão oficial da Barbearia Vieira recortado e integrado em [`assets/logo.png`](./assets/logo.png).
+  - Ícones do app gerados com *safe-zone* de 66% para launchers Android/iOS (`icon.png`, `adaptive-icon.png`, `splash-icon.png`, `favicon.png`).
+- **Tela de Login com WhatsApp Direto de Ajuda**:
+  - Removido o texto redundante *"BARBEARIA VIEIRA"* sobre o telefone (pois o nome já está no brasão).
+  - Número de telefone `(86) 98190-7478` tornado clicável com link direto para o WhatsApp preenchendo a mensagem: `"Não estou conseguindo entrar no aplicativo"`.
+- **Restauração do Estilo Rico com Todos os 14 Serviços Reais**:
+  - [`app/(app)/(tabs)/servicos/index.tsx`](./app/(app)/(tabs)/servicos/index.tsx): restaurado o layout com ilustrações exclusivas por serviço ([`components/IlustracaoServico.tsx`](./components/IlustracaoServico.tsx)), filtros por categorias com contadores dinâmicos, badges VIP nos combos, pills de duração e preços em destaque dourado.
+  - Catálogo completo em [`hooks/useServicos.ts`](./hooks/useServicos.ts) com todos os 14 serviços reais do barbeiro (Cortes degradê, navalhado, social, social máquina, combos VIP 1 a 6, barba desenhada, barba simples R$ 8,00, sobrancelha e limpeza de pele).
 - **Tela de Perfil com Modal Bottom-Sheet de Luxo**:
-  - `app/(app)/(tabs)/perfil.tsx`: remoção dos alerts nativos e implementação de um modal animado *bottom-sheet* escuro com acabamento dourado para Dados da Conta, Notificações do App, Horários & Atendimento, Privacidade e Diálogo de Confirmação de Logout.
+  - Substituição dos alerts nativos por modais escuros com detalhes do perfil, horários de funcionamento e confirmação de encerramento de sessão.
 - `tsc --noEmit` ✅ (0 erros)
 
 ---

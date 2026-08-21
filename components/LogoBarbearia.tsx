@@ -1,11 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
-import { Colors, FontFamily, FontSize, Spacing } from '@/theme';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Linking } from 'react-native';
+import { MessageCircle } from 'lucide-react-native';
+import { Colors, FontFamily, FontSize, Spacing, Radii } from '@/theme';
 
 interface LogoBarbeariaProps {
   tamanho?: number;
-  mostrarTexto?: boolean;
   mostrarTelefone?: boolean;
+  telefoneClicavel?: boolean;
+  mensagemWhatsApp?: string;
   variante?: 'vertical' | 'horizontal' | 'compacto';
 }
 
@@ -13,13 +15,21 @@ interface LogoBarbeariaProps {
 const ASPECT_RATIO = 476 / 456;
 
 export function LogoBarbearia({
-  tamanho = 96,
-  mostrarTexto = true,
-  mostrarTelefone = true,
+  tamanho = 100,
+  mostrarTelefone = false,
+  telefoneClicavel = true,
+  mensagemWhatsApp = 'Não estou conseguindo entrar no aplicativo',
   variante = 'vertical',
 }: LogoBarbeariaProps) {
   const altura = tamanho;
   const largura = tamanho * ASPECT_RATIO;
+
+  function handleAbrirWhatsApp() {
+    if (!telefoneClicavel) return;
+    const numero = '5586981907478';
+    const msg = encodeURIComponent(mensagemWhatsApp);
+    Linking.openURL(`https://wa.me/${numero}?text=${msg}`).catch(() => {});
+  }
 
   const renderImagem = () => (
     <Image
@@ -33,16 +43,34 @@ export function LogoBarbearia({
     return renderImagem();
   }
 
+  const renderTelefone = () => {
+    if (!mostrarTelefone) return null;
+
+    if (telefoneClicavel) {
+      return (
+        <TouchableOpacity
+          style={styles.telefoneBadge}
+          onPress={handleAbrirWhatsApp}
+          activeOpacity={0.7}
+        >
+          <MessageCircle size={14} color={Colors.verde} />
+          <Text style={styles.telefoneTexto}>(86) 98190-7478</Text>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <View style={styles.telefoneBadge}>
+        <Text style={styles.telefoneTexto}>(86) 98190-7478</Text>
+      </View>
+    );
+  };
+
   if (variante === 'horizontal') {
     return (
       <View style={styles.containerHorizontal}>
         {renderImagem()}
-        {mostrarTexto && (
-          <View style={styles.infoHorizontal}>
-            <Text style={styles.nomeAppHorizontal}>BARBEARIA VIEIRA</Text>
-            {mostrarTelefone && <Text style={styles.telefoneHorizontal}>(86) 98190-7478</Text>}
-          </View>
-        )}
+        {renderTelefone()}
       </View>
     );
   }
@@ -50,12 +78,7 @@ export function LogoBarbearia({
   return (
     <View style={styles.containerVertical}>
       {renderImagem()}
-      {mostrarTexto && (
-        <View style={styles.infoVertical}>
-          <Text style={styles.nomeAppVertical}>BARBEARIA VIEIRA</Text>
-          {mostrarTelefone && <Text style={styles.telefoneVertical}>(86) 98190-7478</Text>}
-        </View>
-      )}
+      {renderTelefone()}
     </View>
   );
 }
@@ -74,39 +97,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
   },
-  infoVertical: {
+  telefoneBadge: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 6,
+    backgroundColor: 'rgba(203, 161, 74, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(203, 161, 74, 0.3)',
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: Radii.full,
     marginTop: 4,
   },
-  infoHorizontal: {
-    justifyContent: 'center',
-    gap: 1,
-  },
-  nomeAppVertical: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.displayMd,
-    color: Colors.textoPrimario,
-    letterSpacing: 2,
-    textAlign: 'center',
-  },
-  nomeAppHorizontal: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyLg,
-    color: Colors.textoPrimario,
-    letterSpacing: 1.2,
-  },
-  telefoneVertical: {
+  telefoneTexto: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.bodySm,
     color: Colors.ouro,
     letterSpacing: 0.5,
   },
-  telefoneHorizontal: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.labelXs,
-    color: Colors.ouro,
-    letterSpacing: 0.5,
-  },
 });
+
 

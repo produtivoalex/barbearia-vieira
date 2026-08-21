@@ -253,7 +253,12 @@ export default function TelaLogin() {
         >
           {/* Logo Oficial Barbearia Vieira */}
           <View style={styles.logoContainer}>
-            <LogoBarbearia tamanho={108} mostrarTexto={true} mostrarTelefone={true} />
+            <LogoBarbearia
+              tamanho={115}
+              mostrarTelefone={true}
+              telefoneClicavel={true}
+              mensagemWhatsApp="Não estou conseguindo entrar no aplicativo"
+            />
           </View>
 
           {/* Card de login */}
