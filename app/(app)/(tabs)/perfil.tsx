@@ -25,7 +25,7 @@ import {
   Phone,
   Mail,
 } from 'lucide-react-native';
-import { Avatar } from '@/components';
+import { Avatar, LogoBarbearia } from '@/components';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { usePerfil } from '@/hooks/usePerfil';
 import { supabase } from '@/lib/supabase';
@@ -64,10 +64,10 @@ export default function TelaPerfil() {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* Card Principal de Identidade */}
+        {/* Card Principal de Identidade com Vieira Avatar */}
         <View style={styles.perfilCard}>
           <View style={styles.avatarWrapper}>
-            <Avatar nome={nomeExibicao} tamanho={68} />
+            <LogoBarbearia tamanho={64} tipo="avatar" variante="compacto" />
           </View>
 
           <View style={styles.perfilInfo}>
@@ -418,10 +418,8 @@ const styles = StyleSheet.create({
     ...Shadows.card,
   },
   avatarWrapper: {
-    borderWidth: 2,
-    borderColor: Colors.ouro,
-    borderRadius: 40,
-    padding: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   perfilInfo: {
     flex: 1,

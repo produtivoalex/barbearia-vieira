@@ -38,10 +38,10 @@ export default function TelaHome() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Header com Logo Barbearia Vieira */}
+      {/* Header com Logo Avatar Barbearia Vieira */}
       <View style={styles.header}>
         <View style={styles.headerEsquerda}>
-          <LogoBarbearia tamanho={36} variante="compacto" />
+          <LogoBarbearia tamanho={38} tipo="avatar" variante="compacto" />
           <View>
             <Text style={styles.logo}>BARBEARIA VIEIRA</Text>
             <Text style={styles.telefoneHeader}>(86) 98190-7478</Text>
@@ -63,12 +63,15 @@ export default function TelaHome() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Saudação */}
-        <View style={styles.boasVindas}>
-          <Text style={styles.titulo}>
-            {carregandoPerfil ? 'Carregando...' : `Olá, ${primeiroNome}!`}
-          </Text>
-          <Text style={styles.subtitulo}>A sua agenda, mais simples e rápida.</Text>
+        {/* Saudação com Avatar Vieira ao lado do nome */}
+        <View style={styles.boasVindasRow}>
+          <View style={styles.boasVindasTexto}>
+            <Text style={styles.titulo}>
+              {carregandoPerfil ? 'Carregando...' : `Olá, ${primeiroNome}!`}
+            </Text>
+            <Text style={styles.subtitulo}>A sua agenda, mais simples e rápida.</Text>
+          </View>
+          <LogoBarbearia tamanho={48} tipo="avatar" variante="compacto" />
         </View>
 
         {/* Banner contextual de permissão de notificações se ainda não ativado */}
@@ -267,7 +270,16 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     paddingBottom: Spacing.giant,
   },
-  boasVindas: { gap: 4 },
+  boasVindasRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
+  boasVindasTexto: {
+    flex: 1,
+    gap: 4,
+  },
   titulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.displayMd,

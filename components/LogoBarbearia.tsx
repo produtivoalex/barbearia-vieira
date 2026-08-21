@@ -3,26 +3,38 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, Linking } from 'react-
 import { MessageCircle } from 'lucide-react-native';
 import { Colors, FontFamily, FontSize, Spacing, Radii } from '@/theme';
 
+export type TipoLogo = 'navalha' | 'avatar' | 'borda_sf' | 'padrao';
+
 interface LogoBarbeariaProps {
   tamanho?: number;
+  tipo?: TipoLogo;
   mostrarTelefone?: boolean;
   telefoneClicavel?: boolean;
   mensagemWhatsApp?: string;
   variante?: 'vertical' | 'horizontal' | 'compacto';
 }
 
-// Proporção exata do brasão oficial: 476 largura x 456 altura (~1.044)
-const ASPECT_RATIO = 476 / 456;
-
 export function LogoBarbearia({
   tamanho = 100,
+  tipo = 'navalha',
   mostrarTelefone = false,
   telefoneClicavel = true,
   mensagemWhatsApp = 'Não estou conseguindo entrar no aplicativo',
   variante = 'vertical',
 }: LogoBarbeariaProps) {
+  let sourceImg = require('@/assets/logo-navalha.png');
+  let ratio = 943 / 981;
+
+  if (tipo === 'avatar') {
+    sourceImg = require('@/assets/logo-avatar.png');
+    ratio = 904 / 831;
+  } else if (tipo === 'borda_sf') {
+    sourceImg = require('@/assets/logo-borda-sf.png');
+    ratio = 1;
+  }
+
   const altura = tamanho;
-  const largura = tamanho * ASPECT_RATIO;
+  const largura = tamanho * ratio;
 
   function handleAbrirWhatsApp() {
     if (!telefoneClicavel) return;
@@ -33,7 +45,7 @@ export function LogoBarbearia({
 
   const renderImagem = () => (
     <Image
-      source={require('@/assets/logo.png')}
+      source={sourceImg}
       style={[styles.logoImagem, { width: largura, height: altura }]}
       resizeMode="contain"
     />

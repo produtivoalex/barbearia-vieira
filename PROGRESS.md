@@ -97,13 +97,16 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
   - Refinamento da RPC `confirmar_presenca` para compatibilidade ampla com `status in ('pendente', 'agendado')`.
   - Adicionada política de atualização RLS para agendamentos do cliente.
 - **`eas.json`** criado com perfis de `development`, `preview` e `production`.
-### ✅ Fase 13 — Opção C na Lista de Espera, Ocultação de Duração e VIP Exclusivo em Combos (CONCLUÍDA)
-- **VIP Exclusivo nos Combos**:
-  - Corrigida a lógica de verificação em [`app/(app)/lista-espera/index.tsx`](./app/(app)/lista-espera/index.tsx) e no catálogo para que o badge VIP dourado seja renderizado exclusivamente nos Combos 1 ao 6.
-- **Ocultação da Duração de Serviços para Clientes**:
-  - Removidos os pills de tempo (`30 min`, `60 min`, etc.) das telas do cliente ([`servicos/index.tsx`](./app/(app)/(tabs)/servicos/index.tsx), [`agendamento/horario.tsx`](./app/(app)/agendamento/horario.tsx), [`agendamento/confirmacao.tsx`](./app/(app)/agendamento/confirmacao.tsx) e [`lista-espera/index.tsx`](./app/(app)/lista-espera/index.tsx)), mantendo o agendamento focado nos slots oficiais. A duração permanece disponível internamente para o painel do barbeiro.
-- **Lista de Espera com Opção C (Carrossel Horizontal + Card de Prévia Detalhado)**:
-  - [`app/(app)/lista-espera/index.tsx`](./app/(app)/lista-espera/index.tsx): carrossel horizontal elegante para navegação rápida entre os serviços + Card de Prévia destacado abaixo que exibe os itens inclusos no combo em tags individuais sem cortes, preço e detalhes completos do serviço selecionado.
+### ✅ Fase 14 — Novas Variações Oficiais da Logo Barbearia Vieira (CONCLUÍDA)
+- **Vieira Borda SF (Ícone do App)**:
+  - Integrado em [`assets/logo-borda-sf.png`](./assets/logo-borda-sf.png) e gerados novos assets oficiais (`icon.png`, `adaptive-icon.png`, `splash-icon.png`, `favicon.png`) com moldura dourada e safe zone centralizada.
+- **Vieira Navalha (Tela de Login)**:
+  - Integrado em [`assets/logo-navalha.png`](./assets/logo-navalha.png) com fundo transparente e aplicado nas telas de autenticação ([`app/(pre-auth)/index.tsx`](./app/(pre-auth)/index.tsx) e [`app/(pre-auth)/cadastro.tsx`](./app/(pre-auth)/cadastro.tsx)).
+- **Vieira Avatar (Telas de Início e Perfil)**:
+  - Integrado em [`assets/logo-avatar.png`](./assets/logo-avatar.png) como brasão circular transparente.
+  - Aplicado no cabeçalho e na saudação da Tela de Início ([`app/(app)/(tabs)/index.tsx`](./app/(app)/(tabs)/index.tsx)) e no card de identidade da Tela de Perfil ([`app/(app)/(tabs)/perfil.tsx`](./app/(app)/(tabs)/perfil.tsx)) ao lado do nome e e-mail do cliente.
+- **Componente `LogoBarbearia.tsx` Multifuncional**:
+  - Suporte às variantes `tipo="navalha"`, `tipo="avatar"` e `tipo="borda_sf"` com aspect ratio e renderização otimizados.
 - `tsc --noEmit` ✅ (0 erros)
 
 ---
