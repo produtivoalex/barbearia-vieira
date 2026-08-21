@@ -122,26 +122,38 @@ export function IlustracaoServico({
           </G>
         )}
 
+        {/* 1. Corte Navalhado: Navalha de Barbeiro Clássica Aberta */}
         {tipo === 'corte_navalhado' && (
-          <G transform="translate(10, 10)">
-            {/* Cabo da Navalhete */}
+          <G transform="translate(8, 8)">
+            {/* Cabo ergonômico da navalha (Scale) */}
             <Path
-              d="M8 36 C10 24 16 16 26 12 L38 24 C30 28 20 38 8 36 Z"
-              fill="#3A3A44"
+              d="M8 40 C14 30 22 22 30 18 C32 17 34 18 33 20 C25 25 18 34 10 42 C8 43 6 42 8 40 Z"
+              fill="#2A2A32"
               stroke={Colors.ouro}
               strokeWidth="1.5"
             />
-            {/* Lâmina aberta em aço e ouro */}
+            {/* Pino de articulação / Pivô dourado */}
+            <Circle cx="30" cy="18" r="3" fill={Colors.ouro} stroke="#FFF" strokeWidth="0.8" />
+
+            {/* Espiga e Lâmina aberta de aço afiado */}
             <Path
-              d="M26 12 L40 6 C42 5 44 7 43 9 L34 28 Z"
+              d="M30 18 L36 13 L45 7 C47 5 49 7 48 9 L38 23 L32 20 Z"
               fill="url(#gradOuro)"
               stroke="#FFF"
-              strokeWidth="0.8"
+              strokeWidth="1"
             />
-            {/* Linha de corte afiada */}
-            <Path d="M40 6 L34 28" stroke="#FFF" strokeWidth="1.5" strokeLinecap="round" />
+            {/* Fio de corte polido prateado */}
+            <Path
+              d="M48 9 L38 23"
+              stroke="#FFFFFF"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+            {/* Sulco/detalhe da lâmina profissional */}
+            <Path d="M36 14 L44 9" stroke="#3A2A10" strokeWidth="1" />
             {/* Brilho da navalha */}
-            <Circle cx="36" cy="14" r="2" fill="#FFF" />
+            <Circle cx="44" cy="9" r="1.5" fill="#FFFFFF" />
+            <Circle cx="20" cy="30" r="1" fill={Colors.ouroClaro} />
           </G>
         )}
 
@@ -169,50 +181,99 @@ export function IlustracaoServico({
           </G>
         )}
 
+        {/* 2. Combos VIP: Coroa Imperial VIP Real */}
         {tipo.startsWith('combo') && (
-          <G transform="translate(10, 10)">
-            {/* Coroa VIP Dourada com rubi */}
+          <G transform="translate(8, 8)">
+            {/* Base almofadada em vermelho nobre */}
+            <Rect x="6" y="32" width="36" height="7" rx="3.5" fill={Colors.vermelho} stroke={Colors.ouro} strokeWidth="1.5" />
+            {/* 5 Pontas da Coroa Imperial */}
             <Path
-              d="M6 30 L10 12 L22 22 L34 12 L38 30 Z"
+              d="M7 32 L9 16 L17 24 L24 10 L31 24 L39 16 L41 32 Z"
               fill="url(#gradOuro)"
               stroke={Colors.ouroClaro}
-              strokeWidth="1.2"
+              strokeWidth="1.5"
               strokeLinejoin="round"
             />
-            {/* Base da Coroa */}
-            <Rect x="6" y="30" width="32" height="6" rx="2" fill={Colors.vermelho} stroke={Colors.ouro} strokeWidth="1.2" />
-            {/* Jóias da coroa */}
-            <Circle cx="10" cy="12" r="2.5" fill="#FFF" />
-            <Circle cx="22" cy="14" r="3" fill="#FFF" />
-            <Circle cx="34" cy="12" r="2.5" fill="#FFF" />
-            <Circle cx="22" cy="33" r="2" fill={Colors.ouro} />
+            {/* Pedrarias / Brilhos nas pontas da coroa */}
+            <Circle cx="9" cy="16" r="2.5" fill="#FFF" stroke={Colors.ouro} strokeWidth="0.8" />
+            <Circle cx="24" cy="10" r="3.2" fill="#FFF" stroke={Colors.ouro} strokeWidth="1" />
+            <Circle cx="39" cy="16" r="2.5" fill="#FFF" stroke={Colors.ouro} strokeWidth="0.8" />
+            <Circle cx="17" cy="24" r="2" fill="#FFF" />
+            <Circle cx="31" cy="24" r="2" fill="#FFF" />
+            {/* Jóias no diadema inferior */}
+            <Circle cx="14" cy="35.5" r="1.8" fill="#FFF" />
+            <Circle cx="24" cy="35.5" r="2.2" fill="url(#gradOuro)" />
+            <Circle cx="34" cy="35.5" r="1.8" fill="#FFF" />
+            {/* Brilho VIP estelar */}
+            <Path d="M24 2 L25 5 L28 6 L25 7 L24 10 L23 7 L20 6 L23 5 Z" fill="#FFF" />
           </G>
         )}
 
+        {/* 3. Barba Desenhada: Rosto Masculino com Barba e Bigode Alinhados */}
         {tipo === 'barba_desenhada' && (
-          <G transform="translate(10, 10)">
-            {/* Silhueta de Barba e Bigode Perfeito */}
+          <G transform="translate(9, 8)">
+            {/* Contorno do rosto masculino (perfil moderno) */}
             <Path
-              d="M10 12 C14 18 30 18 34 12 C36 26 30 36 22 38 C14 36 8 26 10 12 Z"
-              fill="#222228"
+              d="M14 12 C16 7 24 5 30 7 C36 9 38 15 38 22 C38 28 35 34 30 38 C24 41 16 39 12 35 C8 30 8 20 14 12 Z"
+              fill="#222028"
               stroke={Colors.ouro}
-              strokeWidth="2"
+              strokeWidth="1.5"
             />
-            {/* Linhas de alinhamento milimétrico */}
-            <Path d="M12 18 C18 22 26 22 32 18" stroke="url(#gradOuro)" strokeWidth="2" strokeLinecap="round" />
-            <Path d="M22 24 L22 32" stroke={Colors.ouroClaro} strokeWidth="1.5" strokeLinecap="round" />
-            <Circle cx="22" cy="12" r="2" fill={Colors.ouro} />
+            {/* Cabelo e topete estilizado */}
+            <Path
+              d="M14 12 C18 6 28 5 33 9 C30 11 26 12 22 12 C18 12 15 13 14 15 Z"
+              fill="url(#gradOuro)"
+            />
+            {/* Bigode esculpido alinhado */}
+            <Path
+              d="M22 23 C26 23 30 26 33 29 C29 30 25 29 22 27 Z"
+              fill={Colors.ouro}
+            />
+            {/* Barba desenhada cheia na régua */}
+            <Path
+              d="M14 20 C18 24 25 26 31 27 C33 33 29 38 23 40 C17 40 12 35 11 26 C12 23 13 21 14 20 Z"
+              fill="url(#gradOuro)"
+              stroke="#FFF"
+              strokeWidth="0.8"
+            />
+            {/* Linha de precisão na bochecha (régua) */}
+            <Path
+              d="M14 20 C20 24 26 26 32 27"
+              stroke="#FFF"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+            {/* Brilho de alinhamento */}
+            <Circle cx="32" cy="27" r="1.5" fill="#FFF" />
           </G>
         )}
 
+        {/* 4. Barba Simples: Rosto Masculino Limpo sem Barba */}
         {tipo === 'barba_simples' && (
-          <G transform="translate(10, 10)">
-            {/* Lâmina de Barbear Tradicional Dupla */}
-            <Rect x="8" y="12" width="28" height="20" rx="3" fill="#30303A" stroke={Colors.ouro} strokeWidth="1.8" />
-            {/* Centro vazado da lâmina */}
-            <Circle cx="22" cy="22" r="4" fill="#141414" stroke={Colors.ouro} strokeWidth="1.5" />
-            <Rect x="14" y="20.5" width="16" height="3" rx="1" fill="#141414" />
-            <Path d="M10 12 L10 32 M34 12 L34 32" stroke="#FFF" strokeWidth="1.5" strokeLinecap="round" />
+          <G transform="translate(9, 8)">
+            {/* Rosto masculino barbeado / pele limpa e suave */}
+            <Path
+              d="M14 12 C16 7 24 5 30 7 C36 9 38 15 38 22 C38 28 35 34 30 38 C24 41 16 39 12 35 C8 30 8 20 14 12 Z"
+              fill="#26242E"
+              stroke={Colors.ouro}
+              strokeWidth="1.5"
+            />
+            {/* Cabelo bem alinhado */}
+            <Path
+              d="M14 12 C18 6 28 5 33 9 C30 11 26 12 22 12 C18 12 15 13 14 15 Z"
+              fill="url(#gradOuro)"
+            />
+            {/* Maxilar e queixo limpos e lisos (sem barba) */}
+            <Path
+              d="M15 25 C19 31 25 35 30 36"
+              stroke="url(#gradOuro)"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+            {/* Estrelas cintilantes de pele limpa e macia */}
+            <Path d="M28 22 L29 25 L32 26 L29 27 L28 30 L27 27 L24 26 L27 25 Z" fill="#FFF" />
+            <Path d="M19 28 L19.5 30 L21.5 30.5 L19.5 31 L19 33 L18.5 31 L16.5 30.5 L18.5 30 Z" fill={Colors.ouroClaro} />
+            <Circle cx="34" cy="32" r="1.5" fill="#FFF" />
           </G>
         )}
 
@@ -236,26 +297,36 @@ export function IlustracaoServico({
           </G>
         )}
 
+        {/* 5. Limpeza de Pele: Rosto Masculino em Tratamento Facial / Cuidados */}
         {tipo === 'limpeza_de_pele' && (
-          <G transform="translate(10, 10)">
-            {/* Frasco / Gota de Hidratação e Cuidados */}
+          <G transform="translate(9, 8)">
+            {/* Rosto relaxado em cuidado facial */}
             <Path
-              d="M22 6 C22 6 12 18 12 26 C12 32 16.5 36 22 36 C27.5 36 32 32 32 26 C32 18 22 6 22 6 Z"
-              fill="url(#gradOuro)"
-              stroke="#FFF"
-              strokeWidth="1"
+              d="M14 12 C16 7 24 5 30 7 C36 9 38 15 38 22 C38 28 35 34 30 38 C24 41 16 39 12 35 C8 30 8 20 14 12 Z"
+              fill="#18242A"
+              stroke="#4FA3D1"
+              strokeWidth="1.5"
             />
-            {/* Brilho da Gota */}
+            {/* Olho fechado sereno (tratamento relaxante) */}
             <Path
-              d="M17 22 C17 18 20 14 22 12"
+              d="M26 18 C28 20 31 20 33 18"
               stroke="#FFF"
               strokeWidth="1.8"
               strokeLinecap="round"
             />
-            {/* Estrelas de pureza/revitalização */}
-            <Circle cx="34" cy="12" r="2" fill={Colors.ouro} />
-            <Circle cx="10" cy="30" r="1.5" fill={Colors.ouro} />
-            <Circle cx="32" cy="34" r="2.5" fill="#3DBF6A" />
+            {/* Máscara facial / esfoliação revitalizante */}
+            <Path
+              d="M16 16 C20 13 28 13 32 16 C34 20 33 28 30 32 C26 35 20 34 16 30 Z"
+              fill="rgba(79, 163, 209, 0.25)"
+              stroke="url(#gradOuro)"
+              strokeWidth="1.2"
+              strokeDasharray="2,2"
+            />
+            {/* Gotas e bolhas de hidratação/purificação */}
+            <Circle cx="8" cy="14" r="2.5" fill="#4FA3D1" opacity={0.8} />
+            <Circle cx="38" cy="10" r="3" fill="url(#gradOuro)" />
+            <Circle cx="39" cy="28" r="2" fill="#3DBF6A" />
+            <Path d="M10 28 L11 30 L13 30.5 L11 31 L10 33 L9 31 L7 30.5 L9 30 Z" fill="#FFF" />
           </G>
         )}
 

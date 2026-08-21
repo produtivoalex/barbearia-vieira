@@ -97,16 +97,12 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
   - Refinamento da RPC `confirmar_presenca` para compatibilidade ampla com `status in ('pendente', 'agendado')`.
   - Adicionada política de atualização RLS para agendamentos do cliente.
 - **`eas.json`** criado com perfis de `development`, `preview` e `production`.
-### ✅ Fase 14 — Novas Variações Oficiais da Logo Barbearia Vieira (CONCLUÍDA)
-- **Vieira Borda SF (Ícone do App)**:
-  - Integrado em [`assets/logo-borda-sf.png`](./assets/logo-borda-sf.png) e gerados novos assets oficiais (`icon.png`, `adaptive-icon.png`, `splash-icon.png`, `favicon.png`) com moldura dourada e safe zone centralizada.
-- **Vieira Navalha (Tela de Login)**:
-  - Integrado em [`assets/logo-navalha.png`](./assets/logo-navalha.png) com fundo transparente e aplicado nas telas de autenticação ([`app/(pre-auth)/index.tsx`](./app/(pre-auth)/index.tsx) e [`app/(pre-auth)/cadastro.tsx`](./app/(pre-auth)/cadastro.tsx)).
-- **Vieira Avatar (Telas de Início e Perfil)**:
-  - Integrado em [`assets/logo-avatar.png`](./assets/logo-avatar.png) como brasão circular transparente.
-  - Aplicado no cabeçalho e na saudação da Tela de Início ([`app/(app)/(tabs)/index.tsx`](./app/(app)/(tabs)/index.tsx)) e no card de identidade da Tela de Perfil ([`app/(app)/(tabs)/perfil.tsx`](./app/(app)/(tabs)/perfil.tsx)) ao lado do nome e e-mail do cliente.
-- **Componente `LogoBarbearia.tsx` Multifuncional**:
-  - Suporte às variantes `tipo="navalha"`, `tipo="avatar"` e `tipo="borda_sf"` com aspect ratio e renderização otimizados.
+### ✅ Fase 15 — Ilustrações Vetoriais Premium dos Serviços (CONCLUÍDA)
+- **Corte Navalhado**: Nova arte vetorial com **Navalha Clássica de Barbeiro Aberta** (cabo ergonômico grafite, pivô dourado e lâmina de aço afiada com fio prateado polido).
+- **Barba Desenhada**: Nova arte com **Rosto Masculino com Barba & Bigode Esculpidos na Régua** (alinhamento milimétrico e filigranas douradas).
+- **Barba Simples**: Nova arte com **Rosto Masculino Barbeado & Pele Lisa** (sem barba, com brilhos estelares de maciez e frescor).
+- **Limpeza de Pele**: Nova arte com **Rosto Masculino em Tratamento Facial Relaxante** (máscara purificante, bolhas de hidratação e estrelas de revitalização).
+- **Combos VIP**: Nova arte de **Coroa Real Imperial VIP** (5 pontas douradas, base em veludo vermelho nobre e pedrarias cintilantes).
 - `tsc --noEmit` ✅ (0 erros)
 
 ---
