@@ -90,6 +90,9 @@ export default function TelaServicos() {
     });
 
     const ehCombo = (item.categoria || deduzirCategoria(item.nome)) === 'combos';
+    const itensCombo = item.descricao && item.descricao.includes('+')
+      ? item.descricao.split('+').map((s) => s.trim()).filter(Boolean)
+      : null;
 
     return (
       <TouchableOpacity
@@ -117,11 +120,20 @@ export default function TelaServicos() {
             )}
           </View>
 
-          {item.descricao && (
-            <Text style={styles.descricaoServico} numberOfLines={2}>
+          {/* Tags de Itens Inclusos no Combo (Ideia 1) */}
+          {itensCombo ? (
+            <View style={styles.comboTagsContainer}>
+              {itensCombo.map((tag, idx) => (
+                <View key={idx} style={styles.comboTagPill}>
+                  <Text style={styles.comboTagTexto}>✓ {tag}</Text>
+                </View>
+              ))}
+            </View>
+          ) : item.descricao ? (
+            <Text style={styles.descricaoServico}>
               {item.descricao}
             </Text>
-          )}
+          ) : null}
 
           <View style={styles.detalhesLinha}>
             <View style={styles.tempoPill}>
@@ -410,6 +422,25 @@ const styles = StyleSheet.create({
     fontSize: FontSize.bodySm,
     color: Colors.textoSecundario,
     lineHeight: 18,
+  },
+  comboTagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginVertical: 2,
+  },
+  comboTagPill: {
+    backgroundColor: 'rgba(203, 161, 74, 0.12)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: Radii.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(203, 161, 74, 0.25)',
+  },
+  comboTagTexto: {
+    fontFamily: FontFamily.medium,
+    fontSize: 11,
+    color: Colors.ouroClaro,
   },
   detalhesLinha: {
     flexDirection: 'row',

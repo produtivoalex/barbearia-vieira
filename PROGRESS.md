@@ -97,21 +97,16 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
   - Refinamento da RPC `confirmar_presenca` para compatibilidade ampla com `status in ('pendente', 'agendado')`.
   - Adicionada política de atualização RLS para agendamentos do cliente.
 - **`eas.json`** criado com perfis de `development`, `preview` e `production`.
-### ✅ Fase 13 — Ajustes Finais de Serviços, Lista de Espera Intuitiva e Horários Oficiais (CONCLUÍDA)
-- **Catálogo de 14 Serviços 100% Corrigido e Categorizado**:
-  - **Cortes (4)**: Corte degradê (R$ 20,00), Corte navalhado (R$ 23,00), Corte Social (R$ 18,00), Social todo na máquina (R$ 15,00).
-  - **Barba (2)**: Barba desenhada (R$ 15,00), Barba simples (R$ 8,00).
-  - **Combos VIP (6)**: Combos 1 ao 6 detalhando individualmente cada procedimento incluso (ex: *Corte navalhado + Barba desenhada + Sobrancelha*).
-  - **Sobrancelha (1)**: Sobrancelha masculina (R$ 10,00) agora totalmente selecionável e com categoria própria.
-  - **Limpeza de Pele (1)**: Limpeza de pele profunda e revitalização (R$ 20,00) selecionável com categoria própria.
-  - [`hooks/useServicos.ts`](./hooks/useServicos.ts): mecanismo de mesclagem blindado que impede que dados legados do banco ocultem ou distorçam os 14 serviços oficiais.
-- **Lista de Espera Totalmente Redesenhada e Intuitiva**:
-  - [`app/(app)/lista-espera/index.tsx`](./app/(app)/lista-espera/index.tsx): fluxo direto em 3 etapas claras (1. Serviço desejado, 2. Dias possíveis com atalhos de seleção rápida, 3. Horários da manhã de preferência), mensagem explicativa clara de que o cliente será notificado prioritariamente assim que surgir desistência/vaga.
-- **Horários Oficiais de Funcionamento**:
-  - Segunda-feira: *Fechado para descanso e organização da agenda.*
-  - Manhã (08:00 às 12:00): *Reserve seu horário no app.*
-  - Tarde (14:00 às 18:00): *Atendimento direto por ordem de chegada na barbearia.*
-  - Atualizados em [`app/(app)/(tabs)/perfil.tsx`](./app/(app)/(tabs)/perfil.tsx) e [`app/(app)/agendamento/horario.tsx`](./app/(app)/agendamento/horario.tsx).
+### ✅ Fase 13 — Ajustes de Combos sem Cortes, Guia de 3 Etapas e Lista de Espera em Cards Verticais (CONCLUÍDA)
+- **Visual dos Combos sem Cortes com Tags/Pílulas VIP (Ideia 1)**:
+  - [`app/(app)/(tabs)/servicos/index.tsx`](./app/(app)/(tabs)/servicos/index.tsx): os combos agora quebram os procedimentos inclusos em tags individuais estilizadas douradas (`[✓ Corte navalhado] [✓ Barba desenhada] [✓ Sobrancelha]`), garantindo que todos os 3 serviços fiquem 100% visíveis em qualquer tela.
+- **Lista de Espera com Cards Verticais Detalhados (Opção A)**:
+  - [`app/(app)/lista-espera/index.tsx`](./app/(app)/lista-espera/index.tsx): a seleção de serviços foi atualizada para cards verticais completos com ilustração, preço, duração, tags dos combos e seletor radio intuitivo.
+- **Guia de Etapas Resumido para 3 Passos**:
+  - [`components/IndicadorEtapas.tsx`](./components/IndicadorEtapas.tsx): atualizado para `1 - Serviço`, `2 - Data e Horário`, `3 - Confirmar`.
+  - Integrado em `servicos/index.tsx` (`etapaAtual={1}`), `agendamento/horario.tsx` (`etapaAtual={2}`) e `agendamento/confirmacao.tsx` (`etapaAtual={3}`).
+- **Texto de Horários da Tarde**:
+  - Ajustado em [`app/(app)/(tabs)/perfil.tsx`](./app/(app)/(tabs)/perfil.tsx) para *"Atendimento por ordem de chegada na barbearia."* (sem o termo *"direto"*).
 - `tsc --noEmit` ✅ (0 erros)
 
 ---

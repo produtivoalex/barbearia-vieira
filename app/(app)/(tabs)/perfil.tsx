@@ -313,7 +313,7 @@ export default function TelaPerfil() {
                 <View style={styles.modalItemCard}>
                   <Text style={styles.modalItemRotulo}>Período da Tarde (Ordem de Chegada)</Text>
                   <Text style={styles.modalItemValor}>14:00 às 18:00</Text>
-                  <Text style={styles.modalItemDescricao}>Atendimento direto por ordem de chegada na barbearia.</Text>
+                  <Text style={styles.modalItemDescricao}>Atendimento por ordem de chegada na barbearia.</Text>
                 </View>
 
                 <TouchableOpacity

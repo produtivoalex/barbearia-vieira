@@ -3,14 +3,13 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Colors, FontFamily, FontSize, Radii, Spacing } from '@/theme';
 
 interface IndicadorEtapasProps {
-  etapaAtual: 1 | 2 | 3 | 4;
+  etapaAtual: 1 | 2 | 3;
 }
 
 const ETAPAS = [
   { numero: 1, label: 'Serviço' },
-  { numero: 2, label: 'Data' },
-  { numero: 3, label: 'Horário' },
-  { numero: 4, label: 'Confirmar' },
+  { numero: 2, label: 'Data e Horário' },
+  { numero: 3, label: 'Confirmar' },
 ];
 
 export function IndicadorEtapas({ etapaAtual }: IndicadorEtapasProps) {

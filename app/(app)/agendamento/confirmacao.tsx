@@ -100,8 +100,8 @@ export default function TelaConfirmacao() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Indicador de 4 Etapas */}
-      <IndicadorEtapas etapaAtual={4} />
+      {/* Indicador de 3 Etapas */}
+      <IndicadorEtapas etapaAtual={3} />
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {salvando ? (

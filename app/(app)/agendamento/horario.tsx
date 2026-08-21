@@ -178,8 +178,8 @@ export default function TelaHorario() {
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Indicador de 4 Etapas */}
-      <IndicadorEtapas etapaAtual={3} />
+      {/* Indicador de Etapas: 1 Serviço > 2 Data e Horário > 3 Confirmar */}
+      <IndicadorEtapas etapaAtual={2} />
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Banner do Serviço Selecionado */}
