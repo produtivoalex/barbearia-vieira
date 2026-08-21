@@ -63,15 +63,12 @@ export default function TelaHome() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Saudação com Avatar Vieira ao lado do nome */}
-        <View style={styles.boasVindasRow}>
-          <View style={styles.boasVindasTexto}>
-            <Text style={styles.titulo}>
-              {carregandoPerfil ? 'Carregando...' : `Olá, ${primeiroNome}!`}
-            </Text>
-            <Text style={styles.subtitulo}>A sua agenda, mais simples e rápida.</Text>
-          </View>
-          <LogoBarbearia tamanho={48} tipo="avatar" variante="compacto" />
+        {/* Saudação limpa */}
+        <View style={styles.boasVindas}>
+          <Text style={styles.titulo}>
+            {carregandoPerfil ? 'Carregando...' : `Olá, ${primeiroNome}!`}
+          </Text>
+          <Text style={styles.subtitulo}>A sua agenda, mais simples e rápida.</Text>
         </View>
 
         {/* Banner contextual de permissão de notificações se ainda não ativado */}
@@ -270,16 +267,7 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     paddingBottom: Spacing.giant,
   },
-  boasVindasRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.sm,
-  },
-  boasVindasTexto: {
-    flex: 1,
-    gap: 4,
-  },
+  boasVindas: { gap: 4 },
   titulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.displayMd,
