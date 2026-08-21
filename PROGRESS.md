@@ -97,12 +97,19 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
   - Refinamento da RPC `confirmar_presenca` para compatibilidade ampla com `status in ('pendente', 'agendado')`.
   - Adicionada política de atualização RLS para agendamentos do cliente.
 - **`eas.json`** criado com perfis de `development`, `preview` e `production`.
-### ✅ Fase 15 — Ilustrações Vetoriais Premium dos Serviços (CONCLUÍDA)
-- **Corte Navalhado**: Nova arte vetorial com **Navalha Clássica de Barbeiro Aberta** (cabo ergonômico grafite, pivô dourado e lâmina de aço afiada com fio prateado polido).
-- **Barba Desenhada**: Nova arte com **Rosto Masculino com Barba & Bigode Esculpidos na Régua** (alinhamento milimétrico e filigranas douradas).
-- **Barba Simples**: Nova arte com **Rosto Masculino Barbeado & Pele Lisa** (sem barba, com brilhos estelares de maciez e frescor).
-- **Limpeza de Pele**: Nova arte com **Rosto Masculino em Tratamento Facial Relaxante** (máscara purificante, bolhas de hidratação e estrelas de revitalização).
-- **Combos VIP**: Nova arte de **Coroa Real Imperial VIP** (5 pontas douradas, base em veludo vermelho nobre e pedrarias cintilantes).
+### ✅ Fase 15 — Ícones 3D Render Profissionais e Exclusivos para Todos os Serviços (CONCLUÍDA)
+- **Geração de Artes 3D de Luxo (Assets Oficiais)**:
+  - 🪒 **Corte Navalhado** ([`assets/servicos/corte-navalhado.png`](./assets/servicos/corte-navalhado.png)): Navalha de barbear clássica aberta em aço Damasco com cabo trabalhado em ouro.
+  - 🧔 **Barba Desenhada** ([`assets/servicos/barba-desenhada.png`](./assets/servicos/barba-desenhada.png)): Perfil masculino com barba e bigode volumosos e perfeitamente esculpidos na régua.
+  - ✨ **Barba Simples** ([`assets/servicos/barba-simples.png`](./assets/servicos/barba-simples.png)): Rosto masculino jovem e limpo, sem barba, exibindo pele macia e lisa após o barbear.
+  - 🧴 **Limpeza de Pele** ([`assets/servicos/limpeza-pele.png`](./assets/servicos/limpeza-pele.png)): Rosto masculino relaxando em tratamento facial de spa com bolhas de purificação e gotas douradas de sérum.
+  - 👑 **Combos VIP** ([`assets/servicos/combo-vip.png`](./assets/servicos/combo-vip.png)): Coroa imperial majestosa em ouro 24k maciço com veludo rubi e diamantes lapidados.
+  - ✂️ **Corte Degradê** ([`assets/servicos/corte-degrade.png`](./assets/servicos/corte-degrade.png)): Perfil com corte skin fade moderno na régua.
+  - 💈 **Corte Social** ([`assets/servicos/corte-social.png`](./assets/servicos/corte-social.png)): Tesoura de alfaiataria/barbeiro cruzada com pente dourado.
+  - ⚡ **Social Máquina** ([`assets/servicos/social-maquina.png`](./assets/servicos/social-maquina.png)): Máquina de corte profissional sem fio em acabamento dourado e grafite.
+  - 📐 **Sobrancelha** ([`assets/servicos/sobrancelha.png`](./assets/servicos/sobrancelha.png)): Pinça de alta precisão dourada e design de sobrancelha masculina.
+- **Componente `IlustracaoServico.tsx` Otimizado**:
+  - Renderização nativa de alto desempenho via `<Image />` com cantos arredondados, aspect ratio perfeito e contraste de luxo.
 - `tsc --noEmit` ✅ (0 erros)
 
 ---
