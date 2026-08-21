@@ -100,12 +100,12 @@ export default function TelaServicos() {
         onPress={() => handleSelecionarServico(item)}
         activeOpacity={0.75}
       >
-        {/* Ilustração Exclusiva do Serviço */}
+        {/* Ilustração Exclusiva e Padronizada do Serviço */}
         <IlustracaoServico
           id={item.id}
           nome={item.nome}
           categoria={item.categoria}
-          tamanho={56}
+          tamanho={58}
         />
 
         {/* Detalhes do Serviço */}
@@ -114,13 +114,13 @@ export default function TelaServicos() {
             <Text style={styles.nomeServico}>{item.nome}</Text>
             {ehCombo && (
               <View style={styles.badgeVip}>
-                <Sparkles size={10} color={Colors.ouro} />
+                <Sparkles size={9} color={Colors.ouro} />
                 <Text style={styles.badgeVipTexto}>VIP</Text>
               </View>
             )}
           </View>
 
-          {/* Tags de Itens Inclusos no Combo (Ideia 1) */}
+          {/* Tags de Itens Inclusos no Combo ou Descrição */}
           {itensCombo ? (
             <View style={styles.comboTagsContainer}>
               {itensCombo.map((tag, idx) => (
@@ -130,7 +130,7 @@ export default function TelaServicos() {
               ))}
             </View>
           ) : item.descricao ? (
-            <Text style={styles.descricaoServico}>
+            <Text style={styles.descricaoServico} numberOfLines={2}>
               {item.descricao}
             </Text>
           ) : null}
@@ -140,7 +140,7 @@ export default function TelaServicos() {
         <View style={styles.ladoDireito}>
           <Text style={styles.precoServico}>{precoFormatado}</Text>
           <View style={styles.circuloSeta}>
-            <ChevronRight size={16} color={Colors.textoPrimario} />
+            <ChevronRight size={15} color={Colors.textoPrimario} />
           </View>
         </View>
       </TouchableOpacity>
@@ -366,20 +366,23 @@ const styles = StyleSheet.create({
   cardServico: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.lg,
-    padding: Spacing.md,
-    gap: Spacing.md,
+    backgroundColor: '#151518',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 12,
     borderWidth: 1,
-    borderColor: Colors.borda,
+    borderColor: '#242428',
+    minHeight: 84,
     ...Shadows.card,
   },
   cardCombo: {
     borderColor: 'rgba(203, 161, 74, 0.35)',
-    backgroundColor: '#1C1614',
+    backgroundColor: '#181412',
   },
   infoServico: {
     flex: 1,
+    justifyContent: 'center',
     gap: 3,
   },
   linhaNome: {
@@ -390,8 +393,8 @@ const styles = StyleSheet.create({
   },
   nomeServico: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyLg,
-    color: Colors.textoPrimario,
+    fontSize: 15,
+    color: '#FFFFFF',
   },
   badgeVip: {
     flexDirection: 'row',
@@ -412,27 +415,27 @@ const styles = StyleSheet.create({
   },
   descricaoServico: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
-    lineHeight: 18,
+    fontSize: 12,
+    color: '#8E8E93',
+    lineHeight: 16,
   },
   comboTagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 4,
-    marginVertical: 2,
+    marginTop: 2,
   },
   comboTagPill: {
     backgroundColor: 'rgba(203, 161, 74, 0.12)',
     paddingHorizontal: 7,
-    paddingVertical: 3,
+    paddingVertical: 2.5,
     borderRadius: Radii.sm,
     borderWidth: 1,
-    borderColor: 'rgba(203, 161, 74, 0.25)',
+    borderColor: 'rgba(203, 161, 74, 0.28)',
   },
   comboTagTexto: {
     fontFamily: FontFamily.medium,
-    fontSize: 11,
+    fontSize: 10.5,
     color: Colors.ouroClaro,
   },
   detalhesLinha: {
@@ -441,35 +444,22 @@ const styles = StyleSheet.create({
     gap: Spacing.xs,
     marginTop: 2,
   },
-  tempoPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.superficie2,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: Radii.sm,
-  },
-  duracaoServico: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.labelXs,
-    color: Colors.textoSecundario,
-  },
   ladoDireito: {
     alignItems: 'flex-end',
     justifyContent: 'center',
     gap: 6,
+    minWidth: 70,
   },
   precoServico: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.headingSm,
+    fontSize: 15,
     color: Colors.ouro,
   },
   circuloSeta: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: Colors.superficie2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#202024',
     alignItems: 'center',
     justifyContent: 'center',
   },

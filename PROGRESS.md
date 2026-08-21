@@ -97,19 +97,12 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
   - Refinamento da RPC `confirmar_presenca` para compatibilidade ampla com `status in ('pendente', 'agendado')`.
   - Adicionada política de atualização RLS para agendamentos do cliente.
 - **`eas.json`** criado com perfis de `development`, `preview` e `production`.
-### ✅ Fase 15 — Ícones 3D Render Profissionais e Exclusivos para Todos os Serviços (CONCLUÍDA)
-- **Geração de Artes 3D de Luxo (Assets Oficiais)**:
-  - 🪒 **Corte Navalhado** ([`assets/servicos/corte-navalhado.png`](./assets/servicos/corte-navalhado.png)): Navalha de barbear clássica aberta em aço Damasco com cabo trabalhado em ouro.
-  - 🧔 **Barba Desenhada** ([`assets/servicos/barba-desenhada.png`](./assets/servicos/barba-desenhada.png)): Perfil masculino com barba e bigode volumosos e perfeitamente esculpidos na régua.
-  - ✨ **Barba Simples** ([`assets/servicos/barba-simples.png`](./assets/servicos/barba-simples.png)): Rosto masculino jovem e limpo, sem barba, exibindo pele macia e lisa após o barbear.
-  - 🧴 **Limpeza de Pele** ([`assets/servicos/limpeza-pele.png`](./assets/servicos/limpeza-pele.png)): Rosto masculino relaxando em tratamento facial de spa com bolhas de purificação e gotas douradas de sérum.
-  - 👑 **Combos VIP** ([`assets/servicos/combo-vip.png`](./assets/servicos/combo-vip.png)): Coroa imperial majestosa em ouro 24k maciço com veludo rubi e diamantes lapidados.
-  - ✂️ **Corte Degradê** ([`assets/servicos/corte-degrade.png`](./assets/servicos/corte-degrade.png)): Perfil com corte skin fade moderno na régua.
-  - 💈 **Corte Social** ([`assets/servicos/corte-social.png`](./assets/servicos/corte-social.png)): Tesoura de alfaiataria/barbeiro cruzada com pente dourado.
-  - ⚡ **Social Máquina** ([`assets/servicos/social-maquina.png`](./assets/servicos/social-maquina.png)): Máquina de corte profissional sem fio em acabamento dourado e grafite.
-  - 📐 **Sobrancelha** ([`assets/servicos/sobrancelha.png`](./assets/servicos/sobrancelha.png)): Pinça de alta precisão dourada e design de sobrancelha masculina.
-- **Componente `IlustracaoServico.tsx` Otimizado**:
-  - Renderização nativa de alto desempenho via `<Image />` com cantos arredondados, aspect ratio perfeito e contraste de luxo.
+### ✅ Fase 16 — Padronização Perfeccionista de Todos os Ícones e Cards de Serviço (CONCLUÍDA)
+- **Padronização Absoluta de Todos os 9 Ícones 3D**:
+  - Removidos artefatos de bordas variáveis da IA e reconstruída uma moldura uniforme com **chanfro duplo dourado em ouro 24k**, fundo preto carbono nobre idêntico (`#141416`), proporção visual de escala (95%) e raio de curvatura milimétrico igual em todas as 9 artes.
+- **Harmonização e Alinhamento dos Cards de Serviço ([`servicos/index.tsx`](./app/(app)/(tabs)/servicos/index.tsx))**:
+  - Altura mínima padronizada (`84px`) com ícones perfeitamente centralizados (`58x58px`).
+  - Hierarquia de tipografia refinada: título do serviço em destaque, limite de 2 linhas na descrição sem quebras feias, tags douradas de combos alinhadas e preço em ouro 24k com seta compacta.
 - `tsc --noEmit` ✅ (0 erros)
 
 ---

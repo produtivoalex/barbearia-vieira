@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    backgroundColor: '#0F0F12',
+    backgroundColor: 'transparent',
   },
   imagem: {
     width: '100%',
