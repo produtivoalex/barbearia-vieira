@@ -242,7 +242,7 @@ export default function TelaHorario() {
         <View style={styles.avisoCard}>
           <Info size={16} color={Colors.ouro} />
           <Text style={styles.avisoTexto}>
-            Horários com agendamento pela manhã (08:00 às 11:00). No turno da tarde o atendimento é por ordem de chegada.
+            Horários com agendamento pela manhã (08:00 às 12:00). No turno da tarde (14:00 às 18:00) o atendimento é por ordem de chegada.
           </Text>
         </View>
 

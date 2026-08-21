@@ -97,18 +97,21 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
   - Refinamento da RPC `confirmar_presenca` para compatibilidade ampla com `status in ('pendente', 'agendado')`.
   - Adicionada política de atualização RLS para agendamentos do cliente.
 - **`eas.json`** criado com perfis de `development`, `preview` e `production`.
-### ✅ Fase 13 — Logo Oficial Original, WhatsApp Direto no Login e Catálogo com 14 Serviços Ricos (CONCLUÍDA)
-- **Logo Original & Ícones com Safe Zone**:
-  - Brasão oficial da Barbearia Vieira recortado e integrado em [`assets/logo.png`](./assets/logo.png).
-  - Ícones do app gerados com *safe-zone* de 66% para launchers Android/iOS (`icon.png`, `adaptive-icon.png`, `splash-icon.png`, `favicon.png`).
-- **Tela de Login com WhatsApp Direto de Ajuda**:
-  - Removido o texto redundante *"BARBEARIA VIEIRA"* sobre o telefone (pois o nome já está no brasão).
-  - Número de telefone `(86) 98190-7478` tornado clicável com link direto para o WhatsApp preenchendo a mensagem: `"Não estou conseguindo entrar no aplicativo"`.
-- **Restauração do Estilo Rico com Todos os 14 Serviços Reais**:
-  - [`app/(app)/(tabs)/servicos/index.tsx`](./app/(app)/(tabs)/servicos/index.tsx): restaurado o layout com ilustrações exclusivas por serviço ([`components/IlustracaoServico.tsx`](./components/IlustracaoServico.tsx)), filtros por categorias com contadores dinâmicos, badges VIP nos combos, pills de duração e preços em destaque dourado.
-  - Catálogo completo em [`hooks/useServicos.ts`](./hooks/useServicos.ts) com todos os 14 serviços reais do barbeiro (Cortes degradê, navalhado, social, social máquina, combos VIP 1 a 6, barba desenhada, barba simples R$ 8,00, sobrancelha e limpeza de pele).
-- **Tela de Perfil com Modal Bottom-Sheet de Luxo**:
-  - Substituição dos alerts nativos por modais escuros com detalhes do perfil, horários de funcionamento e confirmação de encerramento de sessão.
+### ✅ Fase 13 — Ajustes Finais de Serviços, Lista de Espera Intuitiva e Horários Oficiais (CONCLUÍDA)
+- **Catálogo de 14 Serviços 100% Corrigido e Categorizado**:
+  - **Cortes (4)**: Corte degradê (R$ 20,00), Corte navalhado (R$ 23,00), Corte Social (R$ 18,00), Social todo na máquina (R$ 15,00).
+  - **Barba (2)**: Barba desenhada (R$ 15,00), Barba simples (R$ 8,00).
+  - **Combos VIP (6)**: Combos 1 ao 6 detalhando individualmente cada procedimento incluso (ex: *Corte navalhado + Barba desenhada + Sobrancelha*).
+  - **Sobrancelha (1)**: Sobrancelha masculina (R$ 10,00) agora totalmente selecionável e com categoria própria.
+  - **Limpeza de Pele (1)**: Limpeza de pele profunda e revitalização (R$ 20,00) selecionável com categoria própria.
+  - [`hooks/useServicos.ts`](./hooks/useServicos.ts): mecanismo de mesclagem blindado que impede que dados legados do banco ocultem ou distorçam os 14 serviços oficiais.
+- **Lista de Espera Totalmente Redesenhada e Intuitiva**:
+  - [`app/(app)/lista-espera/index.tsx`](./app/(app)/lista-espera/index.tsx): fluxo direto em 3 etapas claras (1. Serviço desejado, 2. Dias possíveis com atalhos de seleção rápida, 3. Horários da manhã de preferência), mensagem explicativa clara de que o cliente será notificado prioritariamente assim que surgir desistência/vaga.
+- **Horários Oficiais de Funcionamento**:
+  - Segunda-feira: *Fechado para descanso e organização da agenda.*
+  - Manhã (08:00 às 12:00): *Reserve seu horário no app.*
+  - Tarde (14:00 às 18:00): *Atendimento direto por ordem de chegada na barbearia.*
+  - Atualizados em [`app/(app)/(tabs)/perfil.tsx`](./app/(app)/(tabs)/perfil.tsx) e [`app/(app)/agendamento/horario.tsx`](./app/(app)/agendamento/horario.tsx).
 - `tsc --noEmit` ✅ (0 erros)
 
 ---

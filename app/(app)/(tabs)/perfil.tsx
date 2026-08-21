@@ -301,18 +301,18 @@ export default function TelaPerfil() {
                 <View style={styles.modalItemCard}>
                   <Text style={styles.modalItemRotulo}>Dias de Funcionamento</Text>
                   <Text style={styles.modalItemValor}>Terça-feira a Domingo</Text>
-                  <Text style={styles.modalItemDescricao}>Segunda-feira: Fechado para descanso e preparação da agenda.</Text>
+                  <Text style={styles.modalItemDescricao}>Segunda-feira: Fechado para descanso e organização da agenda.</Text>
                 </View>
 
                 <View style={styles.modalItemCard}>
                   <Text style={styles.modalItemRotulo}>Período da Manhã (Agendamento)</Text>
                   <Text style={styles.modalItemValor}>08:00 às 12:00</Text>
-                  <Text style={styles.modalItemDescricao}>Slots de 1 hora (08h, 09h, 10h e 11h) reservados pelo app.</Text>
+                  <Text style={styles.modalItemDescricao}>Reserve seu horário no app.</Text>
                 </View>
 
                 <View style={styles.modalItemCard}>
                   <Text style={styles.modalItemRotulo}>Período da Tarde (Ordem de Chegada)</Text>
-                  <Text style={styles.modalItemValor}>13:30 às 18:00</Text>
+                  <Text style={styles.modalItemValor}>14:00 às 18:00</Text>
                   <Text style={styles.modalItemDescricao}>Atendimento direto por ordem de chegada na barbearia.</Text>
                 </View>
 

@@ -29,17 +29,17 @@ export const CATEGORIAS_CONFIG: { id: CategoriaServico; label: string; iconeEmoj
 ];
 
 export function deduzirCategoria(nome: string): CategoriaServico {
-  const n = nome.toLowerCase();
+  const n = (nome || '').toLowerCase().trim();
   if (n.includes('combo')) return 'combos';
   if (n.includes('barba')) return 'barba';
-  if (n.includes('sobrancelha')) return 'sobrancelha';
+  if (n.includes('sobrancelha') || n.includes('sombrancelha')) return 'sobrancelha';
   if (n.includes('limpeza') || n.includes('pele')) return 'limpeza_de_pele';
   return 'cortes';
 }
 
-/** Catálogo oficial e completo com todos os 14 serviços reais da Barbearia Vieira */
+/** Catálogo oficial com todos os 14 serviços reais da Barbearia Vieira */
 export const SERVICOS_REAIS_CATALOGO: Servico[] = [
-  // Cortes
+  // ── 1. Cortes (4 serviços) ───────────────────────────────────
   {
     id: 'srv-corte-degrade',
     nome: 'Corte degradê',
@@ -77,11 +77,11 @@ export const SERVICOS_REAIS_CATALOGO: Servico[] = [
     categoria: 'cortes',
   },
 
-  // Combos VIP
+  // ── 2. Combos VIP (6 combos detalhados) ─────────────────────
   {
     id: 'srv-combo-1',
     nome: 'Combo 1',
-    descricao: 'Corte navalhado + barba desenhada + sobrancelha',
+    descricao: 'Corte navalhado + Barba desenhada + Sobrancelha',
     preco: 45.0,
     duracao_minutos: 60,
     ativo: true,
@@ -90,7 +90,7 @@ export const SERVICOS_REAIS_CATALOGO: Servico[] = [
   {
     id: 'srv-combo-2',
     nome: 'Combo 2',
-    descricao: 'Corte degradê + barba desenhada + sobrancelha',
+    descricao: 'Corte degradê + Barba desenhada + Sobrancelha',
     preco: 43.0,
     duracao_minutos: 60,
     ativo: true,
@@ -99,7 +99,7 @@ export const SERVICOS_REAIS_CATALOGO: Servico[] = [
   {
     id: 'srv-combo-3',
     nome: 'Combo 3',
-    descricao: 'Corte social + barba desenhada + sobrancelha',
+    descricao: 'Corte social + Barba desenhada + Sobrancelha',
     preco: 40.0,
     duracao_minutos: 60,
     ativo: true,
@@ -108,7 +108,7 @@ export const SERVICOS_REAIS_CATALOGO: Servico[] = [
   {
     id: 'srv-combo-4',
     nome: 'Combo 4',
-    descricao: 'Corte navalhado + barba desenhada',
+    descricao: 'Corte navalhado + Barba desenhada',
     preco: 35.0,
     duracao_minutos: 50,
     ativo: true,
@@ -117,7 +117,7 @@ export const SERVICOS_REAIS_CATALOGO: Servico[] = [
   {
     id: 'srv-combo-5',
     nome: 'Combo 5',
-    descricao: 'Corte degradê + barba desenhada',
+    descricao: 'Corte degradê + Barba desenhada',
     preco: 33.0,
     duracao_minutos: 50,
     ativo: true,
@@ -126,14 +126,14 @@ export const SERVICOS_REAIS_CATALOGO: Servico[] = [
   {
     id: 'srv-combo-6',
     nome: 'Combo 6',
-    descricao: 'Social + barba desenhada',
+    descricao: 'Corte social + Barba desenhada',
     preco: 30.0,
     duracao_minutos: 45,
     ativo: true,
     categoria: 'combos',
   },
 
-  // Barba
+  // ── 3. Barba (2 serviços) ───────────────────────────────────
   {
     id: 'srv-barba-desenhada',
     nome: 'Barba desenhada',
@@ -153,7 +153,7 @@ export const SERVICOS_REAIS_CATALOGO: Servico[] = [
     categoria: 'barba',
   },
 
-  // Sobrancelha
+  // ── 4. Sobrancelha (1 serviço) ──────────────────────────────
   {
     id: 'srv-sobrancelha',
     nome: 'Sobrancelha',
@@ -164,11 +164,11 @@ export const SERVICOS_REAIS_CATALOGO: Servico[] = [
     categoria: 'sobrancelha',
   },
 
-  // Limpeza de Pele
+  // ── 5. Limpeza de Pele (1 serviço) ──────────────────────────
   {
     id: 'srv-limpeza-pele',
     nome: 'Limpeza de pele',
-    descricao: 'Remoção de impurezas, esfoliação facial e revitalização',
+    descricao: 'Remoção de impurezas, esfoliação facial e revitalização profunda',
     preco: 20.0,
     duracao_minutos: 30,
     ativo: true,
@@ -189,21 +189,31 @@ export function useServicos(categoriaFiltro: CategoriaServico = 'todos') {
       const { data, error } = await supabase
         .from('servicos')
         .select('*')
-        .eq('ativo', true)
-        .order('preco', { ascending: false });
+        .eq('ativo', true);
 
-      if (error) {
-        setErro(error.message);
-        // Mantém os serviços reais do catálogo local como fallback
+      if (error || !data || data.length === 0) {
         setServicos(SERVICOS_REAIS_CATALOGO);
-      } else if (data && data.length > 0) {
-        const enriquecidos: Servico[] = data.map((item: any) => ({
-          ...item,
-          categoria: item.categoria || deduzirCategoria(item.nome),
-        }));
-        setServicos(enriquecidos);
       } else {
-        setServicos(SERVICOS_REAIS_CATALOGO);
+        // Mapa base com os 14 serviços oficiais
+        const mapa = new Map<string, Servico>();
+        SERVICOS_REAIS_CATALOGO.forEach((item) => {
+          const chave = item.nome.toLowerCase().trim();
+          mapa.set(chave, { ...item });
+        });
+
+        // Mescla IDs remotos do banco para manter integridade com agendamentos
+        data.forEach((dbItem: any) => {
+          const chave = (dbItem.nome || '').toLowerCase().trim();
+          const existente = mapa.get(chave);
+          if (existente) {
+            existente.id = dbItem.id;
+            if (dbItem.preco) existente.preco = Number(dbItem.preco);
+            if (dbItem.duracao_minutos) existente.duracao_minutos = Number(dbItem.duracao_minutos);
+            if (dbItem.descricao) existente.descricao = dbItem.descricao;
+          }
+        });
+
+        setServicos(Array.from(mapa.values()));
       }
     } catch {
       setServicos(SERVICOS_REAIS_CATALOGO);
@@ -217,8 +227,8 @@ export function useServicos(categoriaFiltro: CategoriaServico = 'todos') {
   }, [carregarServicos]);
 
   const servicosFiltrados = servicos.filter((item) => {
-    if (categoriaFiltro === 'todos') return true;
     const cat = item.categoria || deduzirCategoria(item.nome);
+    if (categoriaFiltro === 'todos') return true;
     return cat === categoriaFiltro;
   });
 
@@ -230,3 +240,4 @@ export function useServicos(categoriaFiltro: CategoriaServico = 'todos') {
     recarregar: carregarServicos,
   };
 }
+
