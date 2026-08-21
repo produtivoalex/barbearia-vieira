@@ -97,16 +97,13 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
   - Refinamento da RPC `confirmar_presenca` para compatibilidade ampla com `status in ('pendente', 'agendado')`.
   - Adicionada política de atualização RLS para agendamentos do cliente.
 - **`eas.json`** criado com perfis de `development`, `preview` e `production`.
-### ✅ Fase 13 — Ajustes de Combos sem Cortes, Guia de 3 Etapas e Lista de Espera em Cards Verticais (CONCLUÍDA)
-- **Visual dos Combos sem Cortes com Tags/Pílulas VIP (Ideia 1)**:
-  - [`app/(app)/(tabs)/servicos/index.tsx`](./app/(app)/(tabs)/servicos/index.tsx): os combos agora quebram os procedimentos inclusos em tags individuais estilizadas douradas (`[✓ Corte navalhado] [✓ Barba desenhada] [✓ Sobrancelha]`), garantindo que todos os 3 serviços fiquem 100% visíveis em qualquer tela.
-- **Lista de Espera com Cards Verticais Detalhados (Opção A)**:
-  - [`app/(app)/lista-espera/index.tsx`](./app/(app)/lista-espera/index.tsx): a seleção de serviços foi atualizada para cards verticais completos com ilustração, preço, duração, tags dos combos e seletor radio intuitivo.
-- **Guia de Etapas Resumido para 3 Passos**:
-  - [`components/IndicadorEtapas.tsx`](./components/IndicadorEtapas.tsx): atualizado para `1 - Serviço`, `2 - Data e Horário`, `3 - Confirmar`.
-  - Integrado em `servicos/index.tsx` (`etapaAtual={1}`), `agendamento/horario.tsx` (`etapaAtual={2}`) e `agendamento/confirmacao.tsx` (`etapaAtual={3}`).
-- **Texto de Horários da Tarde**:
-  - Ajustado em [`app/(app)/(tabs)/perfil.tsx`](./app/(app)/(tabs)/perfil.tsx) para *"Atendimento por ordem de chegada na barbearia."* (sem o termo *"direto"*).
+### ✅ Fase 13 — Opção C na Lista de Espera, Ocultação de Duração e VIP Exclusivo em Combos (CONCLUÍDA)
+- **VIP Exclusivo nos Combos**:
+  - Corrigida a lógica de verificação em [`app/(app)/lista-espera/index.tsx`](./app/(app)/lista-espera/index.tsx) e no catálogo para que o badge VIP dourado seja renderizado exclusivamente nos Combos 1 ao 6.
+- **Ocultação da Duração de Serviços para Clientes**:
+  - Removidos os pills de tempo (`30 min`, `60 min`, etc.) das telas do cliente ([`servicos/index.tsx`](./app/(app)/(tabs)/servicos/index.tsx), [`agendamento/horario.tsx`](./app/(app)/agendamento/horario.tsx), [`agendamento/confirmacao.tsx`](./app/(app)/agendamento/confirmacao.tsx) e [`lista-espera/index.tsx`](./app/(app)/lista-espera/index.tsx)), mantendo o agendamento focado nos slots oficiais. A duração permanece disponível internamente para o painel do barbeiro.
+- **Lista de Espera com Opção C (Carrossel Horizontal + Card de Prévia Detalhado)**:
+  - [`app/(app)/lista-espera/index.tsx`](./app/(app)/lista-espera/index.tsx): carrossel horizontal elegante para navegação rápida entre os serviços + Card de Prévia destacado abaixo que exibe os itens inclusos no combo em tags individuais sem cortes, preço e detalhes completos do serviço selecionado.
 - `tsc --noEmit` ✅ (0 erros)
 
 ---

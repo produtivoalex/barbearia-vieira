@@ -192,10 +192,6 @@ export default function TelaHorario() {
             />
             <View style={styles.bannerServicoInfo}>
               <Text style={styles.bannerServicoNome}>{params.servicoNome}</Text>
-              <View style={styles.bannerServicoMeta}>
-                <Clock size={12} color={Colors.textoSecundario} />
-                <Text style={styles.bannerServicoDuracao}>{params.servicoDuracao || '30'} min</Text>
-              </View>
             </View>
             <Text style={styles.bannerServicoPreco}>{precoFormatado}</Text>
           </View>

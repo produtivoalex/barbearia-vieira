@@ -134,13 +134,6 @@ export default function TelaServicos() {
               {item.descricao}
             </Text>
           ) : null}
-
-          <View style={styles.detalhesLinha}>
-            <View style={styles.tempoPill}>
-              <Clock size={12} color={Colors.textoSecundario} />
-              <Text style={styles.duracaoServico}>{item.duracao_minutos} min</Text>
-            </View>
-          </View>
         </View>
 
         {/* Lado Direito: Preço e Botão */}

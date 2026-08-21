@@ -163,9 +163,6 @@ export default function TelaConfirmacao() {
                   <Text style={styles.servicoNomeDestaque}>
                     {params.servicoNome || 'Serviço'}
                   </Text>
-                  <Text style={styles.servicoDuracaoDestaque}>
-                    Duração estimada: {params.servicoDuracao || '30'} min
-                  </Text>
                 </View>
               </View>
 

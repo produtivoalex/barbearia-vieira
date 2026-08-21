@@ -158,7 +158,7 @@ export default function TelaListaEspera() {
           </View>
         </View>
 
-        {/* 1. Escolha do Serviço */}
+        {/* 1. Escolha do Serviço (Opção C: Carrossel Horizontal + Card de Prévia Detalhado) */}
         <View style={styles.secao}>
           <View style={styles.secaoHeader}>
             <Text style={styles.secaoNumero}>1</Text>
@@ -168,33 +168,75 @@ export default function TelaListaEspera() {
           {carregandoServicos ? (
             <ActivityIndicator size="small" color={Colors.vermelho} style={{ marginVertical: 12 }} />
           ) : (
-            <View style={styles.servicosListaVertical}>
-              {todosServicos.map((item) => {
-                const selecionado = servicoSelecionado?.id === item.id;
-                const precoFmt = Number(item.preco).toLocaleString('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL',
-                });
-                const ehCombo = (item.categoria || item.nome.toLowerCase().includes('combo'));
-                const itensCombo = item.descricao && item.descricao.includes('+')
-                  ? item.descricao.split('+').map((s) => s.trim()).filter(Boolean)
-                  : null;
+            <View style={{ gap: Spacing.sm }}>
+              {/* Carrossel Horizontal */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.servicosHorizontalScroll}
+              >
+                {todosServicos.map((item) => {
+                  const selecionado = servicoSelecionado?.id === item.id;
+                  const precoFmt = Number(item.preco).toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  });
+                  const ehCombo = item.categoria === 'combos' || item.nome.toLowerCase().includes('combo');
 
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.cardServicoVertical, selecionado && styles.cardServicoVerticalAtivo]}
-                    onPress={() => setServicoSelecionado(item)}
-                    activeOpacity={0.75}
-                  >
-                    <IlustracaoServico id={item.id} nome={item.nome} tamanho={48} />
-
-                    <View style={styles.cardServicoInfo}>
-                      <View style={styles.cardServicoCabecalho}>
-                        <Text style={[styles.cardServicoNome, selecionado && styles.cardServicoNomeAtivo]}>
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[styles.cardServicoMini, selecionado && styles.cardServicoMiniAtivo]}
+                      onPress={() => setServicoSelecionado(item)}
+                      activeOpacity={0.75}
+                    >
+                      <IlustracaoServico id={item.id} nome={item.nome} tamanho={40} />
+                      <View style={styles.cardServicoMiniCabecalho}>
+                        <Text
+                          style={[styles.cardServicoNome, selecionado && styles.cardServicoNomeAtivo]}
+                          numberOfLines={1}
+                        >
                           {item.nome}
                         </Text>
                         {ehCombo && (
+                          <View style={styles.badgeVipMini}>
+                            <Sparkles size={8} color={Colors.ouro} />
+                            <Text style={styles.badgeVipMiniTexto}>VIP</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.cardServicoPreco}>{precoFmt}</Text>
+                      {selecionado && (
+                        <View style={styles.checkFlutuante}>
+                          <Check size={12} color="#FFFFFF" strokeWidth={3} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {/* Card de Prévia / Resumo do Serviço Selecionado (Opção C) */}
+              {servicoSelecionado && (
+                <View style={styles.cardPrevia}>
+                  <View style={styles.cardPreviaCabecalho}>
+                    <Sparkles size={13} color={Colors.ouro} />
+                    <Text style={styles.cardPreviaRotulo}>Serviço Selecionado</Text>
+                  </View>
+
+                  <View style={styles.cardPreviaCorpo}>
+                    <IlustracaoServico
+                      id={servicoSelecionado.id}
+                      nome={servicoSelecionado.nome}
+                      categoria={servicoSelecionado.categoria}
+                      tamanho={48}
+                    />
+
+                    <View style={styles.cardPreviaInfo}>
+                      <View style={styles.cardPreviaTituloLinha}>
+                        <Text style={styles.cardPreviaNome}>{servicoSelecionado.nome}</Text>
+                        {(servicoSelecionado.categoria === 'combos' ||
+                          servicoSelecionado.nome.toLowerCase().includes('combo')) && (
                           <View style={styles.badgeVip}>
                             <Sparkles size={9} color={Colors.ouro} />
                             <Text style={styles.badgeVipTexto}>VIP</Text>
@@ -202,38 +244,35 @@ export default function TelaListaEspera() {
                         )}
                       </View>
 
-                      {/* Tags de Itens Inclusos no Combo (Opção A) */}
-                      {itensCombo ? (
+                      {/* Se for combo com múltiplos itens, exibe as tags sem cortes */}
+                      {servicoSelecionado.descricao && servicoSelecionado.descricao.includes('+') ? (
                         <View style={styles.comboTagsContainer}>
-                          {itensCombo.map((tag, idx) => (
-                            <View key={idx} style={styles.comboTagPill}>
-                              <Text style={styles.comboTagTexto}>✓ {tag}</Text>
-                            </View>
-                          ))}
+                          {servicoSelecionado.descricao
+                            .split('+')
+                            .map((s) => s.trim())
+                            .filter(Boolean)
+                            .map((tag, idx) => (
+                              <View key={idx} style={styles.comboTagPill}>
+                                <Text style={styles.comboTagTexto}>✓ {tag}</Text>
+                              </View>
+                            ))}
                         </View>
-                      ) : item.descricao ? (
-                        <Text style={styles.cardServicoDescricao}>
-                          {item.descricao}
-                        </Text>
+                      ) : servicoSelecionado.descricao ? (
+                        <Text style={styles.cardPreviaDescricao}>{servicoSelecionado.descricao}</Text>
                       ) : null}
-
-                      <View style={styles.cardServicoRodape}>
-                        <View style={styles.duracaoPill}>
-                          <Clock size={11} color={Colors.textoSecundario} />
-                          <Text style={styles.duracaoTexto}>{item.duracao_minutos} min</Text>
-                        </View>
-                      </View>
                     </View>
 
-                    <View style={styles.cardServicoDireita}>
-                      <Text style={styles.cardServicoPreco}>{precoFmt}</Text>
-                      <View style={[styles.radioCirculo, selecionado && styles.radioCirculoAtivo]}>
-                        {selecionado && <Check size={13} color="#FFFFFF" strokeWidth={3} />}
-                      </View>
+                    <View style={styles.cardPreviaPrecoContainer}>
+                      <Text style={styles.cardPreviaPreco}>
+                        {Number(servicoSelecionado.preco).toLocaleString('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        })}
+                      </Text>
                     </View>
-                  </TouchableOpacity>
-                );
-              })}
+                  </View>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -462,41 +501,61 @@ const styles = StyleSheet.create({
     fontSize: FontSize.bodyMd,
     color: Colors.textoPrimario,
   },
-  servicosListaVertical: {
-    gap: Spacing.sm,
-    paddingVertical: 2,
+  servicosHorizontalScroll: {
+    gap: Spacing.xs,
+    paddingVertical: 4,
   },
-  cardServicoVertical: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  cardServicoMini: {
+    width: 126,
     backgroundColor: Colors.superficie,
-    borderRadius: Radii.lg,
-    padding: Spacing.md,
-    gap: Spacing.sm,
+    borderRadius: Radii.md,
+    padding: Spacing.sm,
+    alignItems: 'center',
+    gap: 4,
     borderWidth: 1,
     borderColor: Colors.borda,
-    ...Shadows.card,
+    position: 'relative',
   },
-  cardServicoVerticalAtivo: {
+  cardServicoMiniAtivo: {
     borderColor: Colors.ouro,
     backgroundColor: '#1E1A14',
   },
-  cardServicoInfo: {
-    flex: 1,
-    gap: 3,
-  },
-  cardServicoCabecalho: {
+  cardServicoMiniCabecalho: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 4,
+    width: '100%',
   },
   cardServicoNome: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
+    fontFamily: FontFamily.semiBold,
+    fontSize: FontSize.labelXs,
     color: Colors.textoPrimario,
+    textAlign: 'center',
   },
   cardServicoNomeAtivo: {
+    color: Colors.ouro,
+    fontFamily: FontFamily.bold,
+  },
+  cardServicoPreco: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodySm,
+    color: Colors.ouro,
+  },
+  badgeVipMini: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: 'rgba(203, 161, 74, 0.15)',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: Radii.full,
+    borderWidth: 1,
+    borderColor: Colors.ouro,
+  },
+  badgeVipMiniTexto: {
+    fontFamily: FontFamily.bold,
+    fontSize: 7,
     color: Colors.ouro,
   },
   badgeVip: {
@@ -504,8 +563,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
     backgroundColor: 'rgba(203, 161, 74, 0.15)',
-    paddingHorizontal: 5,
-    paddingVertical: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: Radii.full,
     borderWidth: 1,
     borderColor: Colors.ouro,
@@ -515,7 +574,60 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: Colors.ouro,
   },
-  cardServicoDescricao: {
+  checkFlutuante: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: Colors.ouro,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardPrevia: {
+    backgroundColor: '#1C1914',
+    borderRadius: Radii.lg,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(203, 161, 74, 0.3)',
+    gap: Spacing.xs,
+    ...Shadows.card,
+  },
+  cardPreviaCabecalho: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 2,
+  },
+  cardPreviaRotulo: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.labelXs,
+    color: Colors.ouro,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  cardPreviaCorpo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  cardPreviaInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  cardPreviaTituloLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  cardPreviaNome: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodyMd,
+    color: '#FFFFFF',
+  },
+  cardPreviaDescricao: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
     color: Colors.textoSecundario,
@@ -540,48 +652,14 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: Colors.ouroClaro,
   },
-  cardServicoRodape: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  duracaoPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.superficie2,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: Radii.sm,
-  },
-  duracaoTexto: {
-    fontFamily: FontFamily.medium,
-    fontSize: 10,
-    color: Colors.textoSecundario,
-  },
-  cardServicoDireita: {
+  cardPreviaPrecoContainer: {
     alignItems: 'flex-end',
     justifyContent: 'center',
-    gap: 8,
   },
-  cardServicoPreco: {
+  cardPreviaPreco: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
+    fontSize: FontSize.headingSm,
     color: Colors.ouro,
-  },
-  radioCirculo: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: Colors.borda,
-    backgroundColor: Colors.superficie2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioCirculoAtivo: {
-    borderColor: Colors.ouro,
-    backgroundColor: Colors.ouro,
   },
   atalhosRow: {
     flexDirection: 'row',
