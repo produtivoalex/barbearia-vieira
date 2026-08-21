@@ -190,11 +190,11 @@ export default function TelaListaEspera() {
                       onPress={() => setServicoSelecionado(item)}
                       activeOpacity={0.75}
                     >
-                      <IlustracaoServico id={item.id} nome={item.nome} tamanho={40} />
+                      <IlustracaoServico id={item.id} nome={item.nome} tamanho={42} />
                       <View style={styles.cardServicoMiniCabecalho}>
                         <Text
                           style={[styles.cardServicoNome, selecionado && styles.cardServicoNomeAtivo]}
-                          numberOfLines={1}
+                          numberOfLines={2}
                         >
                           {item.nome}
                         </Text>
@@ -506,11 +506,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   cardServicoMini: {
-    width: 126,
+    width: 132,
+    minHeight: 122,
     backgroundColor: Colors.superficie,
     borderRadius: Radii.md,
     padding: Spacing.sm,
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 4,
     borderWidth: 1,
     borderColor: Colors.borda,
@@ -521,17 +523,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E1A14',
   },
   cardServicoMiniCabecalho: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 3,
     width: '100%',
   },
   cardServicoNome: {
     fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.labelXs,
+    fontSize: 11,
     color: Colors.textoPrimario,
     textAlign: 'center',
+    lineHeight: 14,
   },
   cardServicoNomeAtivo: {
     color: Colors.ouro,

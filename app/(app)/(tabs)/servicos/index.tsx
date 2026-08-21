@@ -130,7 +130,7 @@ export default function TelaServicos() {
               ))}
             </View>
           ) : item.descricao ? (
-            <Text style={styles.descricaoServico} numberOfLines={2}>
+            <Text style={styles.descricaoServico}>
               {item.descricao}
             </Text>
           ) : null}
