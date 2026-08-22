@@ -160,6 +160,16 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
 - Para eliminar `DEVELOPER_ERROR`, o OAuth Android do mesmo projeto Google do Web Client ID deve ter pacote `com.barbearia.vieira` + a SHA-1 acima. O provedor Google também precisa estar habilitado no Supabase com o mesmo Web Client ID/secret.
 - Depois dessa configuração externa, o único comando de rebuild é: `eas build --profile development --platform android`.
 
+### Handoff para próxima conversa — 22/08/2026
+- O código do Google Sign-In nativo foi consolidado para usar exclusivamente o Web Client ID `298975067668-h0qn3g0p009vjd4mdtlpkqo7t5e03e68.apps.googleusercontent.com`.
+- Pacote Android: `com.barbearia.vieira`.
+- Keystore EAS confirmada: `YLdZHABSVt (Default)`.
+- SHA-1 confirmada: `48:29:BF:22:1A:93:BF:54:F9:76:F9:38:9B:23:C0:C0:3D:02:D9:78`.
+- O commit `6a5ee8d` (`fix: align native Google sign-in configuration`) foi enviado para `origin/main`.
+- Build pelo Expo/EAS: Development usa perfil `development`, credenciais `Default`, sem EAS Submit. APK comum usa perfil `preview`, credenciais `Default`, sem EAS Submit.
+- Considerar o build como concluído para fins de handoff; o próximo marco do produto é implementar/revisar a **área do barbeiro**.
+- Ao iniciar a próxima conversa, ler este arquivo antes de alterar qualquer coisa e preservar o fluxo nativo do Google.
+
 ---
 
 ## Decisões Tomadas
@@ -173,4 +183,3 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
 | Lista de espera em Opção C | Carrossel horizontal compacto + Card de Prévia destacado com detalhes. |
 | Repositório oficial no GitHub `produtivoalex/barbearia-vieira` | Permite builds automáticas pelo EAS/GitHub e versionamento completo. |
 | Módulo `socialAuth.ts` + rota `app/auth/callback.tsx` | Garante tratamento de erros resiliente e sem rotas perdidas no fluxo OAuth. |
-
