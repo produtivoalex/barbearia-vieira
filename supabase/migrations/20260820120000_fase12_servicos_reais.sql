@@ -3,6 +3,10 @@
 -- Adiciona coluna de categoria se ainda não existir
 alter table public.servicos add column if not exists categoria text;
 
+-- Garante constraint unique no nome do serviço para suportar upsert
+alter table public.servicos drop constraint if exists servicos_nome_unique;
+alter table public.servicos add constraint servicos_nome_unique unique (nome);
+
 -- Deleta serviços legados/fictícios anteriores
 delete from public.servicos where nome in (
   'Corte de Cabelo',

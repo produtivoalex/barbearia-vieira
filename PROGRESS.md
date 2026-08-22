@@ -128,17 +128,30 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
 - **Cards de Serviço**: Altura mínima travada em `84px`, descrições completas sem truncamento, preço e botão perfeitamente alinhados à direita.
 - **Lista de Espera**: Nome `"Social todo na máquina"` com quebra suave em duas linhas sem cortes.
 
-### 🔄 Fase 17 — Autenticação Social Google & Apple e Integração GitHub (EM ANDAMENTO)
-- **Novo Logo Oficial da Apple**: Asset em alta resolução com transparência em [`assets/logo-apple.png`](./assets/logo-apple.png).
+### ✅ Fase 17 — Autenticação Social Google & Apple e Integração Ponta a Ponta (CONCLUÍDA)
+- **Módulo Centralizado (`lib/socialAuth.ts`)**:
+  - Funções `iniciarLoginSocial`, `processarUrlAuth`, `extrairParametrosUrl` e `obterRedirectUri`.
+  - Suporte completo a tokens no Hash (`#access_token=...&refresh_token=...`) e PKCE (`?code=...`).
+  - Tratamento e extração explícita de mensagens de erro de provedores OAuth (`error_description`/`error`), eliminando falhas silenciosas.
+- **Rota Oficial de Callback (`app/auth/callback.tsx`)**:
+  - Captura nativa do deep linking `barbearia-vieira://auth/callback` no Expo Router.
+  - Elimina warnings e erros de rotas não encontradas ("Unmatched Route").
+- **Proteção e Roteamento (`app/_layout.tsx`)**:
+  - `auth/callback` registrado na stack raiz e liberado em `ControleRotas` durante a troca de tokens.
+- **Trigger e Perfis no Banco de Dados (`supabase/migrations/20260822_fase17_oauth_trigger.sql` & `scripts/schema.sql`)**:
+  - Criação/atualização automática de perfis com fallback de nome para metadados sociais (`full_name`, `name`, `nome_completo` ou prefixo do e-mail).
 - **Repositório GitHub Conectado**: [`https://github.com/produtivoalex/barbearia-vieira`](https://github.com/produtivoalex/barbearia-vieira) (branch `main`).
-- **Status da Autenticação Social**: Código atualizado com `WebBrowser.openAuthSessionAsync` e `AuthSession.makeRedirectUri({ scheme: 'barbearia-vieira', path: 'auth/callback' })`.
-- **Ajuste Restante**: Realizar o alinhamento de credenciais e configuração de provedores diretamente no Supabase/OAuth credentials para que o login social complete a troca de tokens sem erros na aplicação.
+- **Google Sign-In Nativo**: `@react-native-google-signin/google-signin` integrado com `EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB` configurado no `.env` e suporte a `signInWithIdToken` em builds de desenvolvimento/produção com fallback web no Expo Go.
+- **Botão Apple UX**: Notificação amigável ("Em Breve no iOS 🍏") orientando o usuário a prosseguir com Google ou E-mail enquanto a conta Apple Developer não é integrada.
+- `tsc --noEmit` ✅ (0 erros).
 
 ---
 
 ## 🎯 Instruções Imediatas para Próxima Sessão
-1. **Foco Principal**: Resolver a configuração e fluxo do Login Social (Google e Apple) ponta a ponta com o Supabase.
-2. **Ambiente**: O código já está 100% compilando (`tsc --noEmit` com 0 erros) e sincronizado com o GitHub na branch `main`.
+1. **Configuração dos Provedores no Supabase Dashboard**:
+   - Em **Authentication > URL Configuration > Redirect URLs**, adicionar `barbearia-vieira://auth/callback` e `barbearia-vieira://*`.
+   - Em **Authentication > Providers**, preencher as credenciais dos provedores Google e/ou Apple.
+2. **Ambiente**: O código está 100% pronto, tipado e com suporte a build de desenvolvimento.
 
 ---
 
@@ -152,5 +165,7 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
 | Ocultação de duração para clientes | Evita confusão enquanto a barbearia opera com horários fixos. |
 | Lista de espera em Opção C | Carrossel horizontal compacto + Card de Prévia destacado com detalhes. |
 | Repositório oficial no GitHub `produtivoalex/barbearia-vieira` | Permite builds automáticas pelo EAS/GitHub e versionamento completo. |
+| Módulo `socialAuth.ts` + rota `app/auth/callback.tsx` | Garante tratamento de erros resiliente e sem rotas perdidas no fluxo OAuth. |
+
 
 

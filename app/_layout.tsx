@@ -56,17 +56,18 @@ function ControleRotas() {
     const grupoAtual = segments[0] as string | undefined;
     const naAreaApp = grupoAtual === '(app)';
     const naPreAuth = grupoAtual === '(pre-auth)';
+    const naCallback = grupoAtual === 'auth';
 
     if (!autenticado) {
-      // Se não autenticado e não está na área de pré-autenticação, redireciona para login
-      if (!naPreAuth) {
+      // Se não autenticado e não está na área de pré-autenticação nem em auth/callback, redireciona para login
+      if (!naPreAuth && !naCallback) {
         router.replace('/(pre-auth)');
       }
     } else {
       // Se autenticado, aguarda carregar perfil para saber o role
       if (carregandoPerfil) return;
 
-      // Se ainda não entrou na área (app) ou está na raiz / pre-auth
+      // Se ainda não entrou na área (app) ou está na raiz / pre-auth / callback
       if (!naAreaApp) {
         if (perfil?.role === 'barbeiro') {
           router.replace('/(app)/(barbeiro)/hoje');
@@ -101,6 +102,7 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="(pre-auth)" />
         <Stack.Screen name="(app)" />
+        <Stack.Screen name="auth/callback" />
       </Stack>
     </View>
   );

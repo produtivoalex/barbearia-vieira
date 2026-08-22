@@ -29,14 +29,32 @@ export function usePerfil() {
         .eq('id', session.user.id)
         .single();
 
+      const nomeMeta =
+        session.user.user_metadata?.full_name ||
+        session.user.user_metadata?.name ||
+        session.user.user_metadata?.nome_completo ||
+        session.user.email?.split('@')[0] ||
+        'Cliente Vieira';
+
       if (!error && data) {
-        setPerfil(data as Perfil);
+        setPerfil({
+          ...data,
+          nome_completo: data.nome_completo || nomeMeta,
+        } as Perfil);
+      } else {
+        // Fallback transitório caso o perfil ainda esteja sendo criado pelo trigger
+        setPerfil({
+          id: session.user.id,
+          nome_completo: nomeMeta,
+          telefone: null,
+          role: 'cliente',
+        });
       }
       setCarregandoPerfil(false);
     }
 
     carregarPerfil();
-  }, [session?.user?.id]);
+  }, [session?.user?.id, session?.user?.user_metadata, session?.user?.email]);
 
   async function atualizarPerfil(updates: Partial<Perfil>) {
     if (!session?.user?.id) return { error: new Error('Não autenticado') };

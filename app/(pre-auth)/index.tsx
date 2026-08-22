@@ -16,14 +16,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
-import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
 import { Botao, LogoBarbearia } from '@/components';
 import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
 import { supabase } from '@/lib/supabase';
-
-// Necessário para que o WebBrowser feche corretamente após o OAuth
-WebBrowser.maybeCompleteAuthSession();
+import { iniciarLoginSocial } from '@/lib/socialAuth';
 
 /** Ícone vetorial oficial multicolorido da Google */
 function IconeGoogle({ tamanho = 20 }: { tamanho?: number }) {
@@ -60,78 +56,22 @@ function IconeApple({ tamanho = 20 }: { tamanho?: number }) {
   );
 }
 
-/** Executa o fluxo completo de autenticação OAuth com Supabase + WebBrowser */
-async function autenticarComProvider(provider: 'google' | 'apple') {
-  const redirectUrl = AuthSession.makeRedirectUri({
-    scheme: 'barbearia-vieira',
-    path: 'auth/callback',
-  });
-
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider,
-    options: {
-      redirectTo: redirectUrl,
-      skipBrowserRedirect: true,
-    },
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  if (!data?.url) {
-    throw new Error('Não foi possível gerar a URL de login.');
-  }
-
-  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-
-  if (result.type === 'success' && result.url) {
-    const url = result.url;
-
-    // 1. Fluxo de Tokens no Hash (#access_token=...&refresh_token=...)
-    if (url.includes('#')) {
-      const hashPart = url.split('#')[1];
-      const params = new URLSearchParams(hashPart);
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
-
-      if (accessToken && refreshToken) {
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        if (sessionError) throw sessionError;
-        return;
-      }
-    }
-
-    // 2. Fluxo PKCE (?code=...)
-    if (url.includes('code=')) {
-      const queryPart = url.includes('?') ? url.split('?')[1] : url;
-      const params = new URLSearchParams(queryPart);
-      const code = params.get('code');
-
-      if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-        if (exchangeError) throw exchangeError;
-        return;
-      }
-    }
-  }
-}
-
 interface SocialAuthProps {
   onCarregando: (v: boolean) => void;
 }
 
 function BotaoGoogleAuth({ onCarregando }: SocialAuthProps) {
   const [carregando, setCarregando] = useState(false);
+  const router = useRouter();
 
   async function handleGoogleLogin() {
     try {
       setCarregando(true);
       onCarregando(true);
-      await autenticarComProvider('google');
+      const session = await iniciarLoginSocial('google');
+      if (session) {
+        router.replace('/(app)/(tabs)');
+      }
     } catch (err: any) {
       Alert.alert('Google Sign-In', err?.message || 'Não foi possível completar o login com Google.');
     } finally {
@@ -160,35 +100,23 @@ function BotaoGoogleAuth({ onCarregando }: SocialAuthProps) {
 }
 
 function BotaoAppleAuth({ onCarregando }: SocialAuthProps) {
-  const [carregando, setCarregando] = useState(false);
-
-  async function handleAppleLogin() {
-    try {
-      setCarregando(true);
-      onCarregando(true);
-      await autenticarComProvider('apple');
-    } catch (err: any) {
-      Alert.alert('Apple Sign-In', err?.message || 'Não foi possível completar o login com Apple.');
-    } finally {
-      setCarregando(false);
-      onCarregando(false);
-    }
+  function handleAppleLogin() {
+    Alert.alert(
+      'Em Breve no iOS 🍏',
+      'O início de sessão com a Apple estará disponível na versão para iPhone.\n\nPara continuar agora, você pode entrar rapidamente com o Google ou cadastrar seu e-mail e senha!',
+      [{ text: 'Entendido', style: 'default' }]
+    );
   }
 
   return (
     <TouchableOpacity
-      style={[styles.botaoSocial, styles.botaoApple, carregando && styles.botaoDesabilitado]}
+      style={[styles.botaoSocial, styles.botaoApple]}
       onPress={handleAppleLogin}
       activeOpacity={0.8}
-      disabled={carregando}
     >
-      {carregando ? (
-        <ActivityIndicator size="small" color="#FFFFFF" />
-      ) : (
-        <IconeApple tamanho={20} />
-      )}
+      <IconeApple tamanho={20} />
       <Text style={styles.botaoAppleTexto}>
-        {carregando ? 'Conectando...' : 'Iniciar sessão com a Apple'}
+        Iniciar sessão com a Apple
       </Text>
     </TouchableOpacity>
   );

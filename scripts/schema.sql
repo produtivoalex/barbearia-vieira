@@ -16,17 +16,33 @@ create policy "Barbeiros visíveis para todos" on public.perfis for select using
 create policy "Usuário pode atualizar seu próprio perfil" on public.perfis for update using ( auth.uid() = id );
 create policy "Usuário pode inserir seu próprio perfil" on public.perfis for insert with check ( auth.uid() = id );
 
--- 2. Trigger para criar perfil automaticamente no cadastro
+-- 2. Trigger para criar perfil automaticamente no cadastro (email ou OAuth)
 create or replace function public.handle_new_user() 
 returns trigger as $$
 begin
-  insert into public.perfis (id, nome_completo)
-  values (new.id, new.raw_user_meta_data->>'nome_completo');
+  insert into public.perfis (id, nome_completo, role)
+  values (
+    new.id,
+    coalesce(
+      new.raw_user_meta_data->>'nome_completo',
+      new.raw_user_meta_data->>'full_name',
+      new.raw_user_meta_data->>'name',
+      split_part(new.email, '@', 1),
+      'Cliente Vieira'
+    ),
+    'cliente'
+  )
+  on conflict (id) do update
+  set nome_completo = coalesce(
+    public.perfis.nome_completo,
+    excluded.nome_completo
+  );
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public;
 
-create or replace trigger on_auth_user_created
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
