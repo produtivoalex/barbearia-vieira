@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,18 +10,17 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
+import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
 import { Botao, LogoBarbearia } from '@/components';
 import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
 import { supabase } from '@/lib/supabase';
-
-import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
-import * as Google from 'expo-auth-session/providers/google';
 
 // Necessário para que o WebBrowser feche corretamente após o OAuth
 WebBrowser.maybeCompleteAuthSession();
@@ -50,79 +49,101 @@ function IconeGoogle({ tamanho = 20 }: { tamanho?: number }) {
   );
 }
 
-/** Ícone vetorial oficial da Apple */
-function IconeApple({ tamanho = 20, cor = '#FFFFFF' }: { tamanho?: number; cor?: string }) {
+/** Ícone oficial da Apple (novo asset transparente de alta definição) */
+function IconeApple({ tamanho = 20 }: { tamanho?: number }) {
   return (
-    <Svg width={tamanho} height={tamanho} viewBox="0 0 170 170">
-      <Path
-        d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.66-7.79-11.88-14.24-6.84-10.42-12.21-22.37-16.1-35.85-3.9-13.48-5.85-25.75-5.85-36.8 0-14.56 3.69-26.65 11.08-36.27 7.39-9.62 16.71-14.54 27.97-14.76 4.78 0 10.22 1.25 16.32 3.75 6.1 2.5 10.05 3.86 11.87 4.08 2.5-.54 6.74-2.07 12.72-4.58 5.98-2.5 11.3-3.65 15.96-3.44 12.39.65 22.39 5.38 30 14.19-10.87 6.63-16.19 15.65-15.97 27.06.22 9.02 3.75 16.63 10.6 22.82 6.85 6.19 14.88 9.68 24.1 10.45-2.39 7.07-5.38 14.02-8.97 20.86zM119.22 33.6c-.11-3.69.87-7.44 2.94-11.25 2.06-3.8 4.99-7.07 8.79-9.79 3.8-2.72 7.72-4.56 11.74-5.54.43 3.69-.54 7.4-2.93 11.14-2.39 3.75-5.32 6.85-8.79 9.3-3.48 2.45-7.39 4.29-11.75 5.54z"
-        fill={cor}
-      />
-    </Svg>
+    <Image
+      source={require('@/assets/logo-apple.png')}
+      style={{ width: tamanho * 0.85, height: tamanho }}
+      resizeMode="contain"
+    />
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// Componente isolado que chama Google.useAuthRequest.
-// Só é MONTADO quando as chaves corretas para a plataforma
-// estão configuradas no .env — isso é crucial pois hooks
-// não podem ser chamados condicionalmente. Ao não montar
-// este componente, evitamos o crash "androidClientId must be
-// defined" mesmo sem configurar Google Auth.
-// ─────────────────────────────────────────────────────────────
-interface GoogleAuthProps {
-  onCarregando: (v: boolean) => void;
-}
-
-function BotaoGoogleAuth({ onCarregando }: GoogleAuthProps) {
-  const [carregando, setCarregando] = useState(false);
-  const redirectUri = AuthSession.makeRedirectUri({
+/** Executa o fluxo completo de autenticação OAuth com Supabase + WebBrowser */
+async function autenticarComProvider(provider: 'google' | 'apple') {
+  const redirectUrl = AuthSession.makeRedirectUri({
     scheme: 'barbearia-vieira',
     path: 'auth/callback',
   });
 
-  const [, googleResponse, promptAsync] = Google.useAuthRequest({
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
-    redirectUri,
-    scopes: ['openid', 'profile', 'email'],
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo: redirectUrl,
+      skipBrowserRedirect: true,
+    },
   });
 
-  useEffect(() => {
-    async function processar() {
-      if (googleResponse?.type !== 'success') return;
+  if (error) {
+    throw error;
+  }
 
-      const idToken =
-        googleResponse.params?.id_token ?? googleResponse.authentication?.idToken;
-      const accessToken = googleResponse.authentication?.accessToken;
+  if (!data?.url) {
+    throw new Error('Não foi possível gerar a URL de login.');
+  }
 
-      if (!idToken) {
-        Alert.alert('Erro', 'Não foi possível obter o token do Google.');
+  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+
+  if (result.type === 'success' && result.url) {
+    const url = result.url;
+
+    // 1. Fluxo de Tokens no Hash (#access_token=...&refresh_token=...)
+    if (url.includes('#')) {
+      const hashPart = url.split('#')[1];
+      const params = new URLSearchParams(hashPart);
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+
+      if (accessToken && refreshToken) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (sessionError) throw sessionError;
         return;
       }
+    }
 
-      setCarregando(true);
-      onCarregando(true);
-      const { error } = await supabase.auth.signInWithIdToken({
-        provider: 'google',
-        token: idToken,
-        access_token: accessToken,
-      });
-      setCarregando(false);
-      onCarregando(false);
+    // 2. Fluxo PKCE (?code=...)
+    if (url.includes('code=')) {
+      const queryPart = url.includes('?') ? url.split('?')[1] : url;
+      const params = new URLSearchParams(queryPart);
+      const code = params.get('code');
 
-      if (error) {
-        Alert.alert('Erro ao entrar com Google', error.message);
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError) throw exchangeError;
+        return;
       }
     }
-    processar();
-  }, [googleResponse, onCarregando]);
+  }
+}
+
+interface SocialAuthProps {
+  onCarregando: (v: boolean) => void;
+}
+
+function BotaoGoogleAuth({ onCarregando }: SocialAuthProps) {
+  const [carregando, setCarregando] = useState(false);
+
+  async function handleGoogleLogin() {
+    try {
+      setCarregando(true);
+      onCarregando(true);
+      await autenticarComProvider('google');
+    } catch (err: any) {
+      Alert.alert('Google Sign-In', err?.message || 'Não foi possível completar o login com Google.');
+    } finally {
+      setCarregando(false);
+      onCarregando(false);
+    }
+  }
 
   return (
     <TouchableOpacity
       style={[styles.botaoSocial, styles.botaoGoogle, carregando && styles.botaoDesabilitado]}
-      onPress={() => promptAsync()}
+      onPress={handleGoogleLogin}
       activeOpacity={0.8}
       disabled={carregando}
     >
@@ -132,86 +153,45 @@ function BotaoGoogleAuth({ onCarregando }: GoogleAuthProps) {
         <IconeGoogle tamanho={20} />
       )}
       <Text style={styles.botaoSocialTexto}>
-        {carregando ? 'Aguardando Google...' : 'Entrar com o Google'}
+        {carregando ? 'Conectando...' : 'Entrar com o Google'}
       </Text>
     </TouchableOpacity>
   );
 }
 
-function BotaoGoogleFallback({ onCarregando }: GoogleAuthProps) {
-  async function handleGoogleSimples() {
-    try {
-      onCarregando(true);
-      const redirectUrl = AuthSession.makeRedirectUri({
-        scheme: 'barbearia-vieira',
-        path: 'auth/callback',
-      });
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: redirectUrl },
-      });
-      if (error) Alert.alert('Google Auth', error.message);
-    } catch (err: any) {
-      Alert.alert('Google Auth', err.message || 'Configuração em andamento.');
-    } finally {
-      onCarregando(false);
-    }
-  }
+function BotaoAppleAuth({ onCarregando }: SocialAuthProps) {
+  const [carregando, setCarregando] = useState(false);
 
-  return (
-    <TouchableOpacity
-      style={[styles.botaoSocial, styles.botaoGoogle]}
-      onPress={handleGoogleSimples}
-      activeOpacity={0.8}
-    >
-      <IconeGoogle tamanho={20} />
-      <Text style={styles.botaoSocialTexto}>Entrar com o Google</Text>
-    </TouchableOpacity>
-  );
-}
-
-function BotaoAppleAuth({ onCarregando }: { onCarregando: (v: boolean) => void }) {
   async function handleAppleLogin() {
     try {
+      setCarregando(true);
       onCarregando(true);
-      const redirectUrl = AuthSession.makeRedirectUri({
-        scheme: 'barbearia-vieira',
-        path: 'auth/callback',
-      });
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
-        options: { redirectTo: redirectUrl },
-      });
-      if (error) {
-        Alert.alert('Apple Sign In', error.message);
-      }
+      await autenticarComProvider('apple');
     } catch (err: any) {
-      Alert.alert('Apple Sign In', err.message || 'Disponível em dispositivos iOS.');
+      Alert.alert('Apple Sign-In', err?.message || 'Não foi possível completar o login com Apple.');
     } finally {
+      setCarregando(false);
       onCarregando(false);
     }
   }
 
   return (
     <TouchableOpacity
-      style={[styles.botaoSocial, styles.botaoApple]}
+      style={[styles.botaoSocial, styles.botaoApple, carregando && styles.botaoDesabilitado]}
       onPress={handleAppleLogin}
       activeOpacity={0.8}
+      disabled={carregando}
     >
-      <IconeApple tamanho={20} cor="#FFFFFF" />
-      <Text style={styles.botaoAppleTexto}>Iniciar sessão com a Apple</Text>
+      {carregando ? (
+        <ActivityIndicator size="small" color="#FFFFFF" />
+      ) : (
+        <IconeApple tamanho={20} />
+      )}
+      <Text style={styles.botaoAppleTexto}>
+        {carregando ? 'Conectando...' : 'Iniciar sessão com a Apple'}
+      </Text>
     </TouchableOpacity>
   );
-}
-
-function googleConfigurado(): boolean {
-  if (Platform.OS === 'android') {
-    return !!process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID;
-  }
-  if (Platform.OS === 'ios') {
-    return !!process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS;
-  }
-  return !!process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB;
 }
 
 export default function TelaLogin() {
@@ -221,8 +201,6 @@ export default function TelaLogin() {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [carregandoSocial, setCarregandoSocial] = useState(false);
-
-  const temGoogle = googleConfigurado();
 
   async function handleLogin() {
     if (!email || !senha) {
@@ -333,12 +311,7 @@ export default function TelaLogin() {
 
             {/* Botões de Login Social */}
             <View style={styles.sociaisContainer}>
-              {temGoogle ? (
-                <BotaoGoogleAuth onCarregando={setCarregandoSocial} />
-              ) : (
-                <BotaoGoogleFallback onCarregando={setCarregandoSocial} />
-              )}
-
+              <BotaoGoogleAuth onCarregando={setCarregandoSocial} />
               <BotaoAppleAuth onCarregando={setCarregandoSocial} />
             </View>
           </View>
