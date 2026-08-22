@@ -97,43 +97,48 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
   - Refinamento da RPC `confirmar_presenca` para compatibilidade ampla com `status in ('pendente', 'agendado')`.
   - Adicionada política de atualização RLS para agendamentos do cliente.
 - **`eas.json`** criado com perfis de `development`, `preview` e `production`.
-### ✅ Fase 16 — Padronização Perfeccionista de Todos os Ícones e Cards de Serviço (CONCLUÍDA)
-- **Padronização Absoluta de Todos os 9 Ícones 3D**:
-  - Removidos artefatos de bordas variáveis da IA e reconstruída uma moldura uniforme com **chanfro duplo dourado em ouro 24k**, fundo preto carbono nobre idêntico (`#141416`), proporção visual de escala (95%) e raio de curvatura milimétrico igual em todas as 9 artes.
-- **Harmonização e Alinhamento dos Cards de Serviço ([`servicos/index.tsx`](./app/(app)/(tabs)/servicos/index.tsx))**:
-  - Altura mínima padronizada (`84px`) com ícones perfeitamente centralizados (`58x58px`).
-  - Hierarquia de tipografia refinada: título do serviço em destaque, limite de 2 linhas na descrição sem quebras feias, tags douradas de combos alinhadas e preço em ouro 24k com seta compacta.
-- `tsc --noEmit` ✅ (0 erros)
+### ✅ Fase 14 — Novas Variações da Logo Barbearia Vieira (CONCLUÍDA)
+- **Ícone do App (Vieira Borda SF)**:
+  - Assets oficiais gerados em [`assets/logo-borda-sf.png`](./assets/logo-borda-sf.png), `icon.png`, `adaptive-icon.png`, `splash-icon.png` e `favicon.png` com moldura dourada e safe zone centralizada para Android.
+- **Tela de Login e Cadastro (Vieira Navalha)**:
+  - Asset oficial em [`assets/logo-navalha.png`](./assets/logo-navalha.png) com fundo transparente e proporção perfeita.
+- **Telas de Início e Perfil (Vieira Avatar)**:
+  - Asset oficial em [`assets/logo-avatar.png`](./assets/logo-avatar.png) aplicado no cabeçalho da Tela de Início ([`app/(app)/(tabs)/index.tsx`](./app/(app)/(tabs)/index.tsx)) e no card de perfil do usuário ([`app/(app)/(tabs)/perfil.tsx`](./app/(app)/(tabs)/perfil.tsx)).
+
+### ✅ Fase 15 — Catálogo Completo de 14 Serviços e Regras de Negócio (CONCLUÍDA)
+- **14 Serviços Oficiais Mapeados**: 4 Cortes (`Corte degradê`, `Corte navalhado`, `Corte Social`, `Social todo na máquina`), 2 Barbas (`Barba desenhada`, `Barba simples`), `Sobrancelha`, `Limpeza de pele` e os 6 `Combos 1 ao 6`.
+- **Combos com Tags Individuais (Ideia 1)**: Visualização clara dos serviços inclusos em cada combo (`[✓ Corte...] [✓ Barba...] [✓ Sobrancelha]`), sem cortes de texto.
+- **VIP Exclusivo em Combos**: Apenas os 6 combos recebem o badge VIP dourado (`👑 VIP`).
+- **Ocultação de Duração para Clientes**: Duração oculta das telas de clientes (`servicos`, `horario`, `confirmacao`, `lista-espera`), mantida internamente para o painel do barbeiro.
+- **Guia de Etapas Simplificado**: 3 passos (`1 - Serviço`, `2 - Data e Horário`, `3 - Confirmar`).
+- **Lista de Espera com Opção C**: Carrossel horizontal para seleção rápida + Card de Prévia detalhado com as tags e resumo completo.
+
+### ✅ Fase 16 — Padronização Perfeccionista dos 9 Ícones 3D e Layout (CONCLUÍDA)
+- **9 Ícones 3D Render Profissionais**:
+  - `corte-degrade.png`: Perfil moderno com fade na régua.
+  - `corte-navalhado.png`: Navalha clássica de barbeiro aberta em aço Damasco e ouro.
+  - `corte-social.png`: Tesoura e pente dourado cruzados.
+  - `social-maquina.png`: Máquina de corte profissional sem fio.
+  - `combo-vip.png`: Coroa imperial VIP em ouro 24k maciço com veludo e diamantes.
+  - `barba-desenhada.png`: Rosto com barba esculpida na régua (100% sem textos/logos).
+  - `barba-simples.png`: Rosto barbeado com pele lisa e fresca (clean shaven).
+  - `sobrancelha.png`: Pinça de precisão dourada e sobrancelha alinhada.
+  - `limpeza-pele.png`: Tratamento facial com sérum dourado e névoa refrescante.
+- **Moldura Padronizada**: Chanfro duplo em ouro 24k (`#CBA14A` / `#F0D17D`), squircle de 48px, escala 95% e fundo preto carbono `#141416` em todos os 9 ícones.
+- **Cards de Serviço**: Altura mínima travada em `84px`, descrições completas sem truncamento, preço e botão perfeitamente alinhados à direita.
+- **Lista de Espera**: Nome `"Social todo na máquina"` com quebra suave em duas linhas sem cortes.
+
+### 🔄 Fase 17 — Autenticação Social Google & Apple e Integração GitHub (EM ANDAMENTO)
+- **Novo Logo Oficial da Apple**: Asset em alta resolução com transparência em [`assets/logo-apple.png`](./assets/logo-apple.png).
+- **Repositório GitHub Conectado**: [`https://github.com/produtivoalex/barbearia-vieira`](https://github.com/produtivoalex/barbearia-vieira) (branch `main`).
+- **Status da Autenticação Social**: Código atualizado com `WebBrowser.openAuthSessionAsync` e `AuthSession.makeRedirectUri({ scheme: 'barbearia-vieira', path: 'auth/callback' })`.
+- **Ajuste Restante**: Realizar o alinhamento de credenciais e configuração de provedores diretamente no Supabase/OAuth credentials para que o login social complete a troca de tokens sem erros na aplicação.
 
 ---
 
-
-## 🎯 Instruções Imediatas (Como Executar / Testar Agora)
-
-### 1. Aplicar CRONs no Supabase
-Execute o script [`scripts/configurar_crons.sql`](./scripts/configurar_crons.sql) no SQL Editor do seu Supabase Dashboard substituindo `<SUA_SUPABASE_URL>` e `<SUA_SUPABASE_SERVICE_ROLE_KEY>`.
-
-### 2. Validação dos Fluxos Ponta a Ponta
-- **Fluxo do Cliente**:
-  1. Cadastro e Login (`/` e `/cadastro`).
-  2. Escolha de serviço e slot matinal (08:00–11:00) em `/(app)/(tabs)/servicos` e `agendamento/horario`.
-  3. Confirmação do agendamento (`agendamento/confirmacao`) e visualização na aba "Agenda" (`/(app)/(tabs)/agenda`).
-  4. Botão "Confirmar presença" na aba "Agenda".
-  5. Fila de espera em `/(app)/lista-espera`.
-- **Fluxo do Barbeiro**:
-  1. Login com conta `role = 'barbeiro'`.
-  2. Visualização do dia em `/(app)/(barbeiro)/hoje` com métricas e botão "Estou atrasado".
-  3. Visualização semanal em `/(app)/(barbeiro)/semana`.
-  4. Preparação da próxima semana em `/(app)/(barbeiro)/preparar-agenda` com toggle de dias e horário de abertura.
-  5. Histórico e métricas de clientes em `/(app)/(barbeiro)/clientes`.
-
-### 3. Development Build Gerado (Push Notifications Remotas Reais)
-- **EAS Build Link**: https://expo.dev/accounts/produtivoalexs-team/projects/barbearia-vieira/builds/cbf5b73c-eb73-46df-823c-efbc991c0e9a
-- **Perfil**: `development` (Android APK com `expo-dev-client`)
-- **Como usar no celular**:
-  1. Acesse o link acima no celular ou escaneie o QR Code fornecido pelo EAS ao término da compilação.
-  2. Baixe e instale o APK (`barbearia-vieira.apk`).
-  3. Com o servidor local ativo (`npx expo start`), abra o app instalado no celular para carregar o bundle com suporte nativo total a push notifications remotas em background.
+## 🎯 Instruções Imediatas para Próxima Sessão
+1. **Foco Principal**: Resolver a configuração e fluxo do Login Social (Google e Apple) ponta a ponta com o Supabase.
+2. **Ambiente**: O código já está 100% compilando (`tsc --noEmit` com 0 erros) e sincronizado com o GitHub na branch `main`.
 
 ---
 
@@ -142,11 +147,10 @@ Execute o script [`scripts/configurar_crons.sql`](./scripts/configurar_crons.sql
 | Decisão | Motivo |
 |---|---|
 | Rota raiz do app é `/(app)/(tabs)` e `/(app)/(barbeiro)/hoje` | Padrão do Expo Router com route groups. Não usar `/index` nos links. |
-| Login: email + senha + OAuth Google | Google OAuth condicional à presença das chaves no `.env` para evitar crashes no Android. |
-| Push Notifications com fallback no Expo Go | `usePushNotifications` detecta Expo Go e evita chamadas bloqueantes a tokens remotos. |
-| Calendário semanal matinal (Ter–Dom, 08h-11h) | Regra operacional da barbearia: slots de 1h de manhã, tarde por ordem de chegada. |
-| Monetização B2B | Barbeiro paga pelo serviço da plataforma; cliente final não paga assinatura. |
-| Agendamento CRON via pg_cron + pg_net | Automatiza abertura de agendas e envio contínuo de lembretes direto no PostgreSQL. |
-| Development Build com expo-dev-client | Permite testar notificações push nativas e segundo plano reais no aparelho físico. |
+| Ícones 3D padronizados em 256x256 com chanfro dourado | Garante visual premium e leitura imediata de todos os serviços da barbearia. |
+| Combos com tags douradas dos itens inclusos | Elimina cortes de texto e deixa explícito o que cada combo oferece. |
+| Ocultação de duração para clientes | Evita confusão enquanto a barbearia opera com horários fixos. |
+| Lista de espera em Opção C | Carrossel horizontal compacto + Card de Prévia destacado com detalhes. |
+| Repositório oficial no GitHub `produtivoalex/barbearia-vieira` | Permite builds automáticas pelo EAS/GitHub e versionamento completo. |
 
 
