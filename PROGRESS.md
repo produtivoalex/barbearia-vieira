@@ -141,7 +141,7 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
 - **Trigger e Perfis no Banco de Dados (`supabase/migrations/20260822_fase17_oauth_trigger.sql` & `scripts/schema.sql`)**:
   - Criação/atualização automática de perfis com fallback de nome para metadados sociais (`full_name`, `name`, `nome_completo` ou prefixo do e-mail).
 - **Repositório GitHub Conectado**: [`https://github.com/produtivoalex/barbearia-vieira`](https://github.com/produtivoalex/barbearia-vieira) (branch `main`).
-- **Google Sign-In Nativo**: `@react-native-google-signin/google-signin` integrado com `EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB` configurado no `.env` e suporte a `signInWithIdToken` em builds de desenvolvimento/produção com fallback web no Expo Go.
+- **Google Sign-In Nativo**: `@react-native-google-signin/google-signin` integrado com um único Web Client ID oficial (`298975067668-h0qn3g0p009vjd4mdtlpkqo7t5e03e68.apps.googleusercontent.com`) e suporte a `signInWithIdToken` em builds de desenvolvimento/produção com fallback web no Expo Go.
 - **Botão Apple UX**: Notificação amigável ("Em Breve no iOS 🍏") orientando o usuário a prosseguir com Google ou E-mail enquanto a conta Apple Developer não é integrada.
 - `tsc --noEmit` ✅ (0 erros).
 
@@ -152,6 +152,13 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
    - Em **Authentication > URL Configuration > Redirect URLs**, adicionar `barbearia-vieira://auth/callback` e `barbearia-vieira://*`.
    - Em **Authentication > Providers**, preencher as credenciais dos provedores Google e/ou Apple.
 2. **Ambiente**: O código está 100% pronto, tipado e com suporte a build de desenvolvimento.
+
+### Diagnóstico Google Sign-In Android — 22/08/2026
+- O EAS confirmou que o perfil `development` usa a aplicação `com.barbearia.vieira` e a keystore `YLdZHABSVt (Default)`.
+- SHA-1 da keystore do Development Build: `48:29:BF:22:1A:93:BF:54:F9:76:F9:38:9B:23:C0:C0:3D:02:D9:78`.
+- Não existe `google-services.json` no repositório. Como o app usa `signInWithIdToken` do Supabase, não é necessário adicionar Firebase só para autenticação; o plugin nativo já está presente e o `webClientId` é configurado em `lib/socialAuth.ts`.
+- Para eliminar `DEVELOPER_ERROR`, o OAuth Android do mesmo projeto Google do Web Client ID deve ter pacote `com.barbearia.vieira` + a SHA-1 acima. O provedor Google também precisa estar habilitado no Supabase com o mesmo Web Client ID/secret.
+- Depois dessa configuração externa, o único comando de rebuild é: `eas build --profile development --platform android`.
 
 ---
 
@@ -166,6 +173,4 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
 | Lista de espera em Opção C | Carrossel horizontal compacto + Card de Prévia destacado com detalhes. |
 | Repositório oficial no GitHub `produtivoalex/barbearia-vieira` | Permite builds automáticas pelo EAS/GitHub e versionamento completo. |
 | Módulo `socialAuth.ts` + rota `app/auth/callback.tsx` | Garante tratamento de erros resiliente e sem rotas perdidas no fluxo OAuth. |
-
-
 

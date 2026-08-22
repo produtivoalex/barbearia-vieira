@@ -2,31 +2,19 @@ import * as AuthSession from 'expo-auth-session';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-import { Platform } from 'react-native';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { supabase } from './supabase';
 import type { Session } from '@supabase/supabase-js';
 
+// Client ID Web oficial usado pelo Supabase Auth e pelo idToken nativo.
+// Mantido em uma única fonte para evitar divergência entre ambientes.
+const GOOGLE_WEB_CLIENT_ID =
+  '298975067668-h0qn3g0p009vjd4mdtlpkqo7t5e03e68.apps.googleusercontent.com';
+
 // Necessário para que o WebBrowser processe o retorno e feche a janela corretamente
 WebBrowser.maybeCompleteAuthSession();
 
-const webClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB || '';
-const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS || '';
 
-let googleConfigured = false;
-function configurarGoogleNativo() {
-  if (googleConfigured) return;
-  try {
-    GoogleSignin.configure({
-      webClientId: webClientId || undefined,
-      iosClientId: iosClientId || undefined,
-      scopes: ['profile', 'email'],
-    });
-    googleConfigured = true;
-  } catch (err) {
-    console.warn('[SocialAuth] GoogleSignin.configure aviso:', err);
-  }
-}
 
 /**
  * Retorna a URI de redirecionamento oficial configurada para o app:
@@ -126,11 +114,10 @@ export async function iniciarLoginSocial(provider: 'google' | 'apple'): Promise<
 
   // 1. FLUXO 100% NATIVO PARA GOOGLE (Em Development Build / APK nativo)
   if (provider === 'google' && !isExpoGo) {
-    const currentWebClientId =
-      process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB ||
-      '298975067668-h0qn3g0p009vjd4mdtlpkqo7t5e03e68.apps.googleusercontent.com';
+    const currentWebClientId = GOOGLE_WEB_CLIENT_ID;
 
     try {
+      // Configure antes de cada tentativa para garantir webClientId atualizado
       GoogleSignin.configure({
         webClientId: currentWebClientId,
         offlineAccess: false,
@@ -138,18 +125,24 @@ export async function iniciarLoginSocial(provider: 'google' | 'apple'): Promise<
 
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
 
-      // Limpa qualquer sessão travada anterior do Google Play Services
-      try {
-        await GoogleSignin.signOut();
-      } catch (_) {}
+      // NOTA: signOut() removido — causava corrompimento de estado no Google Play Services
+      // e era desnecessário para o fluxo de signIn normal.
 
       const response = await GoogleSignin.signIn();
 
-      // Suporta response.data.idToken (v13+) ou response.idToken
-      const idToken = (response as any)?.data?.idToken || (response as any)?.idToken;
+      // v14+ API: signIn() retorna { type: 'success' | 'cancelled' } em vez de lançar
+      // exceção ao cancelar. Verificar o type ANTES de tentar extrair o idToken.
+      if (response.type === 'cancelled') {
+        return null;
+      }
+
+      // v14+: idToken fica em response.data.idToken
+      const idToken = response.data?.idToken;
 
       if (!idToken) {
-        throw new Error('O Google Play Services não retornou o idToken.');
+        throw new Error(
+          'Google Sign-In não retornou um idToken válido.\n\nVerifique se as credenciais OAuth estão configuradas corretamente no Google Cloud Console.'
+        );
       }
 
       const { data, error } = await supabase.auth.signInWithIdToken({
@@ -157,36 +150,28 @@ export async function iniciarLoginSocial(provider: 'google' | 'apple'): Promise<
         token: idToken,
       });
 
-      if (error) {
-        throw error;
-      }
-
+      if (error) throw error;
       return data.session;
+
     } catch (nativeError: any) {
-      if (nativeError?.code === statusCodes.SIGN_IN_CANCELLED) {
-        // Usuário fechou o menu do Google Play Services
-        return null;
-      }
-      if (nativeError?.code === statusCodes.IN_PROGRESS) {
-        return null;
-      }
+      // statusCodes para erros que ainda são lançados como exceção no v16
+      if (nativeError?.code === statusCodes.SIGN_IN_CANCELLED) return null;
+      if (nativeError?.code === statusCodes.IN_PROGRESS) return null;
       if (nativeError?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         throw new Error('Google Play Services não disponível ou desatualizado no seu aparelho.');
       }
 
-      // Detalha o erro 10 com as 3 causas exatas do Google Play Services
-      if (
-        nativeError?.code === '10' ||
-        nativeError?.code === 10 ||
-        nativeError?.message?.includes('10') ||
-        nativeError?.message?.includes('DEVELOPER_ERROR')
-      ) {
+      // DEVELOPER_ERROR (código 10): configuração incorreta no Google Cloud Console
+      if (nativeError?.code === 10 || nativeError?.message?.includes('DEVELOPER_ERROR')) {
         throw new Error(
-          'Erro 10 (DEVELOPER_ERROR) do Google:\n\n1. Verifique se o pacote na credencial Android é exatamente: com.barbearia.vieira\n2. Verifique se a credencial Android foi criada no MESMO projeto do Web Client ID (projeto: 298975067668)\n3. Confirme se o SHA-1 cadastrado é o da Keystore do EAS.'
+          'Erro de configuração Google (DEVELOPER_ERROR):\n\n1. Pacote Android: com.barbearia.vieira\n2. Credencial Android deve estar no mesmo projeto do Web Client ID\n3. SHA-1 deve ser o da Keystore do EAS:\n   eas credentials --platform android'
         );
       }
 
-      throw nativeError;
+      // Lança o erro original com code + message para diagnóstico
+      throw new Error(
+        `[Google Sign-In] code=${String(nativeError?.code)} | ${nativeError?.message || String(nativeError)}`
+      );
     }
   }
 
