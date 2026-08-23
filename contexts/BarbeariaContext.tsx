@@ -38,7 +38,8 @@ export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
         .eq('ativo', true)
         .limit(1)
         .maybeSingle();
-      const estabelecimento = (membro as { barbearia?: BarbeariaPublica } | null)?.barbearia;
+      const relacao = (membro as { barbearia?: BarbeariaPublica | BarbeariaPublica[] } | null)?.barbearia;
+      const estabelecimento = Array.isArray(relacao) ? relacao[0] : relacao;
       if (estabelecimento) {
         setBarbearia(estabelecimento);
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(estabelecimento));

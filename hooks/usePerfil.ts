@@ -31,6 +31,18 @@ export function usePerfil() {
         .eq('id', session.user.id)
         .single();
 
+      // O papel operacional tambem e confirmado pelo vinculo tenant-aware.
+      // Isso evita enviar o barbeiro para a area de cliente quando a leitura
+      // do perfil sofre uma falha transitoria de sessao/RLS.
+      const { data: vinculos } = await supabase
+        .from('barbearia_membros')
+        .select('papel')
+        .eq('usuario_id', session.user.id)
+        .eq('ativo', true);
+      const temVinculoOperacional = (vinculos ?? []).some((vinculo) =>
+        ['proprietario', 'gestor', 'barbeiro'].includes(vinculo.papel),
+      );
+
       const emailUsuario = (session.user.email || '').toLowerCase().trim();
       const nomeMeta =
         session.user.user_metadata?.full_name ||
@@ -43,6 +55,7 @@ export function usePerfil() {
         setPerfil({
           ...data,
           nome_completo: data.nome_completo || nomeMeta,
+          role: data.role === 'barbeiro' || temVinculoOperacional ? 'barbeiro' : 'cliente',
         } as Perfil);
 
         // Verifica se o cliente está na lista negra (bloqueios_clientes)
@@ -60,7 +73,7 @@ export function usePerfil() {
           id: session.user.id,
           nome_completo: nomeMeta,
           telefone: null,
-          role: 'cliente',
+          role: temVinculoOperacional ? 'barbeiro' : 'cliente',
         });
         setIsBloqueado(false);
       }

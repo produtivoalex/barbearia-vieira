@@ -6,6 +6,7 @@ import { ArrowLeft, MapPin, MessageCircle, Phone, Scissors } from 'lucide-react-
 import { buscarDetalheBarbearia, type BarbeariaPublica } from '@/hooks/useBarbearias';
 import { Colors, FontFamily, FontSize, Radii, Spacing } from '@/theme';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
+import { usePerfil } from '@/hooks/usePerfil';
 
 export default function DetalheBarbearia() {
   const router = useRouter();
@@ -13,8 +14,16 @@ export default function DetalheBarbearia() {
   const [barbearia, setBarbearia] = useState<BarbeariaPublica | null>(null);
   const [carregando, setCarregando] = useState(true);
   const { barbearia: barbeariaSelecionada, selecionarBarbearia } = useBarbearia();
+  const { perfil } = usePerfil();
 
-  useEffect(() => { if (slug) buscarDetalheBarbearia(slug).then(({ barbearia: resultado }) => { setBarbearia(resultado); setCarregando(false); }); }, [slug]);
+  useEffect(() => {
+    if (!slug) return;
+    setCarregando(true);
+    buscarDetalheBarbearia(slug, perfil?.role === 'barbeiro').then(({ barbearia: resultado }) => {
+      setBarbearia(resultado);
+      setCarregando(false);
+    });
+  }, [slug, perfil?.role]);
 
   if (carregando) return <View style={styles.loading}><ActivityIndicator color={Colors.ouro} /></View>;
   if (!barbearia) return <View style={styles.loading}><Text style={styles.vazio}>Barbearia não encontrada.</Text></View>;

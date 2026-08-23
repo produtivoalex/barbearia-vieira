@@ -4,12 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MapPin, Search, ChevronRight } from 'lucide-react-native';
 import { useBarbearias, type BarbeariaPublica } from '@/hooks/useBarbearias';
+import { usePerfil } from '@/hooks/usePerfil';
 import { Colors, FontFamily, FontSize, Radii, Spacing } from '@/theme';
 
 export default function ListaBarbearias() {
   const router = useRouter();
   const [busca, setBusca] = useState('');
-  const { barbearias, carregando, erro, recarregar } = useBarbearias({ busca });
+  const { perfil } = usePerfil();
+  const { barbearias, carregando, erro, recarregar } = useBarbearias({ busca, somenteVinculos: perfil?.role === 'barbeiro' });
 
   function renderItem({ item }: { item: BarbeariaPublica }) {
     return <TouchableOpacity style={styles.card} onPress={() => router.push({ pathname: '/(app)/barbearias/[slug]', params: { slug: item.slug } })}>
