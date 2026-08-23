@@ -9,42 +9,29 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, User, Clock, Scissors, Info } from 'lucide-react-native';
+import { ChevronLeft, User, Clock, Scissors, Info, Calendar } from 'lucide-react-native';
 import { Botao, IndicadorEtapas, IlustracaoServico } from '@/components';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { useAgendamento } from '@/hooks/useAgendamento';
+import { useAgendaSemanal } from '@/hooks/useAgendaSemanal';
+import { supabase } from '@/lib/supabase';
 
-/**
- * Slots fixos da manhã — regra operacional da Barbearia Vieira (v1).
- * A tarde é por ordem de chegada e NÃO usa o sistema de agendamento.
- */
-const SLOTS_MANHA: string[] = ['08:00', '09:00', '10:00', '11:00'];
-
+const SLOTS_PADRAO: string[] = ['08:00', '09:00', '10:00', '11:00'];
 const DIAS_CURTOS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
-/** Retorna os dias Ter–Dom da semana atual (ou da próxima, se já for segunda) */
-function diasDaSemanaAtual(): Date[] {
-  const agora = new Date();
-  const diaSemana = agora.getDay(); // 0=Dom, 1=Seg, ..., 6=Sáb
+function diasDaProximaSemana(): Date[] {
+  const hoje = new Date();
+  const diaSemana = hoje.getDay();
+  const distanciaParaSegunda = diaSemana === 0 ? 1 : 8 - diaSemana;
+  const segunda = new Date(hoje);
+  segunda.setHours(0, 0, 0, 0);
+  segunda.setDate(hoje.getDate() + distanciaParaSegunda);
 
-  const DIAS_TRABALHO = [2, 3, 4, 5, 6, 0]; // Ter→Dom (índices JS)
-
-  let diffParaTerca: number;
-  if (diaSemana === 0) {
-    diffParaTerca = 2;
-  } else if (diaSemana === 1) {
-    diffParaTerca = 1;
-  } else {
-    diffParaTerca = 2 - diaSemana;
-  }
-
-  const terca = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + diffParaTerca);
-
-  return DIAS_TRABALHO.map((_, i) => {
-    const d = new Date(terca);
-    d.setDate(terca.getDate() + i);
-    return d;
+  return Array.from({ length: 6 }, (_, index) => {
+    const data = new Date(segunda);
+    data.setDate(segunda.getDate() + index + 1); // Terça a Domingo
+    return data;
   });
 }
 
@@ -69,6 +56,7 @@ export default function TelaHorario() {
   }>();
 
   const { barbeiros, buscarHorariosOcupados } = useAgendamento();
+  const { agenda, carregando: carregandoAgenda } = useAgendaSemanal();
   const [barbeiroSelecionadoId, setBarbeiroSelecionadoId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -77,36 +65,83 @@ export default function TelaHorario() {
     }
   }, [barbeiros, barbeiroSelecionadoId]);
 
-  const diasSemana = useMemo(() => diasDaSemanaAtual(), []);
   const hoje = useMemo(() => new Date(), []);
+
+  // Determina os dias exibidos com base na agenda do banco
+  const diasSemana = useMemo(() => {
+    if (agenda?.dias && agenda.dias.length > 0) {
+      const ordenados = [...agenda.dias].sort((a, b) => a.data.localeCompare(b.data));
+      return ordenados.map((d) => {
+        const [ano, mes, diaNum] = d.data.split('-').map(Number);
+        const dataObj = new Date(ano, mes - 1, diaNum, 12, 0, 0);
+        return {
+          data: dataObj,
+          isoDate: d.data,
+          ativo: d.ativo,
+        };
+      });
+    }
+
+    // Fallback: Próximos 6 dias de trabalho
+    return diasDaProximaSemana().map((d) => ({
+      data: d,
+      isoDate: toIsoDate(d),
+      ativo: true,
+    }));
+  }, [agenda]);
 
   const [slotSelecionado, setSlotSelecionado] = useState<SlotSelecionado | null>(null);
   const [ocupadosPorDia, setOcupadosPorDia] = useState<Record<string, string[]>>({});
+  const [slotsPorDia, setSlotsPorDia] = useState<Record<string, string[]>>({});
   const [carregando, setCarregando] = useState(true);
 
-  const carregarOcupacao = useCallback(async () => {
+  const carregarOcupacaoESlots = useCallback(async () => {
     if (!barbeiroSelecionadoId) return;
     setCarregando(true);
 
-    const resultados = await Promise.all(
-      diasSemana.map(async (dia) => {
-        const isoDate = toIsoDate(dia);
-        const ocupados = await buscarHorariosOcupados(isoDate, barbeiroSelecionadoId);
-        return { isoDate, ocupados };
-      })
-    );
+    try {
+      // 1. Busca slots configurados no banco de dados
+      const { data: slotsBanco } = await supabase
+        .from('slots_agenda')
+        .select('data_hora, ativo')
+        .eq('ativo', true)
+        .order('data_hora', { ascending: true });
 
-    const mapa: Record<string, string[]> = {};
-    for (const r of resultados) {
-      mapa[r.isoDate] = r.ocupados;
+      const mapaSlots: Record<string, string[]> = {};
+      if (slotsBanco && slotsBanco.length > 0) {
+        for (const s of slotsBanco) {
+          const iso = s.data_hora.slice(0, 10);
+          const d = new Date(s.data_hora);
+          const hora = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+          if (!mapaSlots[iso]) mapaSlots[iso] = [];
+          if (!mapaSlots[iso].includes(hora)) mapaSlots[iso].push(hora);
+        }
+      }
+      setSlotsPorDia(mapaSlots);
+
+      // 2. Busca agendamentos já ocupados para cada dia
+      const resultados = await Promise.all(
+        diasSemana.map(async (item) => {
+          const ocupados = await buscarHorariosOcupados(item.isoDate, barbeiroSelecionadoId);
+          return { isoDate: item.isoDate, ocupados };
+        })
+      );
+
+      const mapaOcupados: Record<string, string[]> = {};
+      for (const r of resultados) {
+        mapaOcupados[r.isoDate] = r.ocupados;
+      }
+      setOcupadosPorDia(mapaOcupados);
+    } catch (e) {
+      console.log('Erro ao carregar ocupação:', e);
+    } finally {
+      setCarregando(false);
     }
-    setOcupadosPorDia(mapa);
-    setCarregando(false);
   }, [buscarHorariosOcupados, diasSemana, barbeiroSelecionadoId]);
 
   useEffect(() => {
-    carregarOcupacao();
-  }, [carregarOcupacao]);
+    carregarOcupacaoESlots();
+  }, [carregarOcupacaoESlots]);
 
   function getEstadoSlot(dia: Date, hora: string): 'disponivel' | 'indisponivel' | 'selecionado' {
     const isoDate = toIsoDate(dia);
@@ -118,7 +153,8 @@ export default function TelaHorario() {
     if (isAtivo) return 'selecionado';
 
     const inicioDia = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate(), 0, 0, 0);
-    if (inicioDia < new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0)) {
+    const hojeZero = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0);
+    if (inicioDia < hojeZero) {
       return 'indisponivel';
     }
 
@@ -166,6 +202,13 @@ export default function TelaHorario() {
   const precoFormatado = params.servicoPreco
     ? Number(params.servicoPreco).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
     : '';
+
+  const labelPeriodo = useMemo(() => {
+    if (diasSemana.length === 0) return 'Horários da Semana';
+    const prim = diasSemana[0].data;
+    const ult = diasSemana[diasSemana.length - 1].data;
+    return `${prim.getDate()} ${MESES_CURTOS[prim.getMonth()]} – ${ult.getDate()} ${MESES_CURTOS[ult.getMonth()]}`;
+  }, [diasSemana]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -227,10 +270,10 @@ export default function TelaHorario() {
 
         {/* Cabeçalho da Semana */}
         <View style={styles.semanaHeader}>
-          <Text style={styles.semanaLabel}>
-            Semana · {diasSemana[0].getDate()} {MESES_CURTOS[diasSemana[0].getMonth()]} –{' '}
-            {diasSemana[diasSemana.length - 1].getDate()} {MESES_CURTOS[diasSemana[diasSemana.length - 1].getMonth()]}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Calendar size={16} color={Colors.ouro} />
+            <Text style={styles.semanaLabel}>Agenda · {labelPeriodo}</Text>
+          </View>
           {carregando && <ActivityIndicator size="small" color={Colors.vermelho} />}
         </View>
 
@@ -243,26 +286,41 @@ export default function TelaHorario() {
         </View>
 
         {/* Grade por dia */}
-        {diasSemana.map((dia) => {
-          const isoDate = toIsoDate(dia);
+        {diasSemana.map((diaItem) => {
+          const dia = diaItem.data;
+          const isoDate = diaItem.isoDate;
+          const isDiaAberto = diaItem.ativo;
+          const slotsDoDia = slotsPorDia[isoDate] && slotsPorDia[isoDate].length > 0
+            ? slotsPorDia[isoDate]
+            : SLOTS_PADRAO;
+
           const isPassado = isoDate < toIsoDate(hoje);
           const nomesDia = DIAS_CURTOS[dia.getDay()];
           const totalOcupados = (ocupadosPorDia[isoDate] ?? []).length;
-          const totalLivres = SLOTS_MANHA.length - totalOcupados;
+          const totalLivres = Math.max(0, slotsDoDia.length - totalOcupados);
 
           return (
-            <View key={isoDate} style={[styles.diaCard, isPassado && styles.diaCardPassado]}>
+            <View key={isoDate} style={[styles.diaCard, (!isDiaAberto || isPassado) && styles.diaCardPassado]}>
               {/* Cabeçalho do dia */}
               <View style={styles.diaCabecalho}>
                 <View>
-                  <Text style={[styles.diaNome, isPassado && styles.textoApagado]}>
+                  <Text style={[styles.diaNome, (!isDiaAberto || isPassado) && styles.textoApagado]}>
                     {nomesDia}
                   </Text>
-                  <Text style={[styles.diaData, isPassado && styles.textoApagado]}>
+                  <Text style={[styles.diaData, (!isDiaAberto || isPassado) && styles.textoApagado]}>
                     {dia.getDate()} de {MESES_CURTOS[dia.getMonth()]}
                   </Text>
                 </View>
-                {!isPassado && (
+
+                {!isDiaAberto ? (
+                  <View style={[styles.vagasBadge, { backgroundColor: '#2A2A2E' }]}>
+                    <Text style={[styles.vagasBadgeTexto, { color: '#8E8E93' }]}>Fechado</Text>
+                  </View>
+                ) : isPassado ? (
+                  <View style={[styles.vagasBadge, { backgroundColor: '#2A2A2E' }]}>
+                    <Text style={[styles.vagasBadgeTexto, { color: '#8E8E93' }]}>Encerrado</Text>
+                  </View>
+                ) : (
                   <View
                     style={[
                       styles.vagasBadge,
@@ -282,9 +340,9 @@ export default function TelaHorario() {
               </View>
 
               {/* Slots da manhã */}
-              {!isPassado && (
+              {isDiaAberto && !isPassado && (
                 <View style={styles.slotsRow}>
-                  {SLOTS_MANHA.map((hora) => {
+                  {slotsDoDia.map((hora) => {
                     const estado = getEstadoSlot(dia, hora);
                     const isSelected = estado === 'selecionado';
                     const isIndisponivel = estado === 'indisponivel';
@@ -358,36 +416,37 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.telaH,
     paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borda,
   },
   btnVoltar: {
     width: 40,
     height: 40,
-    borderRadius: Radii.full,
-    backgroundColor: Colors.superficie,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.borda,
+    borderRadius: Radii.full,
   },
   titulo: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.displayMd,
+    fontSize: FontSize.headingSm,
     color: Colors.textoPrimario,
   },
   scroll: {
-    padding: Spacing.telaH,
+    paddingHorizontal: Spacing.telaH,
+    paddingTop: Spacing.md,
+    paddingBottom: 120,
     gap: Spacing.md,
-    paddingBottom: 110,
   },
   bannerServico: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.superficie,
-    borderRadius: Radii.md,
+    borderRadius: Radii.lg,
     padding: Spacing.md,
-    gap: Spacing.sm,
+    gap: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.borda,
+    ...Shadows.card,
   },
   bannerServicoInfo: {
     flex: 1,
@@ -398,42 +457,39 @@ const styles = StyleSheet.create({
     fontSize: FontSize.bodyLg,
     color: Colors.textoPrimario,
   },
-  bannerServicoMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  bannerServicoDuracao: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.labelXs,
-    color: Colors.textoSecundario,
-  },
   bannerServicoPreco: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyLg,
     color: Colors.ouro,
   },
-  barbeirosSecao: { gap: Spacing.xs },
-  secaoTitulo: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
+  barbeirosSecao: {
+    gap: Spacing.xs,
   },
-  barbeirosLista: { gap: Spacing.xs },
+  secaoTitulo: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.labelXs,
+    color: Colors.textoSecundario,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  barbeirosLista: {
+    gap: Spacing.sm,
+    paddingVertical: Spacing.xs,
+  },
   chipBarbeiro: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
     borderRadius: Radii.full,
     backgroundColor: Colors.superficie,
     borderWidth: 1,
     borderColor: Colors.borda,
   },
   chipBarbeiroAtivo: {
-    backgroundColor: Colors.vermelho,
-    borderColor: Colors.vermelhoClaro,
+    backgroundColor: Colors.ouro,
+    borderColor: Colors.ouro,
   },
   chipBarbeiroTexto: {
     fontFamily: FontFamily.medium,
@@ -441,8 +497,8 @@ const styles = StyleSheet.create({
     color: Colors.textoSecundario,
   },
   chipBarbeiroTextoAtivo: {
+    color: '#0E0E0E',
     fontFamily: FontFamily.bold,
-    color: Colors.branco,
   },
   semanaHeader: {
     flexDirection: 'row',
@@ -451,47 +507,48 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
   },
   semanaLabel: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
+    fontFamily: FontFamily.semiBold,
+    fontSize: FontSize.bodySm,
     color: Colors.ouro,
   },
   avisoCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.md,
-    padding: Spacing.sm,
     gap: Spacing.sm,
+    backgroundColor: 'rgba(203, 161, 74, 0.1)',
+    borderRadius: Radii.md,
+    padding: Spacing.md,
     borderWidth: 1,
-    borderColor: 'rgba(203, 161, 74, 0.25)',
+    borderColor: 'rgba(203, 161, 74, 0.3)',
   },
   avisoTexto: {
     flex: 1,
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: Colors.textoSecundario,
+    color: Colors.ouro,
     lineHeight: 16,
   },
   diaCard: {
     backgroundColor: Colors.superficie,
     borderRadius: Radii.lg,
     padding: Spacing.md,
-    gap: Spacing.sm,
     borderWidth: 1,
     borderColor: Colors.borda,
+    gap: Spacing.sm,
     ...Shadows.card,
   },
   diaCardPassado: {
     opacity: 0.45,
+    backgroundColor: '#121214',
   },
   diaCabecalho: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   diaNome: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyLg,
+    fontSize: FontSize.bodyMd,
     color: Colors.textoPrimario,
   },
   diaData: {
@@ -508,73 +565,73 @@ const styles = StyleSheet.create({
     borderRadius: Radii.full,
   },
   vagasBadgeTexto: {
-    fontFamily: FontFamily.bold,
+    fontFamily: FontFamily.semiBold,
     fontSize: FontSize.labelXs,
   },
   slotsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: Spacing.xs,
   },
   slot: {
     flex: 1,
-    minWidth: '22%',
-    backgroundColor: Colors.superficie2,
-    borderRadius: Radii.sm,
-    paddingVertical: Spacing.sm,
     alignItems: 'center',
-    gap: 2,
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: Radii.md,
+    backgroundColor: Colors.fundo,
     borderWidth: 1,
     borderColor: Colors.borda,
+    gap: 2,
   },
   slotSelecionado: {
-    backgroundColor: Colors.vermelho,
-    borderColor: Colors.vermelhoClaro,
+    backgroundColor: Colors.ouro,
+    borderColor: Colors.ouro,
   },
   slotIndisponivel: {
-    backgroundColor: '#161616',
-    borderColor: '#222222',
+    backgroundColor: '#161618',
+    borderColor: '#262629',
+    opacity: 0.6,
   },
   slotHora: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
+    fontSize: FontSize.bodySm,
     color: Colors.textoPrimario,
   },
   slotHoraSelecionado: {
-    color: Colors.branco,
+    color: '#0E0E0E',
   },
   slotHoraIndisponivel: {
     color: Colors.textoDesabilitado,
   },
   slotStatus: {
     fontFamily: FontFamily.regular,
-    fontSize: 9,
+    fontSize: 10,
     color: Colors.verde,
   },
   slotStatusSelecionado: {
-    color: Colors.branco,
+    color: '#0E0E0E',
     fontFamily: FontFamily.bold,
   },
   slotStatusIndisponivel: {
-    color: Colors.textoDesabilitado,
+    color: Colors.erro,
   },
   rodapeFixo: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: Colors.superficie,
+    backgroundColor: '#161618',
     borderTopWidth: 1,
     borderTopColor: Colors.borda,
     paddingHorizontal: Spacing.telaH,
-    paddingVertical: Spacing.sm,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.lg,
+    gap: Spacing.xs,
+  },
+  resumoHorario: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Spacing.md,
-  },
-  resumoHorario: {
-    flex: 1,
   },
   resumoLabel: {
     fontFamily: FontFamily.regular,
@@ -582,12 +639,11 @@ const styles = StyleSheet.create({
     color: Colors.textoSecundario,
   },
   resumoValor: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoPrimario,
-    marginTop: 2,
+    fontFamily: FontFamily.semiBold,
+    fontSize: FontSize.labelXs,
+    color: Colors.ouro,
   },
   btnContinuar: {
-    minWidth: 130,
+    backgroundColor: Colors.vermelho,
   },
 });

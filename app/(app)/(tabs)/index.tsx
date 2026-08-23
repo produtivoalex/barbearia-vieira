@@ -1,14 +1,15 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Bell, BellRing, CalendarCheck, ChevronRight, Clock, ListPlus, Scissors, Calendar } from 'lucide-react-native';
+import { Bell, BellRing, CalendarCheck, ChevronRight, Clock, ListPlus, Scissors, Calendar, AlertCircle } from 'lucide-react-native';
 import { Card, Botao, LogoBarbearia } from '@/components';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { usePerfil } from '@/hooks/usePerfil';
 import { useMeusAgendamentos } from '@/hooks/useMeusAgendamentos';
 import { useAgendaSemanal, useNotificacoes } from '@/hooks/useAgendaSemanal';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { supabase } from '@/lib/supabase';
 
 export default function TelaHome() {
   const router = useRouter();
@@ -17,6 +18,25 @@ export default function TelaHome() {
   const { agenda, carregando: carregandoAgenda, ativarLembrete } = useAgendaSemanal();
   const { naoLidas } = useNotificacoes();
   const { temPermissao, solicitarPermissao } = usePushNotifications();
+  const [tardeFechadaHoje, setTardeFechadaHoje] = useState(false);
+
+  useEffect(() => {
+    async function checarAvisoTarde() {
+      const hojeStr = new Date().toISOString().slice(0, 10);
+      const { data } = await supabase
+        .from('avisos_funcionamento')
+        .select('tarde_fechada')
+        .eq('data', hojeStr)
+        .eq('tarde_fechada', true)
+        .maybeSingle();
+
+      if (data?.tarde_fechada) {
+        setTardeFechadaHoje(true);
+      }
+    }
+
+    checarAvisoTarde();
+  }, []);
 
   const primeiroNome = perfil?.nome_completo?.split(' ')[0] || 'Bem-vindo';
   const proximo = proximos[0];
@@ -88,6 +108,19 @@ export default function TelaHome() {
             >
               <Text style={styles.bannerNotifBotaoTexto}>Ativar</Text>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Banner de Aviso: Tarde Fechada (Ordem de Chegada) */}
+        {tardeFechadaHoje && (
+          <View style={styles.bannerTardeFechada}>
+            <AlertCircle size={20} color={Colors.vermelho} />
+            <View style={styles.bannerTardeInfo}>
+              <Text style={styles.bannerTardeTitulo}>Aviso: Tarde Fechada Hoje</Text>
+              <Text style={styles.bannerTardeTexto}>
+                Informamos que a Barbearia Vieira estará fechada hoje na parte da tarde. Agradecemos a compreensão de todos!
+              </Text>
+            </View>
           </View>
         )}
 
@@ -391,5 +424,31 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontSize: FontSize.labelXs,
     color: '#0E0E0E',
+  },
+  bannerTardeFechada: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#1F1414',
+    borderRadius: Radii.md,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(229, 57, 53, 0.4)',
+    gap: Spacing.sm,
+    ...Shadows.card,
+  },
+  bannerTardeInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  bannerTardeTitulo: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodySm,
+    color: '#F87171',
+  },
+  bannerTardeTexto: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.labelXs,
+    color: '#E0A0A0',
+    lineHeight: 16,
   },
 });

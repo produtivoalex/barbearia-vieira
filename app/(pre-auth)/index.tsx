@@ -19,7 +19,7 @@ import Svg, { Path } from 'react-native-svg';
 import { Botao, LogoBarbearia } from '@/components';
 import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
 import { supabase } from '@/lib/supabase';
-import { iniciarLoginSocial } from '@/lib/socialAuth';
+import { iniciarLoginGoogle } from '@/lib/socialAuth';
 
 /** Ícone vetorial oficial multicolorido da Google */
 function IconeGoogle({ tamanho = 20 }: { tamanho?: number }) {
@@ -68,7 +68,7 @@ function BotaoGoogleAuth({ onCarregando }: SocialAuthProps) {
     try {
       setCarregando(true);
       onCarregando(true);
-      const session = await iniciarLoginSocial('google');
+      const session = await iniciarLoginGoogle();
       if (session) {
         router.replace('/(app)/(tabs)');
       }

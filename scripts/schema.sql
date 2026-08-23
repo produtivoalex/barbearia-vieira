@@ -4,6 +4,7 @@
 create table if not exists public.perfis (
   id uuid references auth.users(id) on delete cascade primary key,
   nome_completo text,
+  email text,
   telefone text,
   role text check (role in ('cliente', 'barbeiro')) default 'cliente',
   criado_em timestamp with time zone default timezone('utc'::text, now()) not null
@@ -13,6 +14,9 @@ create table if not exists public.perfis (
 alter table public.perfis enable row level security;
 create policy "Perfis visíveis para o próprio usuário" on public.perfis for select using ( auth.uid() = id );
 create policy "Barbeiros visíveis para todos" on public.perfis for select using ( role = 'barbeiro' );
+create policy "Barbeiros podem visualizar perfis de clientes" on public.perfis for select using (
+  exists (select 1 from public.perfis b where b.id = auth.uid() and b.role = 'barbeiro')
+);
 create policy "Usuário pode atualizar seu próprio perfil" on public.perfis for update using ( auth.uid() = id );
 create policy "Usuário pode inserir seu próprio perfil" on public.perfis for insert with check ( auth.uid() = id );
 
@@ -20,7 +24,7 @@ create policy "Usuário pode inserir seu próprio perfil" on public.perfis for i
 create or replace function public.handle_new_user() 
 returns trigger as $$
 begin
-  insert into public.perfis (id, nome_completo, role)
+  insert into public.perfis (id, nome_completo, email, role)
   values (
     new.id,
     coalesce(
@@ -30,12 +34,17 @@ begin
       split_part(new.email, '@', 1),
       'Cliente Vieira'
     ),
+    new.email,
     'cliente'
   )
   on conflict (id) do update
   set nome_completo = coalesce(
     public.perfis.nome_completo,
     excluded.nome_completo
+  ),
+  email = coalesce(
+    public.perfis.email,
+    excluded.email
   );
   return new;
 end;
@@ -74,7 +83,10 @@ create table if not exists public.agendamentos (
 -- Habilitar RLS em Agendamentos
 alter table public.agendamentos enable row level security;
 create policy "Clientes podem criar seus agendamentos" on public.agendamentos for insert with check ( auth.uid() = cliente_id );
+create policy "Barbeiros podem criar agendamentos manuais" on public.agendamentos for insert with check ( auth.uid() = barbeiro_id );
 create policy "Usuários podem ver seus próprios agendamentos" on public.agendamentos for select using ( auth.uid() = cliente_id or auth.uid() = barbeiro_id );
+create policy "Clientes podem atualizar seus próprios agendamentos" on public.agendamentos for update using ( auth.uid() = cliente_id ) with check ( auth.uid() = cliente_id );
+create policy "Barbeiros podem atualizar seus agendamentos" on public.agendamentos for update using ( auth.uid() = barbeiro_id ) with check ( auth.uid() = barbeiro_id );
 
 -- Seeds de Serviços Reais — Barbearia Vieira
 insert into public.servicos (nome, descricao, preco, duracao_minutos, ativo, categoria)
@@ -209,6 +221,16 @@ create table if not exists public.agenda_lembretes (
   unique (agenda_semana_id, cliente_id)
 );
 
+create table if not exists public.avisos_funcionamento (
+  id uuid default gen_random_uuid() primary key,
+  barbeiro_id uuid references public.perfis(id) on delete cascade not null,
+  data date not null,
+  tarde_fechada boolean default false not null,
+  motivo text,
+  criado_em timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique (barbeiro_id, data)
+);
+
 alter table public.agendas_semanais enable row level security;
 alter table public.dias_agenda enable row level security;
 alter table public.slots_agenda enable row level security;
@@ -216,9 +238,15 @@ alter table public.fila_espera enable row level security;
 alter table public.fila_troca enable row level security;
 alter table public.ofertas_fila enable row level security;
 alter table public.atrasos_agenda enable row level security;
+alter table public.avisos_funcionamento enable row level security;
 alter table public.notification_tokens enable row level security;
 alter table public.notifications enable row level security;
 alter table public.agenda_lembretes enable row level security;
+
+create policy "Todos podem visualizar avisos de funcionamento" on public.avisos_funcionamento
+  for select using ( true );
+create policy "Barbeiro gerencia seus avisos de funcionamento" on public.avisos_funcionamento
+  for all using ( auth.uid() = barbeiro_id ) with check ( auth.uid() = barbeiro_id );
 
 create policy "Barbeiro gerencia suas agendas" on public.agendas_semanais
   for all using (auth.uid() = barbeiro_id) with check (auth.uid() = barbeiro_id);
@@ -235,6 +263,8 @@ create policy "Barbeiro gerencia seus slots" on public.slots_agenda
   for all using (auth.uid() = barbeiro_id) with check (auth.uid() = barbeiro_id);
 create policy "Cliente gerencia sua fila" on public.fila_espera
   for all using (auth.uid() = cliente_id) with check (auth.uid() = cliente_id);
+create policy "Barbeiros podem ver a fila de espera" on public.fila_espera
+  for select using (exists (select 1 from public.perfis where id = auth.uid() and role = 'barbeiro'));
 create policy "Cliente gerencia sua fila de troca" on public.fila_troca
   for all using (exists (select 1 from public.agendamentos a where a.id = agendamento_id and a.cliente_id = auth.uid()))
   with check (exists (select 1 from public.agendamentos a where a.id = agendamento_id and a.cliente_id = auth.uid()));
@@ -383,3 +413,95 @@ drop trigger if exists agendamento_cancelado_oferece_vaga on public.agendamentos
 create trigger agendamento_cancelado_oferece_vaga
   after update of status on public.agendamentos
   for each row execute procedure public.disparar_oferta_apos_cancelamento();
+
+-- ============================================================================
+-- FASE 20: Reajustes de Preços, Lista Negra e Opções Avançadas
+-- ============================================================================
+
+create table if not exists public.reajustes_precos (
+  id uuid default gen_random_uuid() primary key,
+  barbeiro_id uuid references public.perfis(id) on delete cascade not null,
+  tipo text check (tipo in ('individual', 'lote')) default 'individual' not null,
+  data_vigencia date not null,
+  justificativa text,
+  itens_alterados jsonb not null,
+  criado_em timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.reajustes_precos enable row level security;
+create policy "Todos podem visualizar reajustes de preços" on public.reajustes_precos for select using ( true );
+create policy "Barbeiro cria reajustes de preços" on public.reajustes_precos for insert with check ( auth.uid() = barbeiro_id );
+
+create table if not exists public.bloqueios_clientes (
+  id uuid default gen_random_uuid() primary key,
+  barbeiro_id uuid references public.perfis(id) on delete cascade not null,
+  cliente_id uuid references public.perfis(id) on delete cascade,
+  email text,
+  telefone text,
+  motivo text,
+  criado_em timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.bloqueios_clientes enable row level security;
+create policy "Barbeiro gerencia bloqueios" on public.bloqueios_clientes for all using ( auth.uid() = barbeiro_id ) with check ( auth.uid() = barbeiro_id );
+create policy "Qualquer usuário pode verificar status de bloqueio" on public.bloqueios_clientes for select using ( true );
+
+create table if not exists public.equipe_barbearia (
+  id uuid default gen_random_uuid() primary key,
+  barbeiro_id uuid references public.perfis(id) on delete cascade not null,
+  nome text not null,
+  email text,
+  telefone text,
+  cargo text default 'Barbeiro',
+  ativo boolean default true,
+  criado_em timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.equipe_barbearia enable row level security;
+create policy "Barbeiro gerencia sua equipe" on public.equipe_barbearia for all using ( auth.uid() = barbeiro_id ) with check ( auth.uid() = barbeiro_id );
+
+create or replace function public.notificar_todos_clientes(
+  p_titulo text,
+  p_mensagem text,
+  p_tipo text,
+  p_dados jsonb default '{}'::jsonb
+)
+returns integer
+language plpgsql
+security definer
+as $$
+declare
+  v_count integer := 0;
+begin
+  insert into public.notifications (usuario_id, titulo, mensagem, tipo, dados)
+  select id, p_titulo, p_mensagem, p_tipo, p_dados
+  from public.perfis
+  where role = 'cliente';
+
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$$;
+
+-- Trigger: ao criar agendamento, gera lembretes automáticos
+create or replace function public.agendar_lembretes_agendamento()
+returns trigger
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if NEW.data_hora is not null then
+    insert into public.lembretes_agendados (agendamento_id, tipo, enviar_em)
+    values (NEW.id, 'vespera', NEW.data_hora - interval '13 hours');
+
+    insert into public.lembretes_agendados (agendamento_id, tipo, enviar_em)
+    values (NEW.id, 'horas_antes', NEW.data_hora - interval '2 hours');
+  end if;
+
+  return NEW;
+end;
+$$;
+
+drop trigger if exists tg_agendar_lembretes on public.agendamentos;
+create trigger tg_agendar_lembretes
+  after insert on public.agendamentos
+  for each row execute function public.agendar_lembretes_agendamento();

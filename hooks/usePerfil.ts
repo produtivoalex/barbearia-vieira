@@ -12,12 +12,14 @@ export interface Perfil {
 export function usePerfil() {
   const { session } = useAuth();
   const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [isBloqueado, setIsBloqueado] = useState(false);
   const [carregandoPerfil, setCarregandoPerfil] = useState(true);
 
   useEffect(() => {
     async function carregarPerfil() {
       if (!session?.user?.id) {
         setPerfil(null);
+        setIsBloqueado(false);
         setCarregandoPerfil(false);
         return;
       }
@@ -29,6 +31,7 @@ export function usePerfil() {
         .eq('id', session.user.id)
         .single();
 
+      const emailUsuario = (session.user.email || '').toLowerCase().trim();
       const nomeMeta =
         session.user.user_metadata?.full_name ||
         session.user.user_metadata?.name ||
@@ -41,6 +44,16 @@ export function usePerfil() {
           ...data,
           nome_completo: data.nome_completo || nomeMeta,
         } as Perfil);
+
+        // Verifica se o cliente está na lista negra (bloqueios_clientes)
+        const telLimpo = (data.telefone || '').replace(/\D/g, '');
+        const { data: bloqueio } = await supabase
+          .from('bloqueios_clientes')
+          .select('id')
+          .or(`cliente_id.eq.${session.user.id},email.eq.${emailUsuario}${telLimpo ? `,telefone.eq.${telLimpo}` : ''}`)
+          .maybeSingle();
+
+        setIsBloqueado(!!bloqueio);
       } else {
         // Fallback transitório caso o perfil ainda esteja sendo criado pelo trigger
         setPerfil({
@@ -49,6 +62,7 @@ export function usePerfil() {
           telefone: null,
           role: 'cliente',
         });
+        setIsBloqueado(false);
       }
       setCarregandoPerfil(false);
     }
@@ -70,5 +84,5 @@ export function usePerfil() {
     return { error };
   }
 
-  return { perfil, carregandoPerfil, atualizarPerfil };
+  return { perfil, isBloqueado, carregandoPerfil, atualizarPerfil };
 }

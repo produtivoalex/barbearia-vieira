@@ -1,15 +1,26 @@
-import { Tabs } from 'expo-router';
+import React, { useEffect } from 'react';
+import { Tabs, useRouter } from 'expo-router';
 import { CalendarCheck, Calendar, Users, MoreHorizontal } from 'lucide-react-native';
 import { Colors, FontFamily, FontSize } from '@/theme';
+import { usePerfil } from '@/hooks/usePerfil';
 
 export default function TabsBarbeiroLayout() {
+  const { perfil, carregandoPerfil } = usePerfil();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!carregandoPerfil && perfil && perfil.role !== 'barbeiro') {
+      router.replace('/(app)/(tabs)');
+    }
+  }, [perfil, carregandoPerfil, router]);
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.superficie,
-          borderTopColor: Colors.borda,
+          backgroundColor: '#161618',
+          borderTopColor: '#262629',
           borderTopWidth: 1,
           height: 64,
           paddingBottom: 10,
@@ -62,6 +73,12 @@ export default function TabsBarbeiroLayout() {
       />
       <Tabs.Screen
         name="preparar-agenda"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="opcoes-avancadas"
         options={{
           href: null,
         }}

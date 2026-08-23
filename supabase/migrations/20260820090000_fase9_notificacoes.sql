@@ -27,29 +27,15 @@ create or replace function public.agendar_lembretes_agendamento()
 returns trigger
 language plpgsql security definer set search_path = public
 as $$
-declare
-  v_data_hora timestamp with time zone;
 begin
-  -- Se slot_id estiver preenchido, busca data_hora do slot
-  if NEW.slot_id is not null then
-    select s.data_hora into v_data_hora
-    from public.slots_agenda s
-    where s.id = NEW.slot_id;
-  end if;
-
-  -- Se não achou no slot (ou agendamento legado), monta a partir de data e horario
-  if v_data_hora is null and NEW.data is not null and NEW.horario is not null then
-    v_data_hora := (NEW.data || ' ' || NEW.horario)::timestamp with time zone;
-  end if;
-
-  if v_data_hora is not null then
+  if NEW.data_hora is not null then
     -- Lembrete de véspera (13 horas antes, ex: dia anterior às 19h para atendimento às 08h)
     insert into public.lembretes_agendados (agendamento_id, tipo, enviar_em)
-    values (NEW.id, 'vespera', v_data_hora - interval '13 hours');
+    values (NEW.id, 'vespera', NEW.data_hora - interval '13 hours');
 
     -- Lembrete 2 horas antes do atendimento
     insert into public.lembretes_agendados (agendamento_id, tipo, enviar_em)
-    values (NEW.id, 'horas_antes', v_data_hora - interval '2 hours');
+    values (NEW.id, 'horas_antes', NEW.data_hora - interval '2 hours');
   end if;
 
   return NEW;

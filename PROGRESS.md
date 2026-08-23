@@ -145,30 +145,123 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
 - **Botão Apple UX**: Notificação amigável ("Em Breve no iOS 🍏") orientando o usuário a prosseguir com Google ou E-mail enquanto a conta Apple Developer não é integrada.
 - `tsc --noEmit` ✅ (0 erros).
 
+### ✅ Fase 18 — Implementação e Refinamento Completo da Área do Barbeiro (CONCLUÍDA)
+- **Banco de Dados & RLS (`supabase/migrations/20260822180000_fase18_painel_barbeiro.sql` & `scripts/schema.sql`)**:
+  - Política de atualização (`UPDATE`) de agendamentos pelo barbeiro autenticado (`auth.uid() = barbeiro_id`), permitindo concluir e cancelar agendamentos.
+  - Política de leitura (`SELECT`) da fila de espera para usuários com papel `barbeiro`.
+  - Política de gerenciamento de atrasos da agenda (`atrasos_agenda`).
+- **Hook Centralizado (`hooks/usePainelBarbeiro.ts`)**:
+  - Query real da fila de espera (`fila_espera` com status `'aguardando'`).
+  - Leitura e sincronização de atrasos ativos do dia (`atrasos_agenda`).
+  - Funções reativas com atualização otimista/local: `concluirAgendamento`, `cancelarAgendamento` e `definirAtraso`.
+- **Painel Diário (`app/(app)/(barbeiro)/hoje.tsx`)**:
+  - Métricas reais de agendamentos (concluídos / total), clientes na lista de espera e faturamento diário estimado.
+  - Alerta de atraso ativo do dia com botão para normalizar ou alterar (+10, +15, +20, +30 min).
+  - Filtros rápidos por status: "Ativos", "Concluídos" e "Todos".
+  - Cards interativos com `BadgeStatus` e modal bottom sheet com ações completas: contato direto via WhatsApp (`wa.me`) e Telefone (`tel:`), botão de concluir atendimento e botão de cancelar.
+- **Agenda Semanal (`app/(app)/(barbeiro)/semana.tsx`)**:
+  - Cabeçalho com métricas da semana (total de agendamentos e faturamento previsto).
+  - Agrupamento visual por dia da semana com badge de quantidade e total diário.
+  - Toque nos cards para abrir modal de detalhes do cliente e contato rápido.
+- **Gestão de Clientes (`app/(app)/(barbeiro)/clientes.tsx`)**:
+  - Campo de busca em tempo real por nome ou telefone.
+  - Cards com avatar, total de visitas, última data de atendimento e atalho para WhatsApp.
+  - Modal com métricas individuais do cliente (total de visitas e data) e ações de contato.
+- **Mais Opções & Configurações (`app/(app)/(barbeiro)/mais.tsx`)**:
+  - Identidade do barbeiro com avatar Vieira, e-mail e badge "Profissional Vieira".
+  - Atalho para preparar a próxima agenda.
+  - Modal de consulta rápida da tabela com os 14 serviços e preços ativos da barbearia.
+  - Modal informativo com horário e modelo de atendimento (manhã app, tarde livre).
+  - Modal informativo de privacidade & segurança.
+  - Botão de logout com modal de confirmação conectado ao `supabase.auth.signOut()`.
+- **Programação Semanal (`app/(app)/(barbeiro)/preparar-agenda.tsx`)**:
+  - Interface escura e consistente com o Design System.
+  - Contagem dinâmica de vagas conforme os dias selecionados.
+  - Upsert seguro de slots e dias da semana sem duplicidade.
+- **Proteção de Rotas (`app/(app)/(barbeiro)/_layout.tsx` e `app/(app)/(tabs)/_layout.tsx`)**:
+  - Validação mútua de papéis com auto-redirecionamento dinâmico.
+- `tsc --noEmit` ✅ (0 erros).
+
+### ✅ Fase 19 — Melhorias Avançadas do Barbeiro: Encaixes, Horários Granulares e Avisos (CONCLUÍDA)
+- **Banco de Dados (`supabase/migrations/20260822190000_fase19_avisos_e_encaixes.sql` & `scripts/schema.sql`)**:
+  - Tabela `avisos_funcionamento` para controle diário de tarde fechada com RLS.
+  - Política de inserção manual de agendamentos para o barbeiro (`auth.uid() = barbeiro_id`).
+- **Modelo Híbrido Inteligente de Concluídos (`hoje.tsx`)**:
+  - Contagem inteligente nas métricas: atendimentos cujo horário + duração já decorreu são contabilizados automaticamente como concluídos.
+  - Flexibilidade de controle manual: botão no card permite alternar ou marcar não comparecimento.
+- **Aviso de Tarde Fechada + Status do WhatsApp (`hoje.tsx` & `(tabs)/index.tsx`)**:
+  - Switch no painel do barbeiro para marcar tarde fechada com mensagem oficial direta: *"Informamos que a Barbearia Vieira estará fechada hoje na parte da tarde. Agradecemos a compreensão de todos!"*.
+  - Botão "Postar no Status do WhatsApp" integrado com API de compartilhamento nativo.
+  - Banner de aviso em destaque na Home dos clientes quando a tarde estiver fechada.
+- **Reserva Manual / Encaixe para Cliente Específico (`hoje.tsx`)**:
+  - Modal com seleção de horário rápido, cliente cadastrado ou nome/telefone avulso, e escolha dentre os 14 serviços reais.
+- **Controle Granular por Horário em Preparar Agenda (`preparar-agenda.tsx`)**:
+  - Switch do dia inteiro + chips de ativação/desativação individual para cada horário matinal (`08:00`, `09:00`, `10:00`, `11:00`).
+  - Geração de slots estritamente baseada nos horários marcados.
+- `tsc --noEmit` ✅ (0 erros).
+
+### ✅ Fase 20 — Reajustes de Preços, Lista Negra, Mensagens em Grupo e Opções Avançadas (CONCLUÍDA)
+- **Banco de Dados (`supabase/migrations/20260822200000_fase20_reajustes_e_opcoes_avancadas.sql` & `scripts/schema.sql`)**:
+  - Tabelas `reajustes_precos`, `bloqueios_clientes` e `equipe_barbearia` com políticas RLS.
+  - Função RPC `notificar_todos_clientes` para disparar comunicados consolidados a todos os clientes.
+- **Tabela de Preços com Reajuste Individual e em Lote (`mais.tsx`)**:
+  - Reajuste individual ao tocar em qualquer serviço com novo preço, data de vigência e justificativa opcional.
+  - Botão de **Reajuste Geral em Lote** para editar múltiplos serviços juntos.
+  - Disparo de notificação única consolidada para os clientes com CTA limpo (*"Toque em Saiba mais para ver os detalhes"* sem mencionar justificativa no resumo).
+- **Selo IMPORTANTE nas Notificações do Cliente (`notificacoes.tsx`)**:
+  - Selo `⚠️ IMPORTANTE (Vigência em DD/MM/AAAA)` ativo até a data da mudança, mesmo após a notificação ser lida.
+  - Modal com comparativo (preço antigo -> novo preço) e exibição da mensagem da barbearia se preenchida.
+- **Tela de Opções Avançadas do Barbeiro (`opcoes-avancadas.tsx`)**:
+  - Botão adicionado na tela *Mais* no lugar do antigo informativo de horários (com `href: null` nas abas inferiores para não poluir a barra de navegação).
+  - **Mensagem em Grupo**: envio de notificações diretas com 4 grupos disponíveis (Hoje, Semana, Fila de Espera e Todos os Clientes), com seleção granular para desmarcar destinatários específicos.
+  - **Lista Negra / Bloqueio de Clientes**: busca em tempo real por nome, e-mail ou telefone para bloquear com 1 toque, com desbloqueio instantâneo.
+  - **Tela de Manutenção Disfarçada (`(tabs)/_layout.tsx`)**: se o cliente bloqueado abrir o app, vê *"🔧 Aplicativo em Manutenção no momento. Por favor, tente novamente mais tarde."*.
+  - **Reserva / Encaixe de Clientes Específicos**: busca em tempo real por nome, e-mail ou telefone, com seleção em 1 toque e colinha discreta e resumida dos combos selecionados.
+  - **Gestão de Funcionários / Equipe**: cadastro de novos profissionais.
+  - **Agendamentos à Tarde com Regra de Justiça**: liberação de horários extras para diminuir a lista de espera nos dias cheios, ativando automaticamente o aviso de que a ordem de chegada estará fechada para garantir transparência.
+- **Tela Hoje (`hoje.tsx`)**:
+  - Título simplificado para **Fechar à Tarde** (quando aberta) e **Fechada à Tarde** com descrição *"Enviando aviso para clientes"* (quando fechada).
+- **Tabela de Serviços & Preços (`mais.tsx`)**:
+  - Removido truncamento de texto (`numberOfLines={1}`) das descrições dos serviços, permitindo quebra de linha fluida para leitura completa de todos os detalhes.
+  - Rolagem dedicada apenas na lista interna dos 14 serviços no **Reajuste Geral de Todos os Serviços**, mantendo os campos de vigência no topo e o botão de salvar fixo e sempre visível embaixo.
+- **Abertura Imediata da Agenda Semanal (`preparar-agenda.tsx` & `semana.tsx`)**:
+  - Adicionada a opção/switch **"Liberar Imediatamente (Aberta Agora)"** na tela de *Preparar Agenda*.
+  - Adicionado banner com botão **"🚀 Liberar Agora"** diretamente na tela de *Agenda Semanal* (`semana.tsx`).
+  - Ao salvar ou acionar o botão, o status muda instantaneamente para `'aberta'` e os clientes já visualizam a agenda liberada para agendar serviços no app.
+- **Confirmação e Criação de Agendamentos Resiliente (`confirmacao.tsx`)**:
+  - Auto-resolução do barbeiro responsável pelo slot e garantia de perfil cadastrado em `perfis`.
+  - Mecanismo de reserva dupla: tenta a procedure `reservar_slot` e executa fallback direto com inserção segura em `agendamentos`.
+  - Exibição de tela de sucesso instantânea com detalhes do serviço, data/hora e redirecionamento direto para a aba de agendamentos.
+- `tsc --noEmit` ✅ (0 erros).
+
+### ✅ Fase 21 & 22 — Sincronização Dinâmica de Horários e Confirmação Resiliente (CONCLUÍDA)
+- **Correção da Trigger de Lembretes no Supabase (`agendar_lembretes_agendamento`)**:
+  - Removido acesso ao campo `NEW.slot_id` inexistente na tabela `agendamentos`.
+  - Agendamento de notificações automáticas de véspera e 2h antes consumindo diretamente `NEW.data_hora`.
+- **Sincronização 100% Dinâmica de Dias e Horários do Cliente (`horario.tsx`)**:
+  - Consumo direto dos dias configurados em `agendas_semanais`, `dias_agenda` e `slots_agenda`.
+  - Exibição precisa do período da semana aberta (ex: *25 ago – 30 ago*), respeitando dias ativos e horários liberados.
+- **Confirmação e Criação de Agendamentos Resiliente (`confirmacao.tsx`)**:
+  - Auto-resolução do barbeiro responsável pelo slot e garantia de registro do perfil do cliente em `perfis`.
+  - Mecanismo de reserva dupla: tenta procedure `reservar_slot` e executa fallback direto com inserção segura em `agendamentos`.
+  - Exibição de tela de sucesso instantânea com detalhes do serviço, data/hora e redirecionamento direto para a aba de agendamentos.
+- `tsc --noEmit` ✅ (0 erros).
+
 ---
 
-## 🎯 Instruções Imediatas para Próxima Sessão
-1. **Configuração dos Provedores no Supabase Dashboard**:
-   - Em **Authentication > URL Configuration > Redirect URLs**, adicionar `barbearia-vieira://auth/callback` e `barbearia-vieira://*`.
-   - Em **Authentication > Providers**, preencher as credenciais dos provedores Google e/ou Apple.
-2. **Ambiente**: O código está 100% pronto, tipado e com suporte a build de desenvolvimento.
+## 🎯 Instruções Imediatas para Próxima Sessão / Testes Locais
 
-### Diagnóstico Google Sign-In Android — 22/08/2026
-- O EAS confirmou que o perfil `development` usa a aplicação `com.barbearia.vieira` e a keystore `YLdZHABSVt (Default)`.
-- SHA-1 da keystore do Development Build: `48:29:BF:22:1A:93:BF:54:F9:76:F9:38:9B:23:C0:C0:3D:02:D9:78`.
-- Não existe `google-services.json` no repositório. Como o app usa `signInWithIdToken` do Supabase, não é necessário adicionar Firebase só para autenticação; o plugin nativo já está presente e o `webClientId` é configurado em `lib/socialAuth.ts`.
-- Para eliminar `DEVELOPER_ERROR`, o OAuth Android do mesmo projeto Google do Web Client ID deve ter pacote `com.barbearia.vieira` + a SHA-1 acima. O provedor Google também precisa estar habilitado no Supabase com o mesmo Web Client ID/secret.
-- Depois dessa configuração externa, o único comando de rebuild é: `eas build --profile development --platform android`.
+### Como Rodar o Development Build Localmente (Mesmo Wi-Fi)
+Para testar no dispositivo físico conectado na mesma rede Wi-Fi que o seu computador:
 
-### Handoff para próxima conversa — 22/08/2026
-- O código do Google Sign-In nativo foi consolidado para usar exclusivamente o Web Client ID `298975067668-h0qn3g0p009vjd4mdtlpkqo7t5e03e68.apps.googleusercontent.com`.
-- Pacote Android: `com.barbearia.vieira`.
-- Keystore EAS confirmada: `YLdZHABSVt (Default)`.
-- SHA-1 confirmada: `48:29:BF:22:1A:93:BF:54:F9:76:F9:38:9B:23:C0:C0:3D:02:D9:78`.
-- O commit `6a5ee8d` (`fix: align native Google sign-in configuration`) foi enviado para `origin/main`.
-- Build pelo Expo/EAS: Development usa perfil `development`, credenciais `Default`, sem EAS Submit. APK comum usa perfil `preview`, credenciais `Default`, sem EAS Submit.
-- Considerar o build como concluído para fins de handoff; o próximo marco do produto é implementar/revisar a **área do barbeiro**.
-- Ao iniciar a próxima conversa, ler este arquivo antes de alterar qualquer coisa e preservar o fluxo nativo do Google.
+No **PowerShell**:
+```powershell
+npx expo start --dev-client
+```
+> **Nota**: Ao abrir o QR Code, abra o aplicativo **Barbearia Vieira (Development Build)** no seu celular e escaneie o código. Se a rede Wi-Fi bloquear portas locais, você também pode usar `npx expo start --dev-client --tunnel`.
+
+### Handoff para próxima conversa
+- Todas as funcionalidades das Fases 18 a 22 concluídas com typecheck 100% limpo e testadas com sucesso no app.
 
 ---
 
@@ -182,4 +275,17 @@ Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA q
 | Ocultação de duração para clientes | Evita confusão enquanto a barbearia opera com horários fixos. |
 | Lista de espera em Opção C | Carrossel horizontal compacto + Card de Prévia destacado com detalhes. |
 | Repositório oficial no GitHub `produtivoalex/barbearia-vieira` | Permite builds automáticas pelo EAS/GitHub e versionamento completo. |
-| Módulo `socialAuth.ts` + rota `app/auth/callback.tsx` | Garante tratamento de erros resiliente e sem rotas perdidas no fluxo OAuth. |
+| Módulo `socialAuth.ts` + Google Sign-In Nativo | Lê `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` do `.env` com ID Token do Google Play Services. |
+| Permissões RLS de Update e Insert Manual para Barbeiro | Permite que o barbeiro faça encaixes manuais e conclua/cancele atendimentos. |
+| Modelo Híbrido Inteligente de Concluídos | Evita esforço repetitivo do barbeiro durante atendimentos e mantém métricas precisas. |
+| Mensagem simples e direta de tarde fechada | Mantém a comunicação transparente e objetiva com os clientes no app e WhatsApp. |
+| Tela de Manutenção Disfarçada para Clientes Bloqueados | Evita atritos e discussões ao restringir clientes problemáticos. |
+| Notificação Consolidada de Reajuste em Lote | Não polui a caixa de entrada do cliente com dezenas de mensagens separadas. |
+| Selo IMPORTANTE até a data de vigência | Garante que o cliente esteja ciente dos novos valores mesmo após ler o aviso. |
+| Regra de Justiça na Liberação de Vagas da Tarde | Avisa que a ordem de chegada estará fechada para evitar que pessoas na fila presencial vejam agendados entrando na frente. |
+| Mensagem em Grupo com Seleção Granular | Permite que o barbeiro desmarque clientes específicos que não devem receber o aviso. |
+| Opções Avançadas com `href: null` nas tabs | Mantém a barra inferior limpa com apenas 4 abas oficiais (Hoje, Agenda, Clientes, Mais). |
+| Busca em tempo real de clientes no Encaixe | Facilita a reserva rápida por nome, e-mail ou telefone sem redigitação. |
+| Colinha discreta de combos no Encaixe | Relembra instantaneamente o que está incluso no combo selecionado. |
+| Busca de clientes na Lista Negra | Permite localizar e bloquear rapidamente qualquer cliente cadastrado. |
+| Quebra de linhas em descrições de serviços | Garante que combos e descrições ricas sejam lidas integralmente sem cortes. |
