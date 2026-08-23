@@ -18,6 +18,7 @@ import { Scissors, User, Phone, MessageCircle, X, Calendar, Zap, CalendarPlus } 
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { usePainelBarbeiro, type AgendamentoBarbeiro } from '@/hooks/usePainelBarbeiro';
 import { useAgendaSemanal } from '@/hooks/useAgendaSemanal';
+import { useBarbearia } from '@/contexts/BarbeariaContext';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -37,8 +38,9 @@ function formatarHora(iso: string) {
 export default function TelaBarbeiroSemana() {
   const router = useRouter();
   const { session } = useAuth();
-  const { agendamentosSemana, carregando, recarregar } = usePainelBarbeiro();
-  const { carregarProximaParaBarbeiro } = useAgendaSemanal();
+  const { barbearia } = useBarbearia();
+  const { agendamentosSemana, carregando, recarregar } = usePainelBarbeiro(barbearia?.id);
+  const { carregarProximaParaBarbeiro } = useAgendaSemanal(barbearia?.id);
   const [agendamentoSelecionado, setAgendamentoSelecionado] = useState<AgendamentoBarbeiro | null>(null);
   const [agendaProxima, setAgendaProxima] = useState<any | null>(null);
   const [liberando, setLiberando] = useState(false);

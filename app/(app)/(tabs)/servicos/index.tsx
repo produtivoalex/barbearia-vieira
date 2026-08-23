@@ -29,12 +29,14 @@ import {
 } from '@/hooks/useServicos';
 import { IndicadorEtapas, IlustracaoServico } from '@/components';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
+import { useBarbearia } from '@/contexts/BarbeariaContext';
 
 export default function TelaServicos() {
   const router = useRouter();
   const [categoriaAtiva, setCategoriaAtiva] = useState<CategoriaServico>('todos');
   const [busca, setBusca] = useState('');
-  const { todosServicos, carregando, recarregar } = useServicos();
+  const { barbearia } = useBarbearia();
+  const { todosServicos, carregando, recarregar } = useServicos('todos', barbearia?.id);
 
   function handleSelecionarServico(servico: Servico) {
     router.push({
@@ -483,4 +485,3 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
 });
-

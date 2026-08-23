@@ -13,7 +13,7 @@ export interface Agendamento {
   criado_em: string;
 }
 
-export function useAgendamento() {
+export function useAgendamento(barbeariaId?: string) {
   const { session } = useAuth();
   const [barbeiros, setBarbeiros] = useState<Perfil[]>([]);
   const [carregandoBarbeiros, setCarregandoBarbeiros] = useState(true);
@@ -21,10 +21,26 @@ export function useAgendamento() {
   // Carrega barbeiros disponíveis
   const carregarBarbeiros = useCallback(async () => {
     setCarregandoBarbeiros(true);
-    const { data } = await supabase
+    let consultaBarbeiros = supabase
       .from('perfis')
       .select('*')
       .eq('role', 'barbeiro');
+    if (barbeariaId) {
+      const { data: membros } = await supabase
+        .from('barbearia_membros')
+        .select('usuario_id')
+        .eq('barbearia_id', barbeariaId)
+        .eq('ativo', true)
+        .in('papel', ['proprietario', 'gestor', 'barbeiro']);
+      const ids = (membros ?? []).map((membro) => membro.usuario_id);
+      if (!ids.length) {
+        setBarbeiros([]);
+        setCarregandoBarbeiros(false);
+        return;
+      }
+      consultaBarbeiros = consultaBarbeiros.in('id', ids);
+    }
+    const { data } = await consultaBarbeiros;
 
     if (data && data.length > 0) {
       setBarbeiros(data as Perfil[]);
@@ -32,7 +48,7 @@ export function useAgendamento() {
       setBarbeiros([]);
     }
     setCarregandoBarbeiros(false);
-  }, []);
+  }, [barbeariaId]);
 
   useEffect(() => {
     carregarBarbeiros();
@@ -56,6 +72,7 @@ export function useAgendamento() {
     if (barbeiroId) {
       query = query.eq('barbeiro_id', barbeiroId);
     }
+    if (barbeariaId) query = query.eq('barbearia_id', barbeariaId);
 
     const { data, error } = await query;
     if (error || !data) return [];
@@ -69,7 +86,7 @@ export function useAgendamento() {
       const minutos = String(dataObj.getMinutes()).padStart(2, '0');
       return `${horas}:${minutos}`;
     });
-  }, []);
+  }, [barbeariaId]);
 
   // Criação de agendamento no Supabase
   const criarAgendamento = useCallback(async (dados: {
@@ -87,6 +104,7 @@ export function useAgendamento() {
         cliente_id: session.user.id,
         barbeiro_id: dados.barbeiroId,
         servico_id: dados.servicoId,
+        barbearia_id: barbeariaId ?? null,
         data_hora: dados.dataHoraIso,
         status: 'confirmado',
       })
@@ -94,7 +112,7 @@ export function useAgendamento() {
       .single();
 
     return { data, error };
-  }, [session?.user?.id]);
+  }, [session?.user?.id, barbeariaId]);
 
   return {
     barbeiros,

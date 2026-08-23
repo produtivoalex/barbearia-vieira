@@ -35,7 +35,7 @@ function inicioDaProximaSemana() {
   return segunda;
 }
 
-export function useAgendaSemanal() {
+export function useAgendaSemanal(barbeariaId?: string) {
   const { session } = useAuth();
   const [agenda, setAgenda] = useState<AgendaSemanal | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -46,14 +46,15 @@ export function useAgendaSemanal() {
     setErro(null);
 
     const hoje = formatoData(new Date());
-    const { data, error } = await supabase
+    let consulta = supabase
       .from('agendas_semanais')
       .select('id, data_inicio, data_fim, status, data_abertura_programada, notificar_abertura, notificar_antecedencia_minutos, dias:dias_agenda(id, data, ativo)')
       .gte('data_fim', hoje)
       .in('status', ['programada', 'aberta'])
       .order('data_inicio', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+    if (barbeariaId) consulta = consulta.eq('barbearia_id', barbeariaId);
+    const { data, error } = await consulta.maybeSingle();
 
     if (error) {
       setErro(error.message);
@@ -62,19 +63,20 @@ export function useAgendaSemanal() {
       setAgenda((data as unknown as AgendaSemanal | null) ?? null);
     }
     setCarregando(false);
-  }, []);
+  }, [barbeariaId]);
 
   const carregarProximaParaBarbeiro = useCallback(async () => {
     if (!session?.user?.id) return null;
     const inicio = inicioDaProximaSemana();
-    const { data } = await supabase
+    let consulta = supabase
       .from('agendas_semanais')
       .select('id, data_inicio, data_fim, status, data_abertura_programada, notificar_abertura, notificar_antecedencia_minutos, dias:dias_agenda(id, data, ativo)')
       .eq('barbeiro_id', session.user.id)
-      .eq('data_inicio', formatoData(inicio))
-      .maybeSingle();
+      .eq('data_inicio', formatoData(inicio));
+    if (barbeariaId) consulta = consulta.eq('barbearia_id', barbeariaId);
+    const { data } = await consulta.maybeSingle();
     return (data as unknown as AgendaSemanal | null) ?? null;
-  }, [session?.user?.id]);
+  }, [session?.user?.id, barbeariaId]);
 
   const ativarLembrete = useCallback(async (agendaId: string) => {
     if (!session?.user?.id) return { error: new Error('Usuário não autenticado.') };
@@ -89,19 +91,21 @@ export function useAgendaSemanal() {
   return { agenda, carregando, erro, recarregar: carregar, carregarProximaParaBarbeiro, ativarLembrete };
 }
 
-export function useNotificacoes() {
+export function useNotificacoes(barbeariaId?: string) {
   const { session } = useAuth();
   const [naoLidas, setNaoLidas] = useState(0);
 
   const carregar = useCallback(async () => {
     if (!session?.user?.id) return;
-    const { count } = await supabase
+    let consulta = supabase
       .from('notifications')
       .select('id', { count: 'exact', head: true })
       .eq('usuario_id', session.user.id)
       .is('lida_em', null);
+    if (barbeariaId) consulta = consulta.eq('barbearia_id', barbeariaId);
+    const { count } = await consulta;
     setNaoLidas(count ?? 0);
-  }, [session?.user?.id]);
+  }, [session?.user?.id, barbeariaId]);
 
   useEffect(() => {
     carregar();

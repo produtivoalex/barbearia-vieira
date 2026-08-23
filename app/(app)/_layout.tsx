@@ -17,6 +17,7 @@ export default function AppLayout() {
       <Stack.Screen name="lista-espera/index" />
       <Stack.Screen name="lista-espera/oferta" />
       <Stack.Screen name="notificacoes" />
+      <Stack.Screen name="barbearias" />
     </Stack>
   );
 }

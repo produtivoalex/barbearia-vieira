@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePerfil } from '@/hooks/usePerfil';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import * as Notifications from 'expo-notifications';
+import { BarbeariaProvider } from '@/contexts/BarbeariaContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -95,16 +96,18 @@ export default function RootLayout() {
   }
 
   return (
-    <View style={styles.root}>
-      <StatusBar style="light" backgroundColor={Colors.fundo} />
-      <ControleRotas />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(pre-auth)" />
-        <Stack.Screen name="(app)" />
-        <Stack.Screen name="auth/callback" />
-      </Stack>
-    </View>
+    <BarbeariaProvider>
+      <View style={styles.root}>
+        <StatusBar style="light" backgroundColor={Colors.fundo} />
+        <ControleRotas />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(pre-auth)" />
+          <Stack.Screen name="(app)" />
+          <Stack.Screen name="auth/callback" />
+        </Stack>
+      </View>
+    </BarbeariaProvider>
   );
 }
 

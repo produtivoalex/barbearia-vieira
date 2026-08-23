@@ -14,6 +14,7 @@ import { Botao, IndicadorEtapas, IlustracaoServico } from '@/components';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { useBarbearia } from '@/contexts/BarbeariaContext';
 
 export default function TelaConfirmacao() {
   const router = useRouter();
@@ -29,6 +30,7 @@ export default function TelaConfirmacao() {
   }>();
 
   const { session } = useAuth();
+  const { barbearia } = useBarbearia();
   const [salvando, setSalvando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const salvoRef = useRef(false);
@@ -60,12 +62,13 @@ export default function TelaConfirmacao() {
       let idBarbeiroFinal = barbeiroId;
 
       // 2. Busca slot correspondente no banco
-      const { data: slot } = await supabase
+      let consultaSlot = supabase
         .from('slots_agenda')
         .select('id, barbeiro_id')
         .eq('data_hora', dataHoraIso)
-        .eq('ativo', true)
-        .maybeSingle();
+        .eq('ativo', true);
+      if (barbearia?.id) consultaSlot = consultaSlot.eq('barbearia_id', barbearia.id);
+      const { data: slot } = await consultaSlot.maybeSingle();
 
       if (slot?.id) {
         if (slot.barbeiro_id) {
@@ -107,6 +110,7 @@ export default function TelaConfirmacao() {
           cliente_id: session.user.id,
           barbeiro_id: idBarbeiroFinal,
           servico_id: servicoId,
+          barbearia_id: barbearia?.id ?? null,
           data_hora: dataHoraIso,
           status: 'confirmado',
         });

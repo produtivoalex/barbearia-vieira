@@ -17,6 +17,7 @@ import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useAgendaSemanal } from '@/hooks/useAgendaSemanal';
+import { useBarbearia } from '@/contexts/BarbeariaContext';
 
 const HORARIOS_PADRAO = ['08:00', '09:00', '10:00', '11:00'];
 const NOMES_DIAS = [
@@ -48,7 +49,8 @@ function dataLocal(data: Date) {
 export default function PrepararAgenda() {
   const router = useRouter();
   const { session } = useAuth();
-  const { carregarProximaParaBarbeiro } = useAgendaSemanal();
+  const { barbearia } = useBarbearia();
+  const { carregarProximaParaBarbeiro } = useAgendaSemanal(barbearia?.id);
   const datas = useMemo(proximaSemana, []);
 
   // Estado dos dias (aberto / fechado)

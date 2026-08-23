@@ -18,6 +18,7 @@ import { Users, Phone, MessageCircle, Search, X, Calendar, Award } from 'lucide-
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { usePainelBarbeiro, type ClienteResumo } from '@/hooks/usePainelBarbeiro';
 import { Avatar } from '@/components';
+import { useBarbearia } from '@/contexts/BarbeariaContext';
 
 const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
@@ -28,7 +29,8 @@ function formatarDataCurta(iso: string | null) {
 }
 
 export default function TelaClientes() {
-  const { clientes, carregando, recarregar } = usePainelBarbeiro();
+  const { barbearia } = useBarbearia();
+  const { clientes, carregando, recarregar } = usePainelBarbeiro(barbearia?.id);
   const [busca, setBusca] = useState('');
   const [clienteSelecionado, setClienteSelecionado] = useState<ClienteResumo | null>(null);
 

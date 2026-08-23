@@ -16,6 +16,7 @@ import { Bell, ChevronLeft, ChevronRight, AlertTriangle, X, Scissors, Calendar }
 import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import { useBarbearia } from '@/contexts/BarbeariaContext';
 
 interface ItemAlterado {
   servico_id: string;
@@ -42,6 +43,7 @@ interface Notificacao {
 export default function TelaNotificacoes() {
   const router = useRouter();
   const { session } = useAuth();
+  const { barbearia } = useBarbearia();
   const [itens, setItens] = useState<Notificacao[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [notificacaoReajusteSelecionada, setNotificacaoReajusteSelecionada] = useState<Notificacao | null>(null);
@@ -52,16 +54,18 @@ export default function TelaNotificacoes() {
       return;
     }
     setCarregando(true);
-    const { data } = await supabase
+    let consulta = supabase
       .from('notifications')
       .select('id, tipo, titulo, mensagem, dados, lida_em, criada_em')
       .eq('usuario_id', session.user.id)
       .order('criada_em', { ascending: false })
       .limit(50);
+    if (barbearia?.id) consulta = consulta.eq('barbearia_id', barbearia.id);
+    const { data } = await consulta;
 
     setItens((data as unknown as Notificacao[]) ?? []);
     setCarregando(false);
-  }, [session?.user?.id]);
+  }, [session?.user?.id, barbearia?.id]);
 
   useEffect(() => {
     carregar();

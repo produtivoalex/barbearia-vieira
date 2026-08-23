@@ -16,7 +16,7 @@ export interface AgendamentoCompleto {
   };
 }
 
-export function useMeusAgendamentos() {
+export function useMeusAgendamentos(barbeariaId?: string) {
   const { session } = useAuth();
   const [proximos, setProximos] = useState<AgendamentoCompleto[]>([]);
   const [historico, setHistorico] = useState<AgendamentoCompleto[]>([]);
@@ -33,7 +33,7 @@ export function useMeusAgendamentos() {
     setCarregando(true);
     const agora = new Date().toISOString();
 
-    const { data, error } = await supabase
+    let consulta = supabase
       .from('agendamentos')
       .select(`
         id,
@@ -44,6 +44,8 @@ export function useMeusAgendamentos() {
       `)
       .eq('cliente_id', session.user.id)
       .order('data_hora', { ascending: true });
+    if (barbeariaId) consulta = consulta.eq('barbearia_id', barbeariaId);
+    const { data, error } = await consulta;
 
     if (error || !data) {
       setCarregando(false);
@@ -64,7 +66,7 @@ export function useMeusAgendamentos() {
     );
 
     setCarregando(false);
-  }, [session?.user?.id]);
+  }, [session?.user?.id, barbeariaId]);
 
   useEffect(() => {
     carregar();

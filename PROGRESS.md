@@ -1,5 +1,64 @@
 # Progresso do Projeto (App Barbearia)
 
+## Pivot multi-tenant / marketplace — Partes 1 a 4 CONCLUÍDAS (23/08/2026)
+
+- O projeto foi direcionado para um aplicativo único com múltiplas barbearias.
+- A fronteira de isolamento será `barbearia_id`; `barbeiro_id` continuará representando o profissional.
+- Inventário técnico: [`MULTI_TENANT_INVENTORY.md`](./MULTI_TENANT_INVENTORY.md).
+- Handoff e sequência: [`MULTI_TENANT_ROADMAP.md`](./MULTI_TENANT_ROADMAP.md).
+- A Parte 1 mapeou tabelas, migrations, RPCs, triggers, Edge Functions, hooks e telas dependentes.
+- Nenhuma migration foi aplicada e nenhum código operacional foi alterado nesta parte.
+- Parte 2 foi concluída: migration criada em `supabase/migrations/20260823000000_multi_tenant_foundation.sql` e aplicada remotamente.
+- A migration é aditiva/idempotente, cria `barbearias` e `barbearia_membros`, adiciona `barbearia_id` nullable, índices e backfill da Vieira.
+- A CLI Supabase foi vinculada ao projeto configurado no `.env`.
+- O dry-run confirmou e o `db push --linked` aplicou as Fases 18–22 e a foundation `20260823000000`.
+- A listagem remota confirmou todas as migrations locais até `20260823000000`.
+- A auditoria confirmou: 1 barbearia, 1 membro, zero registros sem tenant, zero divergências de serviço, zero barbeiros sem vínculo e zero slots inconsistentes.
+- Parte 3 foi concluída com `supabase/migrations/20260823010000_multi_tenant_rls_and_rpcs.sql`.
+- Foram criados helpers de autorização, 32 policies tenant-aware, trigger transitório para inserts legados e RPCs tenant-aware de reserva/fila/notificações.
+- O reparo `supabase/migrations/20260823011000_multi_tenant_repair_legacy_rows.sql` corrigiu o agendamento legado criado antes dos triggers.
+- Auditoria final: 13 migrations remotas, zero agendamentos órfãos, zero serviços órfãos, zero divergências de serviço e zero divergências de slot.
+- Parte 4 foi concluída com `supabase/migrations/20260823020000_services_agenda_notifications_tenant.sql`.
+- Serviços passaram a ter unicidade por tenant, imagem e ordem de exibição; índices de notificações, reajustes e avisos foram adicionados.
+- `useServicos`, `useAgendaSemanal` e `useNotificacoes` aceitam `barbeariaId` com compatibilidade retroativa.
+- As Edge Functions `process-notifications` e `auto-open-agenda` foram atualizadas e estão ativas, carregando o tenant nas notificações e deep links.
+- TypeScript e `git diff --check` passaram.
+
+## Retomada - Partes 6 e 7 (23/08/2026)
+
+- Contexto persistente, fallback de tema e selecao automatica de vinculo do barbeiro implementados.
+- Fluxos do cliente e painel do barbeiro passaram a usar o tenant ativo.
+- TypeScript e `git diff --check` passaram.
+- Migrations da vitrine ainda nao foram publicadas remotamente.
+
+## Parte 8 - Storage, testes e rollout (CONCLUIDA LOCALMENTE em 23/08/2026)
+
+- Criado bucket tenant-aware `barbearia-media` com limite de 10 MiB e MIME types de imagem.
+- Policies de leitura publica para tenants publicados e escrita/edicao/remocao para gestores do tenant.
+- Criados `scripts/multi_tenant_rollout_audit.sql` e `PART8_ROLLOUT.md`.
+- TypeScript e `git diff --check` passaram.
+- Nenhuma migration da Parte 8 foi aplicada remotamente nesta sessao.
+- Estado salvo: Partes 1 a 8 locais concluidas; a Parte 9 pode ser iniciada em outra conversa depois da validacao remota.
+
+## Retomada adicional - auditoria de consultas
+
+- Historico, barbeiros, ocupacao, slots e avisos da Home agora respeitam o tenant ativo.
+- TypeScript e `git diff --check` passaram.
+
+## Retomada adicional - fluxos operacionais tenant-aware
+
+- Confirmacao, lista de espera, ofertas e notificacoes passaram a respeitar a barbearia selecionada quando existente.
+- TypeScript e `git diff --check` passaram.
+- O vínculo da CLI usa arquivos temporários em `supabase/.temp`; não foi criado `supabase/config.toml`.
+- Próximo passo: **Parte 5 — vitrine e busca**.
+
+### Partes pendentes
+
+1. Parte 5 — Vitrine e busca.
+2. Parte 6 — Tema e fluxo nativo por tenant.
+3. Parte 7 — Painel do barbeiro multi-barbearia.
+4. Parte 8 — Storage, testes e rollout.
+
 ## Diagnostico APK Preview - CONCLUIDO (23/08/2026)
 
 - O development abre normalmente porque usa `npx expo start --dev-client` e carrega o `.env` local.
@@ -302,3 +361,14 @@ npx expo start --dev-client
 | Colinha discreta de combos no Encaixe | Relembra instantaneamente o que está incluso no combo selecionado. |
 | Busca de clientes na Lista Negra | Permite localizar e bloquear rapidamente qualquer cliente cadastrado. |
 | Quebra de linhas em descrições de serviços | Garante que combos e descrições ricas sejam lidas integralmente sem cortes. |
+## Retomada 23/08/2026 - Parte 5 em andamento
+
+- RPCs publicas, hook e telas iniciais de vitrine/busca criados localmente.
+- Migration `supabase/migrations/20260823030000_public_storefront_search.sql` ainda nao aplicada remotamente.
+- TypeScript e `git diff --check` passaram; lint global permanece com erros legados.
+
+## Retomada adicional 23/08/2026 - Parte 6 inicial
+
+- Criado `contexts/BarbeariaContext.tsx` com persistencia local da barbearia selecionada.
+- A selecao no detalhe da vitrine agora filtra catalogo, Home e agenda pelo tenant ativo.
+- TypeScript e `git diff --check` passaram.

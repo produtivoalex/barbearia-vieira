@@ -12,6 +12,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, User, Clock, Scissors, Info, Calendar } from 'lucide-react-native';
 import { Botao, IndicadorEtapas, IlustracaoServico } from '@/components';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
+import { useBarbearia } from '@/contexts/BarbeariaContext';
 import { useAgendamento } from '@/hooks/useAgendamento';
 import { useAgendaSemanal } from '@/hooks/useAgendaSemanal';
 import { supabase } from '@/lib/supabase';
@@ -48,6 +49,7 @@ interface SlotSelecionado {
 
 export default function TelaHorario() {
   const router = useRouter();
+  const { barbearia } = useBarbearia();
   const params = useLocalSearchParams<{
     servicoId?: string;
     servicoNome?: string;
@@ -55,8 +57,8 @@ export default function TelaHorario() {
     servicoDuracao?: string;
   }>();
 
-  const { barbeiros, buscarHorariosOcupados } = useAgendamento();
-  const { agenda, carregando: carregandoAgenda } = useAgendaSemanal();
+  const { barbeiros, buscarHorariosOcupados } = useAgendamento(barbearia?.id);
+  const { agenda, carregando: carregandoAgenda } = useAgendaSemanal(barbearia?.id);
   const [barbeiroSelecionadoId, setBarbeiroSelecionadoId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -101,11 +103,12 @@ export default function TelaHorario() {
 
     try {
       // 1. Busca slots configurados no banco de dados
-      const { data: slotsBanco } = await supabase
+      let consultaSlots = supabase
         .from('slots_agenda')
         .select('data_hora, ativo')
-        .eq('ativo', true)
-        .order('data_hora', { ascending: true });
+        .eq('ativo', true);
+      if (barbearia?.id) consultaSlots = consultaSlots.eq('barbearia_id', barbearia.id);
+      const { data: slotsBanco } = await consultaSlots.order('data_hora', { ascending: true });
 
       const mapaSlots: Record<string, string[]> = {};
       if (slotsBanco && slotsBanco.length > 0) {
@@ -137,7 +140,7 @@ export default function TelaHorario() {
     } finally {
       setCarregando(false);
     }
-  }, [buscarHorariosOcupados, diasSemana, barbeiroSelecionadoId]);
+  }, [barbearia?.id, buscarHorariosOcupados, diasSemana, barbeiroSelecionadoId]);
 
   useEffect(() => {
     carregarOcupacaoESlots();

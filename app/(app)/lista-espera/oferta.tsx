@@ -6,6 +6,7 @@ import { AlertCircle, CheckCircle, Clock, Star } from 'lucide-react-native';
 import { Botao } from '@/components';
 import { Colors, FontFamily, FontSize, Radii, Shadows, Spacing } from '@/theme';
 import { supabase } from '@/lib/supabase';
+import { useBarbearia } from '@/contexts/BarbeariaContext';
 
 interface Oferta {
   id: string;
@@ -18,6 +19,7 @@ interface Oferta {
 export default function TelaOfertaListaEspera() {
   const router = useRouter();
   const { ofertaId } = useLocalSearchParams<{ ofertaId?: string }>();
+  const { barbearia } = useBarbearia();
   const [oferta, setOferta] = useState<Oferta | null>(null);
   const [segundos, setSegundos] = useState(0);
   const [carregando, setCarregando] = useState(true);
@@ -26,14 +28,16 @@ export default function TelaOfertaListaEspera() {
   useEffect(() => {
     async function carregar() {
       if (!ofertaId) { setCarregando(false); return; }
-      const { data } = await supabase.from('ofertas_fila').select('id, expira_em, status, slot:slot_id(data_hora), fila:fila_espera_id(servico:servico_id(nome))').eq('id', ofertaId).maybeSingle();
+      let consulta = supabase.from('ofertas_fila').select('id, expira_em, status, slot:slot_id(data_hora), fila:fila_espera_id(servico:servico_id(nome))').eq('id', ofertaId);
+      if (barbearia?.id) consulta = consulta.eq('barbearia_id', barbearia.id);
+      const { data } = await consulta.maybeSingle();
       const item = data as unknown as Oferta | null;
       setOferta(item);
       if (item) setSegundos(Math.max(0, Math.floor((new Date(item.expira_em).getTime() - Date.now()) / 1000)));
       setCarregando(false);
     }
     carregar();
-  }, [ofertaId]);
+  }, [ofertaId, barbearia?.id]);
 
   useEffect(() => {
     if (segundos <= 0) return;

@@ -22,13 +22,15 @@ Deno.serve(async (request) => {
       id,
       tipo,
       agendamento_id,
+      barbearia_id,
       agendamento:agendamentos (
         id,
         cliente_id,
-        data,
-        horario,
+        data_hora,
         status,
-        servico:servicos(nome)
+        barbearia_id,
+        servico:servicos(nome),
+        barbearia:barbearias(nome)
       )
     `)
     .eq('enviado', false)
@@ -50,6 +52,12 @@ Deno.serve(async (request) => {
     }
 
     const servicoNome = agendamento.servico?.nome ?? 'Atendimento';
+    const barbeariaNome = agendamento.barbearia?.nome ?? 'a barbearia';
+    const horario = new Date(agendamento.data_hora).toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'America/Sao_Paulo',
+    });
     const titulo =
       lembrete.tipo === 'vespera'
         ? 'Lembrete de Atendimento 💈'
@@ -57,18 +65,20 @@ Deno.serve(async (request) => {
 
     const mensagem =
       lembrete.tipo === 'vespera'
-        ? `Lembrete: você tem agendamento amanhã às ${agendamento.horario} (${servicoNome}). Abra o app para confirmar sua presença!`
-        : `Seu horário de ${servicoNome} na Barbearia Vieira está marcado para hoje às ${agendamento.horario}. Estamos prontos para te atender!`;
+        ? `Lembrete: você tem agendamento amanhã às ${horario} (${servicoNome}) em ${barbeariaNome}. Abra o app para confirmar sua presença!`
+        : `Seu horário de ${servicoNome} em ${barbeariaNome} está marcado para hoje às ${horario}. Estamos prontos para te atender!`;
 
     // Insere na tabela de notificações do usuário
     await supabase.from('notifications').insert({
       usuario_id: agendamento.cliente_id,
+      barbearia_id: agendamento.barbearia_id ?? lembrete.barbearia_id,
       tipo: 'lembrete',
       titulo,
       mensagem,
       dados: {
         tipo: 'lembrete',
         agendamento_id: agendamento.id,
+        barbearia_id: agendamento.barbearia_id ?? lembrete.barbearia_id,
         tipo_lembrete: lembrete.tipo,
       },
     });

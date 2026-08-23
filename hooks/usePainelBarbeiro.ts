@@ -45,7 +45,7 @@ function intervalaSemana(data: Date) {
   return { inicio: segunda.toISOString(), fim: domingo.toISOString() };
 }
 
-export function usePainelBarbeiro() {
+export function usePainelBarbeiro(barbeariaId?: string) {
   const { session } = useAuth();
   const barbeiroId = session?.user?.id;
 
@@ -70,7 +70,7 @@ export function usePainelBarbeiro() {
     const { inicio: inicioSemana, fim: fimSemana } = intervalaSemana(agora);
 
     // 1. Agendamentos de hoje
-    const { data: dataHoje } = await supabase
+    let consultaHoje = supabase
       .from('agendamentos')
       .select(`
         id, data_hora, status,
@@ -79,11 +79,12 @@ export function usePainelBarbeiro() {
       `)
       .eq('barbeiro_id', barbeiroId)
       .gte('data_hora', inicioHoje)
-      .lte('data_hora', fimHoje)
-      .order('data_hora', { ascending: true });
+      .lte('data_hora', fimHoje);
+    if (barbeariaId) consultaHoje = consultaHoje.eq('barbearia_id', barbeariaId);
+    const { data: dataHoje } = await consultaHoje.order('data_hora', { ascending: true });
 
     // 2. Agendamentos da semana
-    const { data: dataSemana } = await supabase
+    let consultaSemana = supabase
       .from('agendamentos')
       .select(`
         id, data_hora, status,
@@ -93,41 +94,47 @@ export function usePainelBarbeiro() {
       .eq('barbeiro_id', barbeiroId)
       .gte('data_hora', inicioSemana)
       .lte('data_hora', fimSemana)
-      .neq('status', 'cancelado')
-      .order('data_hora', { ascending: true });
+      .neq('status', 'cancelado');
+    if (barbeariaId) consultaSemana = consultaSemana.eq('barbearia_id', barbeariaId);
+    const { data: dataSemana } = await consultaSemana.order('data_hora', { ascending: true });
 
     // 3. Todos os agendamentos concluídos ou confirmados para consolidar clientes
-    const { data: dataTodos } = await supabase
+    let consultaTodos = supabase
       .from('agendamentos')
       .select(`
         data_hora, status,
         cliente:cliente_id ( id, nome_completo, telefone )
       `)
       .eq('barbeiro_id', barbeiroId)
-      .in('status', ['confirmado', 'concluido'])
-      .order('data_hora', { ascending: false });
+      .in('status', ['confirmado', 'concluido']);
+    if (barbeariaId) consultaTodos = consultaTodos.eq('barbearia_id', barbeariaId);
+    const { data: dataTodos } = await consultaTodos.order('data_hora', { ascending: false });
 
     // 4. Clientes na fila de espera
-    const { count: filaCount } = await supabase
+    let consultaFila = supabase
       .from('fila_espera')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'aguardando');
+    if (barbeariaId) consultaFila = consultaFila.eq('barbearia_id', barbeariaId);
+    const { count: filaCount } = await consultaFila;
 
     // 5. Atraso ativo de hoje
-    const { data: atrasoData } = await supabase
+    let consultaAtraso = supabase
       .from('atrasos_agenda')
       .select('minutos_atraso, normalizado_em')
       .eq('barbeiro_id', barbeiroId)
-      .eq('data', dataHojeStr)
-      .maybeSingle();
+      .eq('data', dataHojeStr);
+    if (barbeariaId) consultaAtraso = consultaAtraso.eq('barbearia_id', barbeariaId);
+    const { data: atrasoData } = await consultaAtraso.maybeSingle();
 
     // 6. Aviso de tarde fechada para hoje
-    const { data: avisoData } = await supabase
+    let consultaAviso = supabase
       .from('avisos_funcionamento')
       .select('tarde_fechada')
       .eq('barbeiro_id', barbeiroId)
-      .eq('data', dataHojeStr)
-      .maybeSingle();
+      .eq('data', dataHojeStr);
+    if (barbeariaId) consultaAviso = consultaAviso.eq('barbearia_id', barbeariaId);
+    const { data: avisoData } = await consultaAviso.maybeSingle();
 
     setAgendamentosHoje((dataHoje ?? []) as unknown as AgendamentoBarbeiro[]);
     setAgendamentosSemana((dataSemana ?? []) as unknown as AgendamentoBarbeiro[]);
@@ -165,13 +172,16 @@ export function usePainelBarbeiro() {
     }
 
     setCarregando(false);
-  }, [barbeiroId]);
+  }, [barbeiroId, barbeariaId]);
 
   const concluirAgendamento = useCallback(async (id: string) => {
-    const { error } = await supabase
+    let consulta = supabase
       .from('agendamentos')
       .update({ status: 'concluido' })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('barbeiro_id', barbeiroId);
+    if (barbeariaId) consulta = consulta.eq('barbearia_id', barbeariaId);
+    const { error } = await consulta;
 
     if (error) throw error;
 
@@ -181,13 +191,16 @@ export function usePainelBarbeiro() {
     setAgendamentosSemana((prev) =>
       prev.map((item) => (item.id === id ? { ...item, status: 'concluido' } : item))
     );
-  }, []);
+  }, [barbeiroId, barbeariaId]);
 
   const cancelarAgendamento = useCallback(async (id: string) => {
-    const { error } = await supabase
+    let consulta = supabase
       .from('agendamentos')
       .update({ status: 'cancelado' })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('barbeiro_id', barbeiroId);
+    if (barbeariaId) consulta = consulta.eq('barbearia_id', barbeariaId);
+    const { error } = await consulta;
 
     if (error) throw error;
 
@@ -197,7 +210,7 @@ export function usePainelBarbeiro() {
     setAgendamentosSemana((prev) =>
       prev.filter((item) => item.id !== id)
     );
-  }, []);
+  }, [barbeiroId, barbeariaId]);
 
   const definirAtraso = useCallback(async (minutos: number) => {
     if (!barbeiroId) return;
@@ -212,6 +225,7 @@ export function usePainelBarbeiro() {
       const { error: upsertErr } = await supabase.from('atrasos_agenda').upsert(
         {
           barbeiro_id: barbeiroId,
+          barbearia_id: barbeariaId ?? null,
           data,
           minutos_atraso: minutos,
           normalizado_em: minutos === 0 ? new Date().toISOString() : null,
@@ -223,7 +237,7 @@ export function usePainelBarbeiro() {
 
     setMinutosAtraso(minutos);
     return afetados;
-  }, [barbeiroId]);
+  }, [barbeiroId, barbeariaId]);
 
   const alternarTardeFechada = useCallback(async (fechada: boolean) => {
     if (!barbeiroId) return;
@@ -232,6 +246,7 @@ export function usePainelBarbeiro() {
     const { error } = await supabase.from('avisos_funcionamento').upsert(
       {
         barbeiro_id: barbeiroId,
+        barbearia_id: barbeariaId ?? null,
         data,
         tarde_fechada: fechada,
       },
@@ -240,7 +255,7 @@ export function usePainelBarbeiro() {
 
     if (error) throw error;
     setTardeFechadaHoje(fechada);
-  }, [barbeiroId]);
+  }, [barbeiroId, barbeariaId]);
 
   const criarReservaManual = useCallback(async (dados: {
     clienteId?: string;
@@ -260,6 +275,7 @@ export function usePainelBarbeiro() {
         barbeiro_id: barbeiroId,
         cliente_id: clienteFinalId,
         servico_id: dados.servicoId,
+        barbearia_id: barbeariaId ?? null,
         data_hora: dados.dataHora,
         status: 'confirmado',
       })
@@ -274,7 +290,7 @@ export function usePainelBarbeiro() {
 
     await carregar();
     return data;
-  }, [barbeiroId, carregar]);
+  }, [barbeiroId, barbeariaId, carregar]);
 
   useEffect(() => {
     carregar();

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Bell, BellRing, CalendarCheck, ChevronRight, Clock, ListPlus, Scissors, Calendar, AlertCircle } from 'lucide-react-native';
+import { Bell, BellRing, CalendarCheck, ChevronRight, Clock, ListPlus, Scissors, Calendar, AlertCircle, Store } from 'lucide-react-native';
 import { Card, Botao, LogoBarbearia } from '@/components';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { usePerfil } from '@/hooks/usePerfil';
@@ -10,25 +10,28 @@ import { useMeusAgendamentos } from '@/hooks/useMeusAgendamentos';
 import { useAgendaSemanal, useNotificacoes } from '@/hooks/useAgendaSemanal';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { supabase } from '@/lib/supabase';
+import { useBarbearia } from '@/contexts/BarbeariaContext';
 
 export default function TelaHome() {
   const router = useRouter();
   const { perfil, carregandoPerfil } = usePerfil();
-  const { proximos } = useMeusAgendamentos();
-  const { agenda, carregando: carregandoAgenda, ativarLembrete } = useAgendaSemanal();
-  const { naoLidas } = useNotificacoes();
+  const { barbearia } = useBarbearia();
+  const { proximos } = useMeusAgendamentos(barbearia?.id);
+  const { agenda, carregando: carregandoAgenda, ativarLembrete } = useAgendaSemanal(barbearia?.id);
+  const { naoLidas } = useNotificacoes(barbearia?.id);
   const { temPermissao, solicitarPermissao } = usePushNotifications();
   const [tardeFechadaHoje, setTardeFechadaHoje] = useState(false);
 
   useEffect(() => {
     async function checarAvisoTarde() {
       const hojeStr = new Date().toISOString().slice(0, 10);
-      const { data } = await supabase
+      let consulta = supabase
         .from('avisos_funcionamento')
         .select('tarde_fechada')
         .eq('data', hojeStr)
         .eq('tarde_fechada', true)
-        .maybeSingle();
+      if (barbearia?.id) consulta = consulta.eq('barbearia_id', barbearia.id);
+      const { data } = await consulta.maybeSingle();
 
       if (data?.tarde_fechada) {
         setTardeFechadaHoje(true);
@@ -36,7 +39,7 @@ export default function TelaHome() {
     }
 
     checarAvisoTarde();
-  }, []);
+  }, [barbearia?.id]);
 
   const primeiroNome = perfil?.nome_completo?.split(' ')[0] || 'Bem-vindo';
   const proximo = proximos[0];
@@ -63,8 +66,8 @@ export default function TelaHome() {
         <View style={styles.headerEsquerda}>
           <LogoBarbearia tamanho={38} tipo="avatar" variante="compacto" />
           <View>
-            <Text style={styles.logo}>BARBEARIA VIEIRA</Text>
-            <Text style={styles.telefoneHeader}>(86) 98190-7478</Text>
+            <Text style={styles.logo}>{barbearia?.nome || 'BARBEARIA VIEIRA'}</Text>
+            <Text style={styles.telefoneHeader}>{barbearia?.telefone || '(86) 98190-7478'}</Text>
           </View>
         </View>
 
@@ -229,6 +232,19 @@ export default function TelaHome() {
         </View>
 
         <TouchableOpacity
+          style={styles.explorarBarbearias}
+          onPress={() => router.push('/(app)/barbearias/index')}
+          activeOpacity={0.75}
+        >
+          <Store size={20} color={Colors.ouro} />
+          <View style={styles.explorarInfo}>
+            <Text style={styles.explorarTitulo}>Explorar barbearias</Text>
+            <Text style={styles.explorarDescricao}>Conheça estabelecimentos disponíveis na plataforma</Text>
+          </View>
+          <ChevronRight size={18} color={Colors.ouro} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={styles.link}
           onPress={() => router.push('/(app)/(tabs)/agenda')}
           activeOpacity={0.7}
@@ -357,6 +373,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.borda,
     ...Shadows.card,
+  },
+  explorarBarbearias: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    marginTop: Spacing.sm,
+    borderRadius: Radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(203, 161, 74, 0.35)',
+    backgroundColor: Colors.superficie,
+  },
+  explorarInfo: { flex: 1, gap: 3 },
+  explorarTitulo: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodyMd,
+    color: Colors.textoPrimario,
+  },
+  explorarDescricao: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.bodySm,
+    color: Colors.textoSecundario,
   },
   iconeAtalhoWrapper: {
     width: 36,

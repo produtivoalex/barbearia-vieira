@@ -31,6 +31,7 @@ import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { usePainelBarbeiro, type AgendamentoBarbeiro } from '@/hooks/usePainelBarbeiro';
 import { usePerfil } from '@/hooks/usePerfil';
 import { BadgeStatus } from '@/components/BadgeStatus';
+import { useBarbearia } from '@/contexts/BarbeariaContext';
 
 const DIAS_SEMANA_EXT = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 const MESES_EXT = [
@@ -52,6 +53,7 @@ function isHorarioDecorrido(dataHoraIso: string, duracaoMinutos: number): boolea
 
 export default function TelaBarbeiroHoje() {
   const { perfil } = usePerfil();
+  const { barbearia } = useBarbearia();
   const {
     agendamentosHoje,
     totalNaFila,
@@ -63,7 +65,7 @@ export default function TelaBarbeiroHoje() {
     cancelarAgendamento,
     definirAtraso,
     alternarTardeFechada,
-  } = usePainelBarbeiro();
+  } = usePainelBarbeiro(barbearia?.id);
 
   const [filtro, setFiltro] = useState<'ativos' | 'concluidos' | 'todos'>('ativos');
   const [agendamentoSelecionado, setAgendamentoSelecionado] = useState<AgendamentoBarbeiro | null>(null);

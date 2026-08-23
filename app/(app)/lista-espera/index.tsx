@@ -25,6 +25,7 @@ import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
 import { useServicos, type Servico } from '@/hooks/useServicos';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import { useBarbearia } from '@/contexts/BarbeariaContext';
 
 const DIAS_CONFIG = [
   { id: 2, nomeCurto: 'Ter', nomeCompleto: 'Terça-feira' },
@@ -40,7 +41,8 @@ const HORARIOS_CONFIG = ['08:00', '09:00', '10:00', '11:00'];
 export default function TelaListaEspera() {
   const router = useRouter();
   const { session } = useAuth();
-  const { todosServicos, carregando: carregandoServicos } = useServicos();
+  const { barbearia } = useBarbearia();
+  const { todosServicos, carregando: carregandoServicos } = useServicos('todos', barbearia?.id);
 
   const [servicoSelecionado, setServicoSelecionado] = useState<Servico | null>(null);
   const [diasSelecionados, setDiasSelecionados] = useState<number[]>([2, 3, 4, 5, 6, 0]);
@@ -109,6 +111,7 @@ export default function TelaListaEspera() {
       const { error } = await supabase.from('fila_espera').insert({
         cliente_id: session.user.id,
         servico_id: servicoSelecionado.id,
+        barbearia_id: barbearia?.id ?? null,
         dias_preferidos: diasSelecionados,
         horarios_preferidos: horariosSelecionados,
       });
@@ -795,4 +798,3 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
   },
 });
-

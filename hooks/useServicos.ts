@@ -11,11 +11,14 @@ export type CategoriaServico =
 
 export interface Servico {
   id: string;
+  barbearia_id?: string | null;
   nome: string;
   descricao: string | null;
   preco: number;
   duracao_minutos: number;
   ativo: boolean;
+  imagem_url?: string | null;
+  ordem_exibicao?: number;
   categoria?: CategoriaServico;
 }
 
@@ -176,7 +179,7 @@ export const SERVICOS_REAIS_CATALOGO: Servico[] = [
   },
 ];
 
-export function useServicos(categoriaFiltro: CategoriaServico = 'todos') {
+export function useServicos(categoriaFiltro: CategoriaServico = 'todos', barbeariaId?: string) {
   const [servicos, setServicos] = useState<Servico[]>(SERVICOS_REAIS_CATALOGO);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -186,13 +189,17 @@ export function useServicos(categoriaFiltro: CategoriaServico = 'todos') {
     setErro(null);
 
     try {
-      const { data, error } = await supabase
+      let consulta = supabase
         .from('servicos')
         .select('*')
-        .eq('ativo', true);
+        .eq('ativo', true)
+        .order('ordem_exibicao', { ascending: true })
+        .order('nome', { ascending: true });
+      if (barbeariaId) consulta = consulta.eq('barbearia_id', barbeariaId);
+      const { data, error } = await consulta;
 
       if (error || !data || data.length === 0) {
-        setServicos(SERVICOS_REAIS_CATALOGO);
+        setServicos(barbeariaId ? [] : SERVICOS_REAIS_CATALOGO);
       } else {
         // Mapa base com os 14 serviços oficiais
         const mapa = new Map<string, Servico>();
@@ -213,14 +220,22 @@ export function useServicos(categoriaFiltro: CategoriaServico = 'todos') {
           }
         });
 
-        setServicos(Array.from(mapa.values()));
+        if (barbeariaId) {
+          setServicos((data as any[]).map((dbItem) => ({
+            ...dbItem,
+            preco: Number(dbItem.preco),
+            categoria: dbItem.categoria || deduzirCategoria(dbItem.nome),
+          })) as Servico[]);
+        } else {
+          setServicos(Array.from(mapa.values()));
+        }
       }
     } catch {
-      setServicos(SERVICOS_REAIS_CATALOGO);
+      setServicos(barbeariaId ? [] : SERVICOS_REAIS_CATALOGO);
     } finally {
       setCarregando(false);
     }
-  }, []);
+  }, [barbeariaId]);
 
   useEffect(() => {
     carregarServicos();
@@ -240,4 +255,3 @@ export function useServicos(categoriaFiltro: CategoriaServico = 'todos') {
     recarregar: carregarServicos,
   };
 }
-

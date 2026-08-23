@@ -18,6 +18,7 @@ import { useMeusAgendamentos, type AgendamentoCompleto } from '@/hooks/useMeusAg
 import { supabase } from '@/lib/supabase';
 import { Alert } from 'react-native';
 import { CheckCircle2 } from 'lucide-react-native';
+import { useBarbearia } from '@/contexts/BarbeariaContext';
 
 const LABELS_STATUS: Record<AgendamentoCompleto['status'], { texto: string; cor: string }> = {
   pendente:   { texto: 'Agendado',   cor: Colors.amarelo },
@@ -30,7 +31,8 @@ export default function TelaAgenda() {
   const router = useRouter();
   const [aba, setAba] = useState<'proximos' | 'historico'>('proximos');
   const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
-  const { proximos, historico, carregando, recarregar } = useMeusAgendamentos();
+  const { barbearia } = useBarbearia();
+  const { proximos, historico, carregando, recarregar } = useMeusAgendamentos(barbearia?.id);
 
   const dados = aba === 'proximos' ? proximos : historico;
 

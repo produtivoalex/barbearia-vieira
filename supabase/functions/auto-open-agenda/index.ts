@@ -16,7 +16,7 @@ Deno.serve(async (request) => {
   // 1. Abertura Automática de Agendas Programadas
   const { data: agendasProgramadas, error: errAgendas } = await supabase
     .from('agendas_semanais')
-    .select('id, barbeiro_id, data_inicio, data_fim, data_abertura_programada')
+    .select('id, barbeiro_id, barbearia_id, data_inicio, data_fim, data_abertura_programada')
     .eq('status', 'programada')
     .lte('data_abertura_programada', agoraIso);
 
@@ -47,18 +47,20 @@ Deno.serve(async (request) => {
   let barbeirosAvisados = 0;
 
   if (diaSemana === 1) {
-    // Busca barbeiros cadastrados
+    // Busca vínculos ativos de barbeiros por barbearia.
     const { data: barbeiros } = await supabase
-      .from('perfis')
-      .select('id')
-      .eq('role', 'barbeiro');
+      .from('barbearia_membros')
+      .select('usuario_id, barbearia_id, perfil:perfis!inner(id, role)')
+      .eq('ativo', true)
+      .eq('perfil.role', 'barbeiro');
 
     for (const barbeiro of barbeiros ?? []) {
       // Verifica se existe agenda para a semana seguinte (ou atual) já programada/aberta
       const { data: agendaExistente } = await supabase
         .from('agendas_semanais')
         .select('id, status')
-        .eq('barbeiro_id', barbeiro.id)
+        .eq('barbeiro_id', barbeiro.usuario_id)
+        .eq('barbearia_id', barbeiro.barbearia_id)
         .in('status', ['programada', 'aberta'])
         .gte('data_fim', agoraIso.split('T')[0])
         .limit(1);
@@ -69,19 +71,21 @@ Deno.serve(async (request) => {
         const { data: jaNotificado } = await supabase
           .from('notifications')
           .select('id')
-          .eq('usuario_id', barbeiro.id)
+          .eq('usuario_id', barbeiro.usuario_id)
+          .eq('barbearia_id', barbeiro.barbearia_id)
           .eq('tipo', 'barbeiro_sem_agenda')
           .gte('criada_em', `${hojeStr}T00:00:00Z`)
           .limit(1);
 
         if (!jaNotificado || jaNotificado.length === 0) {
           await supabase.from('notifications').insert({
-            usuario_id: barbeiro.id,
+            usuario_id: barbeiro.usuario_id,
+            barbearia_id: barbeiro.barbearia_id,
             tipo: 'barbeiro_sem_agenda',
             titulo: 'Prepare a Próxima Semana 💈',
             mensagem:
               'A próxima semana ainda não está preparada. Revise os dias de trabalho antes de abrir a agenda para os clientes.',
-            dados: { tipo: 'barbeiro_sem_agenda' },
+            dados: { tipo: 'barbeiro_sem_agenda', barbearia_id: barbeiro.barbearia_id },
           });
           barbeirosAvisados += 1;
         }

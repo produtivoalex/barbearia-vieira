@@ -40,6 +40,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useServicos } from '@/hooks/useServicos';
 import { usePainelBarbeiro } from '@/hooks/usePainelBarbeiro';
+import { useBarbearia } from '@/contexts/BarbeariaContext';
 
 interface BloqueioCliente {
   id: string;
@@ -106,8 +107,9 @@ export default function TelaOpcoesAvancadas() {
   const router = useRouter();
   const { session } = useAuth();
   const barbeiroId = session?.user?.id;
-  const { servicos } = useServicos();
-  const { agendamentosHoje, clientes, alternarTardeFechada, criarReservaManual } = usePainelBarbeiro();
+  const { barbearia } = useBarbearia();
+  const { servicos } = useServicos('todos', barbearia?.id);
+  const { agendamentosHoje, clientes, alternarTardeFechada, criarReservaManual } = usePainelBarbeiro(barbearia?.id);
 
   // Estados gerais
   const [carregando, setCarregando] = useState(true);

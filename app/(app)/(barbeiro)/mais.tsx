@@ -25,6 +25,7 @@ import {
   Edit3,
   Zap,
   Check,
+  Store,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { LogoBarbearia } from '@/components';
@@ -33,6 +34,7 @@ import { usePerfil } from '@/hooks/usePerfil';
 import { useAuth } from '@/hooks/useAuth';
 import { useServicos, type Servico } from '@/hooks/useServicos';
 import { supabase } from '@/lib/supabase';
+import { useBarbearia } from '@/contexts/BarbeariaContext';
 
 type TipoModal = 'servicos' | 'privacidade' | 'sair' | null;
 
@@ -41,7 +43,8 @@ export default function TelaBarbeiroMais() {
   const { perfil, carregandoPerfil } = usePerfil();
   const { session } = useAuth();
   const barbeiroId = session?.user?.id;
-  const { servicos, recarregar: recarregarServicos } = useServicos();
+  const { barbearia } = useBarbearia();
+  const { servicos, recarregar: recarregarServicos } = useServicos('todos', barbearia?.id);
 
   const [modalAtivo, setModalAtivo] = useState<TipoModal>(null);
 
@@ -252,6 +255,23 @@ export default function TelaBarbeiroMais() {
               <View style={styles.itemTextoContainer}>
                 <Text style={styles.itemTitulo}>Preparar próxima agenda</Text>
                 <Text style={styles.itemSubtitulo}>Definir dias disponíveis e hora de abertura</Text>
+              </View>
+              <ChevronRight size={18} color={Colors.textoDesabilitado} />
+            </TouchableOpacity>
+
+            <View style={styles.divisorItem} />
+
+            <TouchableOpacity
+              style={styles.itemLinha}
+              activeOpacity={0.7}
+              onPress={() => router.push('/(app)/barbearias/index')}
+            >
+              <View style={[styles.itemIconeContainer, styles.iconeOuro]}>
+                <Store size={18} color={Colors.ouro} />
+              </View>
+              <View style={styles.itemTextoContainer}>
+                <Text style={styles.itemTitulo}>Trocar barbearia ativa</Text>
+                <Text style={styles.itemSubtitulo}>{barbearia?.nome || 'Selecionar estabelecimento'}</Text>
               </View>
               <ChevronRight size={18} color={Colors.textoDesabilitado} />
             </TouchableOpacity>
