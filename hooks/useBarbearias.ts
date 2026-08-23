@@ -40,16 +40,24 @@ export function useBarbearias(filtros: FiltrosBarbearias = {}) {
     setErro(null);
     if (filtros.somenteVinculos) {
       const { data: usuario } = await supabase.auth.getUser();
-      const { data, error } = await supabase
+      const { data: vinculos, error: vinculosError } = await supabase
         .from('barbearia_membros')
-        .select('barbearia:barbearia_id(id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema)')
+        .select('barbearia_id')
         .eq('usuario_id', usuario.user?.id ?? '')
         .eq('ativo', true);
-      if (error) setErro(error.message);
-      setBarbearias((data ?? []).flatMap((item) => {
-        const relacao = (item as { barbearia?: BarbeariaPublica | BarbeariaPublica[] }).barbearia;
-        return Array.isArray(relacao) ? relacao : relacao ? [relacao] : [];
-      }));
+      if (vinculosError) setErro(vinculosError.message);
+      const ids = (vinculos ?? []).map((item) => item.barbearia_id).filter(Boolean);
+      if (!ids.length) {
+        setBarbearias([]);
+      } else {
+        const { data, error } = await supabase
+          .from('barbearias')
+          .select('id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema')
+          .in('id', ids)
+          .order('nome');
+        if (error) setErro(error.message);
+        setBarbearias((data ?? []) as BarbeariaPublica[]);
+      }
     } else {
       const { data, error } = await supabase.rpc('buscar_barbearias', {
         p_busca: filtros.busca?.trim() || null,
@@ -77,21 +85,19 @@ export async function buscarDetalheBarbearia(slug: string, somenteVinculos = fal
   if (data || !somenteVinculos) return { barbearia: (data ?? null) as BarbeariaPublica | null, error };
 
   const { data: usuario } = await supabase.auth.getUser();
-  const { data: membro, error: membroError } = await supabase
+  const { data: vinculos, error: vinculosError } = await supabase
     .from('barbearia_membros')
-    .select('barbearia:barbearia_id(id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema)')
+    .select('barbearia_id')
     .eq('usuario_id', usuario.user?.id ?? '')
-    .eq('ativo', true)
-    .limit(30);
-  const estabelecimento = (membro ?? [])
-    .flatMap((item) => {
-      const relacao = (item as { barbearia?: BarbeariaPublica | BarbeariaPublica[] }).barbearia;
-      return Array.isArray(relacao) ? relacao : relacao ? [relacao] : [];
-    })
-    .find((item): item is BarbeariaPublica => item?.slug === slug);
-  if (!estabelecimento) {
-    return { barbearia: null, error: membroError ?? error };
-  }
+    .eq('ativo', true);
+  const ids = (vinculos ?? []).map((item) => item.barbearia_id).filter(Boolean);
+  const { data: estabelecimento, error: estabelecimentoError } = await supabase
+    .from('barbearias')
+    .select('id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema')
+    .eq('slug', slug)
+    .in('id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000'])
+    .maybeSingle();
+  if (!estabelecimento) return { barbearia: null, error: estabelecimentoError ?? vinculosError ?? error };
 
   const { data: servicos } = await supabase
     .from('servicos')
