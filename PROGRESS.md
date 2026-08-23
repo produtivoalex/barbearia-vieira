@@ -1,5 +1,18 @@
 # Progresso do Projeto (App Barbearia)
 
+## Diagnostico APK Preview - CONCLUIDO (23/08/2026)
+
+- O development abre normalmente porque usa `npx expo start --dev-client` e carrega o `.env` local.
+- O perfil `preview` em `eas.json` gera APK standalone, mas nao possui `env` configurado.
+- Consulta inicial confirmada no EAS: ambiente `preview` sem variaveis cadastradas.
+- Revalidacao em 23/08/2026: o Dashboard agora mostra `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` e `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` cadastradas em `preview` (valores nao registrados).
+- Build gerado no EAS em 23/08/2026, ID `56c928a6-7985-4012-986b-3b048a2ec258`.
+- APK Preview validado com sucesso: abre normalmente no celular.
+- `.env` esta ignorado pelo Git; as variaveis nao sao enviadas ao build remoto.
+- Causa mais provavel do APK fechar na abertura: `lib/supabase.ts` chama `createClient()` sem `EXPO_PUBLIC_SUPABASE_URL` e `EXPO_PUBLIC_SUPABASE_ANON_KEY` no bundle.
+- Variaveis cadastradas no EAS Dashboard, ambiente `preview`: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` e `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`.
+- O aviso sobre `cli.version` do eas-cli e informativo e nao e a causa do problema.
+
 Este arquivo serve como um "ponto de salvamento" (save state) para qualquer IA que for interagir com este repositório.
 **Regra para IAs:** Leia este arquivo antes de começar qualquer trabalho. Atualize-o sempre que concluir uma etapa significativa.
 
