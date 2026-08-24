@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MapPin, Search, ChevronRight } from 'lucide-react-native';
 import { useBarbearias, type BarbeariaPublica } from '@/hooks/useBarbearias';
 import { usePerfil } from '@/hooks/usePerfil';
@@ -10,14 +10,17 @@ import { Colors, FontFamily, FontSize, Radii, Spacing } from '@/theme';
 
 export default function ListaBarbearias() {
   const router = useRouter();
+  const { modo } = useLocalSearchParams<{ modo?: string }>();
   const [busca, setBusca] = useState('');
   const { perfil } = usePerfil();
   const { selecionarBarbearia } = useBarbearia();
-  const { barbearias, carregando, erro, recarregar } = useBarbearias({ busca, somenteVinculos: perfil?.role === 'barbeiro' });
+  const modoPainel = modo === 'painel';
+  const somenteVinculos = modoPainel || perfil?.role === 'barbeiro';
+  const { barbearias, carregando, erro, recarregar } = useBarbearias({ busca, somenteVinculos });
 
   function renderItem({ item }: { item: BarbeariaPublica }) {
     const escolher = async () => {
-      if (perfil?.role === 'barbeiro') {
+      if (somenteVinculos) {
         await selecionarBarbearia(item);
         router.replace('/(app)/(barbeiro)/hoje');
         return;

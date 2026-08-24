@@ -264,7 +264,7 @@ export default function TelaBarbeiroMais() {
             <TouchableOpacity
               style={styles.itemLinha}
               activeOpacity={0.7}
-              onPress={() => router.push('/(app)/barbearias/index')}
+              onPress={() => router.push({ pathname: '/(app)/barbearias', params: { modo: 'painel' } })}
             >
               <View style={[styles.itemIconeContainer, styles.iconeOuro]}>
                 <Store size={18} color={Colors.ouro} />
