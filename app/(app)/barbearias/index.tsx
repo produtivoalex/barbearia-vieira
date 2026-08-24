@@ -5,16 +5,26 @@ import { useRouter } from 'expo-router';
 import { MapPin, Search, ChevronRight } from 'lucide-react-native';
 import { useBarbearias, type BarbeariaPublica } from '@/hooks/useBarbearias';
 import { usePerfil } from '@/hooks/usePerfil';
+import { useBarbearia } from '@/contexts/BarbeariaContext';
 import { Colors, FontFamily, FontSize, Radii, Spacing } from '@/theme';
 
 export default function ListaBarbearias() {
   const router = useRouter();
   const [busca, setBusca] = useState('');
   const { perfil } = usePerfil();
+  const { selecionarBarbearia } = useBarbearia();
   const { barbearias, carregando, erro, recarregar } = useBarbearias({ busca, somenteVinculos: perfil?.role === 'barbeiro' });
 
   function renderItem({ item }: { item: BarbeariaPublica }) {
-    return <TouchableOpacity style={styles.card} onPress={() => router.push({ pathname: '/(app)/barbearias/[slug]', params: { slug: item.slug } })}>
+    const escolher = async () => {
+      if (perfil?.role === 'barbeiro') {
+        await selecionarBarbearia(item);
+        router.replace('/(app)/(barbeiro)/hoje');
+        return;
+      }
+      router.push({ pathname: '/(app)/barbearias/[slug]', params: { slug: item.slug } });
+    };
+    return <TouchableOpacity style={styles.card} onPress={escolher}>
       <View style={styles.logo}><Text style={styles.logoTexto}>{item.nome.slice(0, 1).toUpperCase()}</Text></View>
       <View style={styles.info}><Text style={styles.nome}>{item.nome}</Text><Text style={styles.local}>{[item.bairro, item.cidade].filter(Boolean).join(' • ') || 'Localização não informada'}</Text>{item.descricao ? <Text style={styles.descricao} numberOfLines={2}>{item.descricao}</Text> : null}</View>
       <ChevronRight size={20} color={Colors.ouro} />
