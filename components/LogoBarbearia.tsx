@@ -8,6 +8,7 @@ export type TipoLogo = 'navalha' | 'avatar' | 'borda_sf' | 'padrao';
 interface LogoBarbeariaProps {
   tamanho?: number;
   tipo?: TipoLogo;
+  uri?: string | null;
   mostrarTelefone?: boolean;
   telefoneClicavel?: boolean;
   mensagemWhatsApp?: string;
@@ -17,6 +18,7 @@ interface LogoBarbeariaProps {
 export function LogoBarbearia({
   tamanho = 100,
   tipo = 'navalha',
+  uri,
   mostrarTelefone = false,
   telefoneClicavel = true,
   mensagemWhatsApp = 'Não estou conseguindo entrar no aplicativo',
@@ -34,7 +36,7 @@ export function LogoBarbearia({
   }
 
   const altura = tamanho;
-  const largura = tamanho * ratio;
+  const largura = uri ? tamanho : tamanho * ratio;
 
   function handleAbrirWhatsApp() {
     if (!telefoneClicavel) return;
@@ -45,9 +47,13 @@ export function LogoBarbearia({
 
   const renderImagem = () => (
     <Image
-      source={sourceImg}
-      style={[styles.logoImagem, { width: largura, height: altura }]}
-      resizeMode="contain"
+      source={uri ? { uri } : sourceImg}
+      style={[
+        styles.logoImagem,
+        { width: largura, height: altura },
+        uri && styles.logoRemota,
+      ]}
+      resizeMode={uri ? 'cover' : 'contain'}
     />
   );
 
@@ -98,6 +104,9 @@ export function LogoBarbearia({
 const styles = StyleSheet.create({
   logoImagem: {
     alignSelf: 'center',
+  },
+  logoRemota: {
+    borderRadius: Radii.md,
   },
   containerVertical: {
     alignItems: 'center',

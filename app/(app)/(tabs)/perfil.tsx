@@ -24,17 +24,22 @@ import {
   CheckCircle2,
   Phone,
   Mail,
+  Store,
 } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { Avatar, LogoBarbearia } from '@/components';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { usePerfil } from '@/hooks/usePerfil';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
+import { useBarbearia } from '@/contexts/BarbeariaContext';
 
 type TipoModal = 'dados_conta' | 'notificacoes' | 'horarios' | 'privacidade' | 'sair' | null;
 
 export default function TelaPerfil() {
+  const router = useRouter();
   const { perfil, carregandoPerfil } = usePerfil();
+  const { barbearia } = useBarbearia();
   const { session } = useAuth();
   const [modalAtivo, setModalAtivo] = useState<TipoModal>(null);
 
@@ -67,7 +72,7 @@ export default function TelaPerfil() {
         {/* Card Principal de Identidade com Vieira Avatar */}
         <View style={styles.perfilCard}>
           <View style={styles.avatarWrapper}>
-            <LogoBarbearia tamanho={64} tipo="avatar" variante="compacto" />
+            <LogoBarbearia tamanho={64} tipo="avatar" variante="compacto" uri={barbearia?.logo_url} />
           </View>
 
           <View style={styles.perfilInfo}>
@@ -75,7 +80,7 @@ export default function TelaPerfil() {
             <Text style={styles.perfilContato}>{perfil?.telefone || emailExibicao}</Text>
             <View style={styles.badgeCliente}>
               <Sparkles size={11} color={Colors.ouro} />
-              <Text style={styles.badgeClienteTexto}>Cliente Barbearia Vieira</Text>
+              <Text style={styles.badgeClienteTexto}>Cliente {barbearia?.nome || 'Barbearia Vieira'}</Text>
             </View>
           </View>
         </View>
@@ -115,12 +120,29 @@ export default function TelaPerfil() {
               </View>
               <ChevronRight size={18} color={Colors.textoDesabilitado} />
             </TouchableOpacity>
+
+            <View style={styles.divisorItem} />
+
+            <TouchableOpacity
+              style={styles.itemLinha}
+              activeOpacity={0.7}
+              onPress={() => router.push('/(app)/barbearias/index')}
+            >
+              <View style={[styles.itemIconeContainer, { backgroundColor: 'rgba(203, 161, 74, 0.12)' }]}>
+                <Store size={18} color={Colors.ouro} />
+              </View>
+              <View style={styles.itemTextoContainer}>
+                <Text style={styles.itemTitulo}>Explorar / Trocar Barbearia</Text>
+                <Text style={styles.itemSubtitulo}>Conhecer outros estabelecimentos</Text>
+              </View>
+              <ChevronRight size={18} color={Colors.textoDesabilitado} />
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Seção 2: Barbearia Vieira */}
+        {/* Seção 2: Barbearia Ativa */}
         <View style={styles.secao}>
-          <Text style={styles.secaoTitulo}>BARBEARIA VIEIRA</Text>
+          <Text style={styles.secaoTitulo}>{(barbearia?.nome || 'BARBEARIA VIEIRA').toUpperCase()}</Text>
           <View style={styles.cardGrupo}>
             <TouchableOpacity
               style={styles.itemLinha}
@@ -132,7 +154,7 @@ export default function TelaPerfil() {
               </View>
               <View style={styles.itemTextoContainer}>
                 <Text style={styles.itemTitulo}>WhatsApp Oficial</Text>
-                <Text style={styles.itemSubtitulo}>(86) 98190-7478 • Falar com o barbeiro</Text>
+                <Text style={styles.itemSubtitulo}>{barbearia?.whatsapp || barbearia?.telefone || '(86) 98190-7478'} • Falar com o estabelecimento</Text>
               </View>
               <ChevronRight size={18} color={Colors.textoDesabilitado} />
             </TouchableOpacity>

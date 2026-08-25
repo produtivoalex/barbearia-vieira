@@ -64,7 +64,7 @@ export default function TelaHome() {
       {/* Header com Logo Avatar Barbearia Vieira */}
       <View style={styles.header}>
         <View style={styles.headerEsquerda}>
-          <LogoBarbearia tamanho={38} tipo="avatar" variante="compacto" />
+          <LogoBarbearia tamanho={38} tipo="avatar" variante="compacto" uri={barbearia?.logo_url} />
           <View>
             <Text style={styles.logo}>{barbearia?.nome || 'BARBEARIA VIEIRA'}</Text>
             <Text style={styles.telefoneHeader}>{barbearia?.telefone || '(86) 98190-7478'}</Text>

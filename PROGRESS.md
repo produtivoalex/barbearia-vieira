@@ -402,9 +402,14 @@ npx expo start --dev-client
   - **Regra de Segurança de Preservação**: impede que a barbearia fique órfã de gestor bloqueando a desativação ou rebaixamento do último proprietário/gestor ativo.
 - **Vitrine Pública & Marketplace**:
   - Detalhe da barbearia (`barbearias/[slug].tsx`) e lista (`barbearias/index.tsx`) adaptados para exibir banner oficial, logo customizada e galeria de fotos quando publicados.
+- **Onboarding de Estabelecimentos & Polimentos Finais**:
+  - Nova tela `app/(app)/(barbeiro)/cadastrar-barbearia.tsx` para criar e vincular novos estabelecimentos como proprietário.
+  - Resolução dinâmica de profissionais no agendamento através de `barbearia_membros`.
+  - Suporte à logo customizada no componente `LogoBarbearia` com renderização dinâmica na Home, Perfil e Mais.
+  - Atalhos integrados para explorar e trocar de barbearia no app do cliente e no painel do barbeiro.
 - **Validações**: `tsc --noEmit`, `npx expo config --type public` e `git diff --check` passaram com 0 erros.
 
-### Handoff para a próxima conversa
-- Estado atual: Partes 1 a 9 concluídas com sucesso.
-- O novo Development Build (`npx expo start --dev-client` ou build via EAS) está pronto para ser executado no dispositivo físico para testar o seletor nativo `expo-image-picker`.
-- Regressão da Vieira pronta para validação operacional (login, catálogo, agenda, agendamento, fila e painel do barbeiro).
+### Handoff / Estado Final do App Multi-Tenant
+- Estado atual: Plataforma Multi-Tenant e Marketplace 100% implementados e integrados.
+- Development Build (`npx expo start --dev-client`) pronto e testável no dispositivo físico.
+- Todos os fluxos operacionais (cliente e barbeiro) isolados por `barbearia_id`.

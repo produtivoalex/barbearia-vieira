@@ -26,6 +26,7 @@ import {
   Zap,
   Check,
   Store,
+  Building2,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { LogoBarbearia } from '@/components';
@@ -227,7 +228,7 @@ export default function TelaBarbeiroMais() {
         {/* Card do Perfil do Barbeiro */}
         <View style={styles.perfilCard}>
           <View style={styles.avatarWrapper}>
-            <LogoBarbearia tamanho={64} tipo="avatar" variante="compacto" />
+            <LogoBarbearia tamanho={64} tipo="avatar" variante="compacto" uri={barbearia?.logo_url} />
           </View>
 
           <View style={styles.perfilInfo}>
@@ -235,7 +236,7 @@ export default function TelaBarbeiroMais() {
             <Text style={styles.perfilContato}>{emailExibicao}</Text>
             <View style={styles.badgeBarbeiro}>
               <Sparkles size={11} color={Colors.ouro} />
-              <Text style={styles.badgeBarbeiroTexto}>Profissional Vieira</Text>
+              <Text style={styles.badgeBarbeiroTexto}>{barbearia?.nome || 'Barbearia Vieira'}</Text>
             </View>
           </View>
         </View>
@@ -289,6 +290,23 @@ export default function TelaBarbeiroMais() {
               <View style={styles.itemTextoContainer}>
                 <Text style={styles.itemTitulo}>Gestão da Barbearia</Text>
                 <Text style={styles.itemSubtitulo}>Dados comerciais, mídias, equipe e vitrine</Text>
+              </View>
+              <ChevronRight size={18} color={Colors.textoDesabilitado} />
+            </TouchableOpacity>
+
+            <View style={styles.divisorItem} />
+
+            <TouchableOpacity
+              style={styles.itemLinha}
+              activeOpacity={0.7}
+              onPress={() => router.push('/(app)/(barbeiro)/cadastrar-barbearia')}
+            >
+              <View style={[styles.itemIconeContainer, styles.iconeOuro]}>
+                <Building2 size={18} color={Colors.ouro} />
+              </View>
+              <View style={styles.itemTextoContainer}>
+                <Text style={styles.itemTitulo}>Cadastrar Nova Barbearia</Text>
+                <Text style={styles.itemSubtitulo}>Criar e gerenciar um novo estabelecimento</Text>
               </View>
               <ChevronRight size={18} color={Colors.textoDesabilitado} />
             </TouchableOpacity>

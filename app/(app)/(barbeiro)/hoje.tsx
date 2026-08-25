@@ -220,7 +220,7 @@ export default function TelaBarbeiroHoje() {
         </View>
         <View style={styles.badgeBarbeiro}>
           <Sparkles size={12} color={Colors.ouro} />
-          <Text style={styles.badgeBarbeiroTexto}>Barbeiro Vieira</Text>
+          <Text style={styles.badgeBarbeiroTexto}>{barbearia?.nome || 'Barbearia Vieira'}</Text>
         </View>
       </View>
 

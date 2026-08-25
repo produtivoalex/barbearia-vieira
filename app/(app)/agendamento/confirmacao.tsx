@@ -87,19 +87,33 @@ export default function TelaConfirmacao() {
         console.log('RPC reservar_slot falhou, usando fallback direto:', erroRpc.message);
       }
 
-      // 3. Se barbeiroId for vazio, busca o primeiro barbeiro cadastrado no banco ou usa fallback
+      // 3. Se barbeiroId for vazio, busca membro ativo da barbearia selecionada
       if (!idBarbeiroFinal) {
-        const { data: barbeiroCadastrado } = await supabase
-          .from('perfis')
-          .select('id')
-          .eq('role', 'barbeiro')
-          .limit(1)
-          .maybeSingle();
+        if (barbearia?.id) {
+          const { data: membroAtivo } = await supabase
+            .from('barbearia_membros')
+            .select('usuario_id')
+            .eq('barbearia_id', barbearia.id)
+            .eq('ativo', true)
+            .in('papel', ['proprietario', 'gestor', 'barbeiro'])
+            .order('criado_em', { ascending: true })
+            .limit(1)
+            .maybeSingle();
 
-        if (barbeiroCadastrado?.id) {
-          idBarbeiroFinal = barbeiroCadastrado.id;
-        } else {
-          idBarbeiroFinal = '4b808eeb-9198-42a1-b10c-3a54f72c12dc'; // ID principal da Barbearia Vieira
+          if (membroAtivo?.usuario_id) {
+            idBarbeiroFinal = membroAtivo.usuario_id;
+          }
+        }
+
+        if (!idBarbeiroFinal) {
+          const { data: barbeiroCadastrado } = await supabase
+            .from('perfis')
+            .select('id')
+            .eq('role', 'barbeiro')
+            .limit(1)
+            .maybeSingle();
+
+          idBarbeiroFinal = barbeiroCadastrado?.id || '4b808eeb-9198-42a1-b10c-3a54f72c12dc';
         }
       }
 
