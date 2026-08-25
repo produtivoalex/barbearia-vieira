@@ -54,6 +54,12 @@
           "color": "#D32F2F"
         }
       ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Permita que o aplicativo acerte as barbearias mais próximas de você."
+        }
+      ],
       "@react-native-google-signin/google-signin"
     ],
     "experiments": {

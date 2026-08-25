@@ -20,6 +20,7 @@ import { Botao, LogoBarbearia } from '@/components';
 import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
 import { supabase } from '@/lib/supabase';
 import { iniciarLoginGoogle } from '@/lib/socialAuth';
+import { useLocalizacao } from '@/hooks/useLocalizacao';
 
 /** Ícone vetorial oficial multicolorido da Google */
 function IconeGoogle({ tamanho = 20 }: { tamanho?: number }) {
@@ -129,6 +130,9 @@ export default function TelaLogin() {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [carregandoSocial, setCarregandoSocial] = useState(false);
+
+  // Solicita permissão e busca localização em background antecipadamente
+  useLocalizacao(true);
 
   async function handleLogin() {
     if (!email || !senha) {

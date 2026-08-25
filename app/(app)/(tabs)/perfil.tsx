@@ -120,29 +120,12 @@ export default function TelaPerfil() {
               </View>
               <ChevronRight size={18} color={Colors.textoDesabilitado} />
             </TouchableOpacity>
-
-            <View style={styles.divisorItem} />
-
-            <TouchableOpacity
-              style={styles.itemLinha}
-              activeOpacity={0.7}
-              onPress={() => router.push('/(app)/barbearias/index')}
-            >
-              <View style={[styles.itemIconeContainer, { backgroundColor: 'rgba(203, 161, 74, 0.12)' }]}>
-                <Store size={18} color={Colors.ouro} />
-              </View>
-              <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Explorar / Trocar Barbearia</Text>
-                <Text style={styles.itemSubtitulo}>Conhecer outros estabelecimentos</Text>
-              </View>
-              <ChevronRight size={18} color={Colors.textoDesabilitado} />
-            </TouchableOpacity>
           </View>
         </View>
 
         {/* Seção 2: Barbearia Ativa */}
         <View style={styles.secao}>
-          <Text style={styles.secaoTitulo}>{(barbearia?.nome || 'BARBEARIA VIEIRA').toUpperCase()}</Text>
+          <Text style={styles.secaoTitulo}>{(barbearia?.nome || 'BARBEARIA').toUpperCase()}</Text>
           <View style={styles.cardGrupo}>
             <TouchableOpacity
               style={styles.itemLinha}
@@ -180,7 +163,7 @@ export default function TelaPerfil() {
 
         {/* Seção 3: Informações do App */}
         <View style={styles.secao}>
-          <Text style={styles.secaoTitulo}>INFORMAÇÕES</Text>
+          <Text style={styles.secaoTitulo}>INFORMAÇÕES & CONFIGURAÇÕES</Text>
           <View style={styles.cardGrupo}>
             <TouchableOpacity
               style={styles.itemLinha}
@@ -199,13 +182,33 @@ export default function TelaPerfil() {
 
             <View style={styles.divisorItem} />
 
+            {/* Opção discreta de troca de unidade para clientes */}
+            <TouchableOpacity
+              style={styles.itemLinha}
+              activeOpacity={0.7}
+              onPress={() => router.push('/(app)/barbearias')}
+            >
+              <View style={styles.itemIconeContainer}>
+                <Store size={18} color={Colors.textoSecundario} />
+              </View>
+              <View style={styles.itemTextoContainer}>
+                <Text style={styles.itemTitulo}>Unidade de Atendimento</Text>
+                <Text style={styles.itemSubtitulo}>
+                  {barbearia?.nome ? `${barbearia.nome} • Alterar unidade` : 'Alterar unidade selecionada'}
+                </Text>
+              </View>
+              <ChevronRight size={18} color={Colors.textoDesabilitado} />
+            </TouchableOpacity>
+
+            <View style={styles.divisorItem} />
+
             <View style={styles.itemLinha}>
               <View style={styles.itemIconeContainer}>
                 <Info size={18} color={Colors.textoSecundario} />
               </View>
               <View style={styles.itemTextoContainer}>
                 <Text style={styles.itemTitulo}>Versão do aplicativo</Text>
-                <Text style={styles.itemSubtitulo}>Barbearia Vieira v1.0.0 (Oficial)</Text>
+                <Text style={styles.itemSubtitulo}>Plataforma Barber v1.0.0</Text>
               </View>
             </View>
           </View>

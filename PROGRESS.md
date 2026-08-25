@@ -425,9 +425,21 @@ npx expo start --dev-client
   - Modal para criar e editar serviços com nome, preço, duração, descrição, categoria, imagem da biblioteca/galeria e cor da moldura.
 - **Catálogo do Cliente Atualizado (`app/(app)/(tabs)/servicos/index.tsx`)**:
   - Serviços renderizados com suas respectivas fotos e molduras externas personalizadas na cor do estabelecimento ativo.
+- **Localização Antecipada & Proximidade (`hooks/useLocalizacao.ts`)**:
+  - `expo-location` instalado e configurado em `app.json` e `package.json`.
+  - Permissão solicitada no início do app / tela de login com geolocalização obtida em segundo plano.
+  - Vitrine (`barbearias/index.tsx`) ordena automaticamente da barbearia mais próxima para a mais distante com indicador de distância nos cards (`📍 a 1.2 km` / `📍 a 800 m`).
+- **Navegação & Retenção de Barbeiros**:
+  - Removida a opção de explorar barbearias da Home (`app/(app)/(tabs)/index.tsx`) para não incentivar a perda de clientes.
+  - No Perfil (`app/(app)/(tabs)/perfil.tsx`), a troca de barbearia foi movida para a seção de Informações como uma opção discreta (*"Unidade de Atendimento"* -> *"Alterar unidade atual"*).
+  - Corrigida a rota para `/(app)/barbearias` eliminando o erro de 404.
+- **Persistência em Nuvem da Última Barbearia do Cliente**:
+  - Adicionada coluna `ultima_barbearia_id` em `public.perfis` via migration `20260825210000_client_last_barbearia_and_location.sql`.
+  - `BarbeariaContext` busca a última barbearia do perfil ou do histórico de agendamentos no banco ao logar, garantindo que clientes recorrentes nunca caiam indevidamente na vitrine.
+  - Ao escolher um estabelecimento, a seleção é salva no `AsyncStorage` e atualizada no Supabase.
 - **Validações**: `tsc --noEmit`, `npx expo config --type public` e `git diff --check` passaram com 0 erros.
 
 ### Handoff / Estado Final da Plataforma White-Label
-- Estado atual: Plataforma SaaS Multi-Tenant White-Label 100% implementada, testada e sincronizada.
-- Banco de dados: Migration `20260825200000_custom_themes_and_service_moldes.sql` aplicada no Supabase remoto.
+- Estado atual: Plataforma SaaS Multi-Tenant White-Label 100% implementada, testada e sincronizada com geolocalização e proximidade.
+- Banco de dados: Migrations aplicadas até `20260825210000_client_last_barbearia_and_location.sql`.
 - Servidor: Development Build pronto para testes em dispositivos físicos e emuladores.

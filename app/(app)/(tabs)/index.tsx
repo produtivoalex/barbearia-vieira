@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Bell, BellRing, CalendarCheck, ChevronRight, Clock, ListPlus, Scissors, Calendar, AlertCircle, Store } from 'lucide-react-native';
+import { Bell, BellRing, CalendarCheck, ChevronRight, Clock, ListPlus, Scissors, Calendar, AlertCircle } from 'lucide-react-native';
 import { Card, Botao, LogoBarbearia } from '@/components';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { usePerfil } from '@/hooks/usePerfil';
@@ -230,19 +230,6 @@ export default function TelaHome() {
             <Text style={styles.atalhoDescricao}>Próximos cortes e histórico</Text>
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity
-          style={styles.explorarBarbearias}
-          onPress={() => router.push('/(app)/barbearias/index')}
-          activeOpacity={0.75}
-        >
-          <Store size={20} color={Colors.ouro} />
-          <View style={styles.explorarInfo}>
-            <Text style={styles.explorarTitulo}>Explorar barbearias</Text>
-            <Text style={styles.explorarDescricao}>Conheça estabelecimentos disponíveis na plataforma</Text>
-          </View>
-          <ChevronRight size={18} color={Colors.ouro} />
-        </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.link}

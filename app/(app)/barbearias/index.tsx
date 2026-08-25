@@ -16,6 +16,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Building2,
   ChevronRight,
+  Compass,
   MapPin,
   Phone,
   Search,
@@ -25,6 +26,7 @@ import {
   X,
 } from 'lucide-react-native';
 import { useBarbearias, type BarbeariaPublica } from '@/hooks/useBarbearias';
+import { useLocalizacao } from '@/hooks/useLocalizacao';
 import { usePerfil } from '@/hooks/usePerfil';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
 import { Colors, FontFamily, FontSize, Radii, Shadows, Spacing } from '@/theme';
@@ -36,10 +38,16 @@ export default function ListaBarbearias() {
   const [cidadeSelecionada, setCidadeSelecionada] = useState<string>('Todas');
   const { perfil } = usePerfil();
   const { barbearia: barbeariaAtiva, selecionarBarbearia } = useBarbearia();
+  const { coordenadas, permissaoConcedida } = useLocalizacao(true);
 
   const modoPainel = modo === 'painel';
   const somenteVinculos = modoPainel || perfil?.role === 'barbeiro';
-  const { barbearias, carregando, erro, recarregar } = useBarbearias({ busca, somenteVinculos });
+  const { barbearias, carregando, erro, recarregar } = useBarbearias({
+    busca,
+    latitude: coordenadas?.latitude,
+    longitude: coordenadas?.longitude,
+    somenteVinculos,
+  });
 
   // Lista única de cidades para filtros rápidos
   const cidadesDisponiveis = useMemo(() => {
@@ -68,38 +76,55 @@ export default function ListaBarbearias() {
   function renderCardBarbearia({ item }: { item: BarbeariaPublica }) {
     const isAtiva = barbeariaAtiva?.id === item.id;
     const localizacao = [item.bairro, item.cidade].filter(Boolean).join(', ') || 'Localização a confirmar';
+    const corDestaque = item.tema?.primary || Colors.ouro;
 
     return (
-      <View style={[styles.card, isAtiva && styles.cardAtiva]}>
+      <View style={[styles.card, isAtiva && styles.cardAtiva, { borderColor: isAtiva ? corDestaque : Colors.borda }]}>
         {/* Banner de Capa */}
         <View style={styles.bannerContainer}>
           {item.banner_url ? (
             <Image source={{ uri: item.banner_url }} style={styles.bannerImagem} resizeMode="cover" />
           ) : (
             <View style={styles.bannerPlaceholder}>
-              <Store size={32} color="rgba(203, 161, 74, 0.4)" />
+              <Store size={36} color="rgba(203, 161, 74, 0.45)" />
+              <Text style={styles.bannerPlaceholderTexto}>{item.nome}</Text>
             </View>
           )}
           <View style={styles.bannerGradiente} />
 
-          {/* Badge de Selecionada */}
-          {isAtiva && (
-            <View style={styles.badgeAtiva}>
-              <Sparkles size={11} color={Colors.fundo} />
-              <Text style={styles.badgeAtivaTexto}>Ativa no App</Text>
-            </View>
-          )}
+          {/* Badges do Topo */}
+          <View style={styles.badgesTopoLinha}>
+            {/* Badge de Distância */}
+            {item.distancia_km !== null && item.distancia_km !== undefined ? (
+              <View style={styles.badgeDistancia}>
+                <MapPin size={10} color={Colors.ouro} />
+                <Text style={styles.badgeDistanciaTexto}>
+                  {item.distancia_km < 1
+                    ? `${Math.round(Number(item.distancia_km) * 1000)} m`
+                    : `${Number(item.distancia_km).toFixed(1)} km`}
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Badge de Ativa */}
+            {isAtiva ? (
+              <View style={[styles.badgeAtiva, { backgroundColor: corDestaque }]}>
+                <Sparkles size={11} color={Colors.fundo} />
+                <Text style={styles.badgeAtivaTexto}>Ativa no App</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
 
         {/* Informações Principais & Logo */}
         <View style={styles.cardCorpo}>
           <View style={styles.topoCard}>
             {/* Logo Flutuante */}
-            <View style={styles.logoWrapper}>
+            <View style={[styles.logoWrapper, { borderColor: corDestaque }]}>
               {item.logo_url ? (
                 <Image source={{ uri: item.logo_url }} style={styles.logoImg} resizeMode="cover" />
               ) : (
-                <View style={styles.logoPlaceholder}>
+                <View style={[styles.logoPlaceholder, { backgroundColor: corDestaque }]}>
                   <Text style={styles.logoLetra}>{item.nome.slice(0, 1).toUpperCase()}</Text>
                 </View>
               )}
@@ -110,7 +135,7 @@ export default function ListaBarbearias() {
                 {item.nome}
               </Text>
               <View style={styles.localLinha}>
-                <MapPin size={13} color={Colors.ouro} />
+                <MapPin size={13} color={corDestaque} />
                 <Text style={styles.localTexto} numberOfLines={1}>
                   {localizacao}
                 </Text>
@@ -135,12 +160,12 @@ export default function ListaBarbearias() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.btnEscolher, isAtiva && styles.btnEscolherAtivo]}
+              style={[styles.btnEscolher, isAtiva && styles.btnEscolherAtivo, { backgroundColor: isAtiva ? 'transparent' : corDestaque, borderColor: corDestaque }]}
               onPress={() => handleEscolherBarbearia(item)}
               activeOpacity={0.8}
             >
-              <Scissors size={15} color={isAtiva ? Colors.ouro : Colors.fundo} />
-              <Text style={[styles.btnEscolherTexto, isAtiva && styles.btnEscolherTextoAtivo]}>
+              <Scissors size={15} color={isAtiva ? corDestaque : Colors.fundo} />
+              <Text style={[styles.btnEscolherTexto, isAtiva && { color: corDestaque }]}>
                 {isAtiva ? 'Acessar Barbearia' : 'Escolher Barbearia'}
               </Text>
             </TouchableOpacity>
@@ -363,16 +388,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#161618',
+    gap: 4,
+  },
+  bannerPlaceholderTexto: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodySm,
+    color: 'rgba(203, 161, 74, 0.7)',
+    letterSpacing: 0.5,
   },
   bannerGradiente: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(15, 15, 16, 0.35)',
   },
 
-  badgeAtiva: {
+  badgesTopoLinha: {
     position: 'absolute',
     top: 10,
+    left: 12,
     right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  badgeDistancia: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: Radii.full,
+    borderWidth: 1,
+    borderColor: 'rgba(203, 161, 74, 0.4)',
+  },
+  badgeDistanciaTexto: {
+    color: Colors.ouro,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.labelXs,
+  },
+  badgeAtiva: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
@@ -380,6 +434,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: Radii.full,
+    marginLeft: 'auto',
   },
   badgeAtivaTexto: {
     color: Colors.fundo,
