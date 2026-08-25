@@ -14,6 +14,8 @@ export interface BarbeariaPublica {
   logo_url: string | null;
   banner_url: string | null;
   fotos: unknown[];
+  publicada?: boolean;
+  status?: string;
   distancia_km?: number | null;
   total_resultados?: number;
   servicos?: Array<{ id: string; nome: string; descricao: string | null; preco: number }>;
@@ -52,7 +54,7 @@ export function useBarbearias(filtros: FiltrosBarbearias = {}) {
       } else {
         const { data, error } = await supabase
           .from('barbearias')
-          .select('id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema')
+          .select('id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status')
           .in('id', ids)
           .order('nome');
         if (error) setErro(error.message);
@@ -93,7 +95,7 @@ export async function buscarDetalheBarbearia(slug: string, somenteVinculos = fal
   const ids = (vinculos ?? []).map((item) => item.barbearia_id).filter(Boolean);
   const { data: estabelecimento, error: estabelecimentoError } = await supabase
     .from('barbearias')
-    .select('id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema')
+    .select('id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status')
     .eq('slug', slug)
     .in('id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000'])
     .maybeSingle();

@@ -33,7 +33,7 @@ export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
       if (!usuario.user?.id) return;
       const { data: membro } = await supabase
         .from('barbearia_membros')
-        .select('barbearia:barbearia_id(id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema)')
+        .select('barbearia:barbearia_id(id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status)')
         .eq('usuario_id', usuario.user.id)
         .eq('ativo', true)
         .limit(1)

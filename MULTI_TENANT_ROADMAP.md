@@ -85,7 +85,7 @@ Status: CONCLUÍDA em 23/08/2026.
 
 ### Parte 5 — Vitrine e busca
 
-Status: PRÓXIMA.
+Status: CONCLUÍDA em 23/08/2026.
 
 - Criar consultas/RPCs públicas paginadas.
 - Implementar cidade, bairro e proximidade geográfica opcional.
@@ -94,7 +94,7 @@ Status: PRÓXIMA.
 
 ### Parte 6 — Tema e fluxo nativo por tenant
 
-Status: PENDENTE.
+Status: CONCLUÍDA em 23/08/2026.
 
 - Criar `BarbeariaContext` e persistência da barbearia selecionada.
 - Criar `ThemeProvider` com fallback para o tema atual.
@@ -103,7 +103,7 @@ Status: PENDENTE.
 
 ### Parte 7 — Painel do barbeiro multi-barbearia
 
-Status: PENDENTE.
+Status: CONCLUÍDA em 24/08/2026.
 
 - Seleção da barbearia ativa.
 - Filtragem tenant-aware em Hoje, Semana, Clientes, Mais e Opções Avançadas.
@@ -111,13 +111,41 @@ Status: PENDENTE.
 
 ### Parte 8 — Storage, testes e rollout
 
-Status: PENDENTE.
+Status: CONCLUÍDA em 24/08/2026.
 
 - Bucket e policies para logo, banner e fotos por tenant.
 - Criar segunda barbearia de teste.
 - Executar testes de isolamento e regressão da Vieira.
 - Gerar development build e depois preview.
 - Documentar resultado e bloqueios remotos.
+
+Resultado validado:
+
+- Migrations multi-tenant até `20260823040000` aplicadas no projeto Supabase vinculado.
+- Bucket `barbearia-media` criado; auditoria confirmou `1` bucket e nenhum objeto fora do contrato.
+- Vieira permanece ativa e pública; tenant de teste foi criado como ativo e privado.
+- Consulta pública não expõe o tenant privado (`detalhe_barbearia_publica` retorna `null`).
+- Perfil `produtivoalex@gmail.com` possui role `barbeiro` e vínculos ativos na Vieira e no tenant de teste.
+- Troca de barbearia no painel foi validada no Development Build.
+- Correções finais de roteamento e seleção tenant-aware estão na branch `main`.
+
+Limitação mantida: não foi criado um segundo usuário Auth sintético; o teste usou o usuário operacional existente como gestor do tenant de teste.
+
+### Parte 9 — Onboarding e gestão de estabelecimentos
+
+Status: EM ANDAMENTO.
+
+- Fluxo protegido de edição de dados comerciais implementado para o tenant ativo.
+- Seletor de imagens com `expo-image-picker` implementado para logo, banner e até seis fotos.
+- Upload usa `ArrayBuffer` e caminhos tenant-aware no Storage.
+- Criar fluxo protegido para proprietário/gestor cadastrar e editar dados comerciais da barbearia.
+- Permitir publicar/pausar um tenant com confirmação e visibilidade clara.
+- Criar gestão de membros por tenant, preservando papéis e vínculos ativos.
+- Adicionar upload de logo, banner e fotos usando o contrato do Storage da Parte 8.
+- Validar RLS com dois tenants e regressão dos fluxos da Vieira.
+- Manter fora do escopo pagamentos da plataforma, comissões e painel financeiro consolidado.
+
+Validação local da primeira entrega: `tsc --noEmit`, `expo config` e `git diff --check` passaram. Upload real ainda precisa ser exercitado no novo Development Build.
 
 ## Checklist obrigatório por etapa
 

@@ -83,6 +83,12 @@ export default function TabsBarbeiroLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="gestao-barbearia"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

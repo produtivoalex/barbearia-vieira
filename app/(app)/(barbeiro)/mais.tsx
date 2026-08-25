@@ -281,6 +281,23 @@ export default function TelaBarbeiroMais() {
             <TouchableOpacity
               style={styles.itemLinha}
               activeOpacity={0.7}
+              onPress={() => router.push('/(app)/(barbeiro)/gestao-barbearia')}
+            >
+              <View style={[styles.itemIconeContainer, styles.iconeOuro]}>
+                <Edit3 size={18} color={Colors.ouro} />
+              </View>
+              <View style={styles.itemTextoContainer}>
+                <Text style={styles.itemTitulo}>Editar dados da barbearia</Text>
+                <Text style={styles.itemSubtitulo}>Nome, contato, endereço e publicação</Text>
+              </View>
+              <ChevronRight size={18} color={Colors.textoDesabilitado} />
+            </TouchableOpacity>
+
+            <View style={styles.divisorItem} />
+
+            <TouchableOpacity
+              style={styles.itemLinha}
+              activeOpacity={0.7}
               onPress={() => setModalAtivo('servicos')}
             >
               <View style={styles.itemIconeContainer}>

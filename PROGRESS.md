@@ -372,3 +372,33 @@ npx expo start --dev-client
 - Criado `contexts/BarbeariaContext.tsx` com persistencia local da barbearia selecionada.
 - A selecao no detalhe da vitrine agora filtra catalogo, Home e agenda pelo tenant ativo.
 - TypeScript e `git diff --check` passaram.
+
+## Fechamento da Parte 8 e início da Parte 9 - 24/08/2026
+
+- Rollout remoto validado: migrations multi-tenant até `20260823040000` e bucket `barbearia-media` disponíveis no projeto Supabase correto.
+- Auditorias confirmaram a Vieira ativa/pública, bucket único e nenhum objeto Storage fora do contrato.
+- Tenant privado de teste criado; a vitrine pública não o expõe.
+- O usuário operacional de teste tem `role = barbeiro`, vínculo proprietário ativo na Vieira e vínculo gestor ativo no tenant de teste.
+- Troca de barbearia no painel foi validada no Development Build.
+- Corrigidos o roteamento do modo painel, a consulta direta de vínculos e a seleção de tenant sem passar pelo detalhe público.
+- Commits finais enviados para `main`: `21bf314`, `ae0219a`, `6137dc3`, `26600d8` e `d313d6e`.
+- Parte 9 iniciada conceitualmente: onboarding, edição/publicação do estabelecimento, membros e mídia por tenant.
+
+## Parte 9 - primeira entrega local (24/08/2026)
+
+- Criada a tela `app/(app)/(barbeiro)/gestao-barbearia.tsx` para editar dados comerciais e publicar/ocultar o tenant ativo.
+- Adicionados botões para enviar a logo e o banner oficiais ao bucket `barbearia-media` no caminho `<barbearia_id>/<logo|banner>/oficial.png`.
+- Assets locais criados: `assets/barbearia-vieira-logo.png` e `assets/barbearia-vieira-banner.png`.
+- Upload depende de membro ativo com papel `proprietario` ou `gestor`; nenhuma política remota nova foi criada.
+- Substituído o envio automático por seletor real da galeria com `expo-image-picker`; logo/banner aceitam uma imagem e fotos aceitam até seis.
+- TypeScript, `expo config` e `git diff --check` passaram. Como `expo-image-picker` é nativo, o novo Development Build será necessário.
+
+### Handoff para a próxima conversa
+
+- Estado atual: Parte 8 concluída; Parte 9 em andamento.
+- Parte 9 local: edição/publicação do estabelecimento, seleção de logo/banner/fotos pela galeria e upload tenant-aware para `barbearia-media`.
+- Assets oficiais locais: `assets/barbearia-vieira-logo.png` e `assets/barbearia-vieira-banner.png`.
+- Ainda pendente: gerar o novo Development Build com `expo-image-picker`, testar upload real de logo/banner/fotos, confirmar a leitura pública da mídia e testar regressão da Vieira.
+- Depois do teste de mídia: implementar gestão de membros por tenant, com convite/vínculo, alteração de papel e desativação segura.
+- Em seguida: completar auditoria de RLS, limpeza/substituição de mídias antigas, publicação/pausa e regressão final cliente/barbeiro.
+- Não aplicar migrations novas sem necessidade; o bucket e as policies da Parte 8 já existem remotamente.

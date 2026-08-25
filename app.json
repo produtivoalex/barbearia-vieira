@@ -42,6 +42,12 @@
       ],
       "expo-web-browser",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permita que a Barbearia Vieira acesse suas fotos para escolher logo, banner e imagens do estabelecimento."
+        }
+      ],
+      [
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
