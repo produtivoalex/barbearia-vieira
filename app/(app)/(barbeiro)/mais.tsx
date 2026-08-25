@@ -287,8 +287,8 @@ export default function TelaBarbeiroMais() {
                 <Edit3 size={18} color={Colors.ouro} />
               </View>
               <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Editar dados da barbearia</Text>
-                <Text style={styles.itemSubtitulo}>Nome, contato, endereço e publicação</Text>
+                <Text style={styles.itemTitulo}>Gestão da Barbearia</Text>
+                <Text style={styles.itemSubtitulo}>Dados comerciais, mídias, equipe e vitrine</Text>
               </View>
               <ChevronRight size={18} color={Colors.textoDesabilitado} />
             </TouchableOpacity>

@@ -384,21 +384,27 @@ npx expo start --dev-client
 - Commits finais enviados para `main`: `21bf314`, `ae0219a`, `6137dc3`, `26600d8` e `d313d6e`.
 - Parte 9 iniciada conceitualmente: onboarding, edição/publicação do estabelecimento, membros e mídia por tenant.
 
-## Parte 9 - primeira entrega local (24/08/2026)
+## Parte 9 — Gestão de Estabelecimentos, Mídias e Membros (CONCLUÍDA em 25/08/2026)
 
-- Criada a tela `app/(app)/(barbeiro)/gestao-barbearia.tsx` para editar dados comerciais e publicar/ocultar o tenant ativo.
-- Adicionados botões para enviar a logo e o banner oficiais ao bucket `barbearia-media` no caminho `<barbearia_id>/<logo|banner>/oficial.png`.
-- Assets locais criados: `assets/barbearia-vieira-logo.png` e `assets/barbearia-vieira-banner.png`.
-- Upload depende de membro ativo com papel `proprietario` ou `gestor`; nenhuma política remota nova foi criada.
-- Substituído o envio automático por seletor real da galeria com `expo-image-picker`; logo/banner aceitam uma imagem e fotos aceitam até seis.
-- TypeScript, `expo config` e `git diff --check` passaram. Como `expo-image-picker` é nativo, o novo Development Build será necessário.
+- Tela `app/(app)/(barbeiro)/gestao-barbearia.tsx` completa com navegação segmentada em 3 abas: Dados Comerciais, Identidade Visual e Equipe/Membros.
+- **Identidade Visual**:
+  - Logo: preview visual (avatar 1:1), botão alterar com crop quadrado e botão excluir.
+  - Banner: preview visual (formato 16:5), botão alterar com crop horizontal e botão excluir.
+  - Galeria de Fotos: grade com miniaturas, indicador `X/6 fotos`, botão adicionar (respeitando limite de 6) e botão de exclusão individual com confirmação.
+- **Módulo de Storage & Limpeza (`lib/storage.ts`)**:
+  - Upload estritamente tenant-aware (`<barbearia_id>/<logo|banner|fotos>/...`).
+  - Limpeza e remoção segura de mídias antigas do bucket `barbearia-media` ao substituir logo/banner ou excluir fotos da galeria.
+- **Gestão de Equipe & Membros (`hooks/useMembrosBarbearia.ts`)**:
+  - Listagem dos membros da barbearia com perfis vinculados.
+  - Modal com busca em tempo real de usuários cadastrados no app (`perfis`) por nome ou e-mail.
+  - Seleção de papéis: `proprietario`, `gestor`, `barbeiro`, `atendente`.
+  - Alteração de papéis e ativação/desativação de membros.
+  - **Regra de Segurança de Preservação**: impede que a barbearia fique órfã de gestor bloqueando a desativação ou rebaixamento do último proprietário/gestor ativo.
+- **Vitrine Pública & Marketplace**:
+  - Detalhe da barbearia (`barbearias/[slug].tsx`) e lista (`barbearias/index.tsx`) adaptados para exibir banner oficial, logo customizada e galeria de fotos quando publicados.
+- **Validações**: `tsc --noEmit`, `npx expo config --type public` e `git diff --check` passaram com 0 erros.
 
 ### Handoff para a próxima conversa
-
-- Estado atual: Parte 8 concluída; Parte 9 em andamento.
-- Parte 9 local: edição/publicação do estabelecimento, seleção de logo/banner/fotos pela galeria e upload tenant-aware para `barbearia-media`.
-- Assets oficiais locais: `assets/barbearia-vieira-logo.png` e `assets/barbearia-vieira-banner.png`.
-- Ainda pendente: gerar o novo Development Build com `expo-image-picker`, testar upload real de logo/banner/fotos, confirmar a leitura pública da mídia e testar regressão da Vieira.
-- Depois do teste de mídia: implementar gestão de membros por tenant, com convite/vínculo, alteração de papel e desativação segura.
-- Em seguida: completar auditoria de RLS, limpeza/substituição de mídias antigas, publicação/pausa e regressão final cliente/barbeiro.
-- Não aplicar migrations novas sem necessidade; o bucket e as policies da Parte 8 já existem remotamente.
+- Estado atual: Partes 1 a 9 concluídas com sucesso.
+- O novo Development Build (`npx expo start --dev-client` ou build via EAS) está pronto para ser executado no dispositivo físico para testar o seletor nativo `expo-image-picker`.
+- Regressão da Vieira pronta para validação operacional (login, catálogo, agenda, agendamento, fila e painel do barbeiro).

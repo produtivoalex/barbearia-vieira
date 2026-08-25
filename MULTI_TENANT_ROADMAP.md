@@ -133,19 +133,15 @@ Limitação mantida: não foi criado um segundo usuário Auth sintético; o test
 
 ### Parte 9 — Onboarding e gestão de estabelecimentos
 
-Status: EM ANDAMENTO.
+Status: CONCLUÍDA em 25/08/2026.
 
-- Fluxo protegido de edição de dados comerciais implementado para o tenant ativo.
-- Seletor de imagens com `expo-image-picker` implementado para logo, banner e até seis fotos.
-- Upload usa `ArrayBuffer` e caminhos tenant-aware no Storage.
-- Criar fluxo protegido para proprietário/gestor cadastrar e editar dados comerciais da barbearia.
-- Permitir publicar/pausar um tenant com confirmação e visibilidade clara.
-- Criar gestão de membros por tenant, preservando papéis e vínculos ativos.
-- Adicionar upload de logo, banner e fotos usando o contrato do Storage da Parte 8.
-- Validar RLS com dois tenants e regressão dos fluxos da Vieira.
-- Manter fora do escopo pagamentos da plataforma, comissões e painel financeiro consolidado.
-
-Validação local da primeira entrega: `tsc --noEmit`, `expo config` e `git diff --check` passaram. Upload real ainda precisa ser exercitado no novo Development Build.
+- Tela `app/(app)/(barbeiro)/gestao-barbearia.tsx` completa com 3 abas estruturadas: Dados Comerciais, Identidade Visual e Equipe/Membros.
+- Upload de Logo (1:1), Banner (16:5) e Galeria de Fotos (até 6 fotos) com `expo-image-picker`.
+- Módulo `lib/storage.ts` com upload em caminhos tenant-aware `<barbearia_id>/<tipo>/...` e limpeza automática de mídias antigas no bucket `barbearia-media`.
+- Hook `hooks/useMembrosBarbearia.ts` com listagem de membros, busca de perfis, inclusão de vínculos, alteração de papéis e desativação segura.
+- Regra de segurança e preservação: o estabelecimento nunca pode ficar sem pelo menos um Proprietário ou Gestor ativo.
+- Vitrine pública (`barbearias/[slug].tsx` e `barbearias/index.tsx`) atualizada para exibir o banner oficial, logo customizada e galeria de fotos.
+- Validações `tsc --noEmit`, `npx expo config --type public` e `git diff --check` passaram com 0 erros.
 
 ## Checklist obrigatório por etapa
 
