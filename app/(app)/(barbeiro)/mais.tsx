@@ -27,13 +27,26 @@ import {
   Check,
   Store,
   Building2,
+  Plus,
+  Camera,
+  Trash2,
+  Tag,
+  Clock,
+  Palette,
 } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { LogoBarbearia } from '@/components';
+import {
+  IlustracaoServico,
+  BIBLIOTECA_SERVICOS,
+  type TipoServicoId,
+} from '@/components/IlustracaoServico';
+import { uploadImagemTenant, removerMidiaStorage } from '@/lib/storage';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { usePerfil } from '@/hooks/usePerfil';
 import { useAuth } from '@/hooks/useAuth';
-import { useServicos, type Servico } from '@/hooks/useServicos';
+import { useServicos, type Servico, type CategoriaServico, CATEGORIAS_CONFIG } from '@/hooks/useServicos';
 import { supabase } from '@/lib/supabase';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
 
@@ -48,6 +61,20 @@ export default function TelaBarbeiroMais() {
   const { servicos, recarregar: recarregarServicos } = useServicos('todos', barbearia?.id);
 
   const [modalAtivo, setModalAtivo] = useState<TipoModal>(null);
+
+  // Estados de Criação / Edição Completa de Serviço
+  const [modalEditorServico, setModalEditorServico] = useState(false);
+  const [servicoEmEdicao, setServicoEmEdicao] = useState<Servico | null>(null);
+  const [nomeForm, setNomeForm] = useState('');
+  const [precoForm, setPrecoForm] = useState('');
+  const [duracaoForm, setDuracaoForm] = useState('30');
+  const [descricaoForm, setDescricaoForm] = useState('');
+  const [categoriaForm, setCategoriaForm] = useState<CategoriaServico>('cortes');
+  const [iconeForm, setIconeForm] = useState<TipoServicoId | null>('corte_degrade');
+  const [imagemUrlForm, setImagemUrlForm] = useState<string | null>(null);
+  const [corMolduraForm, setCorMolduraForm] = useState<string>('');
+  const [enviandoFotoServico, setEnviandoFotoServico] = useState(false);
+  const [salvandoServico, setSalvandoServico] = useState(false);
 
   // Estados de Reajuste Individual
   const [servicoParaReajuste, setServicoParaReajuste] = useState<Servico | null>(null);
@@ -66,6 +93,109 @@ export default function TelaBarbeiroMais() {
   function dataHojeFormatada() {
     const hoje = new Date();
     return `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}/${hoje.getFullYear()}`;
+  }
+
+  function abrirNovoServico() {
+    setServicoEmEdicao(null);
+    setNomeForm('');
+    setPrecoForm('');
+    setDuracaoForm('30');
+    setDescricaoForm('');
+    setCategoriaForm('cortes');
+    setIconeForm('corte_degrade');
+    setImagemUrlForm(null);
+    setCorMolduraForm(barbearia?.tema?.frameColor || barbearia?.tema?.primary || '#CBA14A');
+    setModalEditorServico(true);
+  }
+
+  function abrirEditarServicoCompleto(s: Servico) {
+    setServicoEmEdicao(s);
+    setNomeForm(s.nome);
+    setPrecoForm(String(s.preco));
+    setDuracaoForm(String(s.duracao_minutos || 30));
+    setDescricaoForm(s.descricao || '');
+    setCategoriaForm(s.categoria || 'cortes');
+    setIconeForm((s.icone as TipoServicoId) || null);
+    setImagemUrlForm(s.imagem_url || null);
+    setCorMolduraForm(s.cor_moldura || barbearia?.tema?.frameColor || barbearia?.tema?.primary || '#CBA14A');
+    setModalEditorServico(true);
+  }
+
+  async function escolherFotoCustomizadaServico() {
+    if (!barbearia) return;
+    setEnviandoFotoServico(true);
+    try {
+      const resultado = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+
+      if (resultado.canceled || !resultado.assets?.[0]) return;
+      const asset = resultado.assets[0];
+      const { publicUrl } = await uploadImagemTenant(barbearia.id, 'fotos', asset.uri, asset.mimeType);
+      setImagemUrlForm(publicUrl);
+      setIconeForm(null);
+    } catch (err: any) {
+      Alert.alert('Erro ao enviar foto', err.message || 'Tente novamente.');
+    } finally {
+      setEnviandoFotoServico(false);
+    }
+  }
+
+  async function handleSalvarServicoCompleto() {
+    if (!barbearia) {
+      Alert.alert('Barbearia não selecionada', 'Selecione uma barbearia antes de criar serviços.');
+      return;
+    }
+    const nomeLimpo = nomeForm.trim();
+    if (!nomeLimpo) {
+      Alert.alert('Nome obrigatório', 'Informe o nome do serviço.');
+      return;
+    }
+    const precoNum = parseFloat(precoForm.replace(',', '.'));
+    if (isNaN(precoNum) || precoNum <= 0) {
+      Alert.alert('Preço inválido', 'Informe um valor válido em reais.');
+      return;
+    }
+    const duracaoNum = parseInt(duracaoForm, 10) || 30;
+
+    setSalvandoServico(true);
+    try {
+      const payload = {
+        barbearia_id: barbearia.id,
+        nome: nomeLimpo,
+        preco: precoNum,
+        duracao_minutos: duracaoNum,
+        descricao: descricaoForm.trim() || null,
+        categoria: categoriaForm,
+        icone: iconeForm,
+        imagem_url: imagemUrlForm,
+        cor_moldura: corMolduraForm.trim() || null,
+        ativo: true,
+      };
+
+      if (servicoEmEdicao?.id) {
+        const { error } = await supabase
+          .from('servicos')
+          .update(payload)
+          .eq('id', servicoEmEdicao.id);
+        if (error) throw error;
+        Alert.alert('Serviço Atualizado! ✂️', `As alterações em "${nomeLimpo}" foram salvas.`);
+      } else {
+        const { error } = await supabase.from('servicos').insert(payload);
+        if (error) throw error;
+        Alert.alert('Novo Serviço Cadastrado! 💈', `O serviço "${nomeLimpo}" já está disponível para agendamentos.`);
+      }
+
+      await recarregarServicos();
+      setModalEditorServico(false);
+    } catch (err: any) {
+      Alert.alert('Erro ao salvar serviço', err.message || 'Tente novamente.');
+    } finally {
+      setSalvandoServico(false);
+    }
   }
 
   function abrirReajusteIndividual(servico: Servico) {
@@ -416,43 +546,253 @@ export default function TelaBarbeiroMais() {
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-              style={styles.botaoReajusteLote}
-              onPress={abrirReajusteLote}
-              activeOpacity={0.8}
-            >
-              <Zap size={16} color="#FFFFFF" />
-              <Text style={styles.botaoReajusteLoteTexto}>⚡ Reajuste Geral de Todos os Serviços</Text>
-            </TouchableOpacity>
+            <View style={styles.servicosAcoesTopo}>
+              <TouchableOpacity
+                style={styles.botaoNovoServico}
+                onPress={abrirNovoServico}
+                activeOpacity={0.8}
+              >
+                <Plus size={16} color={Colors.fundo} />
+                <Text style={styles.botaoNovoServicoTexto}>Novo Serviço</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.botaoReajusteLote}
+                onPress={abrirReajusteLote}
+                activeOpacity={0.8}
+              >
+                <Zap size={14} color="#FFFFFF" />
+                <Text style={styles.botaoReajusteLoteTexto}>Reajuste em Lote</Text>
+              </TouchableOpacity>
+            </View>
 
             <Text style={styles.dicaToqueTexto}>
-              Toque em qualquer serviço abaixo para reajustar o preço individual e notificar os clientes.
+              Toque no botão de edição para fotos e moldura, ou no preço para reajustar valores.
             </Text>
 
             <ScrollView style={styles.servicosLista} showsVerticalScrollIndicator={false}>
               {servicos.map((s) => (
-                <TouchableOpacity
-                  key={s.id}
-                  style={styles.servicoItem}
-                  activeOpacity={0.7}
-                  onPress={() => abrirReajusteIndividual(s)}
-                >
+                <View key={s.id} style={styles.servicoItem}>
+                  {/* Ilustração com Moldura */}
+                  <IlustracaoServico
+                    id={s.id}
+                    nome={s.nome}
+                    categoria={s.categoria}
+                    imagemUrl={s.imagem_url}
+                    tipoPredefinido={s.icone as any}
+                    corMoldura={s.cor_moldura || barbearia?.tema?.frameColor || barbearia?.tema?.primary || Colors.ouro}
+                    tamanho={48}
+                  />
+
                   <View style={styles.servicoInfo}>
                     <Text style={styles.servicoNome}>{s.nome}</Text>
-                    <Text style={styles.servicoDescricao}>{s.descricao}</Text>
+                    <Text style={styles.servicoDescricao} numberOfLines={1}>{s.descricao}</Text>
                     <Text style={styles.servicoDuracao}>{s.duracao_minutos} min</Text>
                   </View>
-                  <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                    <Text style={styles.servicoPreco}>
-                      {Number(s.preco).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </Text>
-                    <View style={styles.badgeEditarPreco}>
-                      <Edit3 size={11} color={Colors.ouro} />
-                      <Text style={styles.badgeEditarPrecoTexto}>Reajustar</Text>
+
+                  <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                    <TouchableOpacity
+                      onPress={() => abrirReajusteIndividual(s)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.servicoPreco}>
+                        {Number(s.preco).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      <TouchableOpacity
+                        style={styles.btnEditarServicoIcone}
+                        onPress={() => abrirEditarServicoCompleto(s)}
+                        activeOpacity={0.7}
+                      >
+                        <Palette size={13} color={Colors.ouro} />
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.badgeEditarPreco}
+                        onPress={() => abrirReajusteIndividual(s)}
+                        activeOpacity={0.7}
+                      >
+                        <Edit3 size={11} color={Colors.ouro} />
+                        <Text style={styles.badgeEditarPrecoTexto}>Preço</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
-                </TouchableOpacity>
+                </View>
               ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ─── Modal Completo: Editor de Serviço (Fotos, Molduras, Dados) ─── */}
+      <Modal
+        visible={modalEditorServico}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalEditorServico(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setModalEditorServico(false)}>
+          <Pressable style={styles.modalConteudoGrande} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalTraco} />
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitulo}>
+                {servicoEmEdicao ? 'Editar Serviço & Moldura' : 'Cadastrar Novo Serviço'}
+              </Text>
+              <TouchableOpacity onPress={() => setModalEditorServico(false)} style={styles.modalBtnFechar}>
+                <X size={20} color="#8E8E93" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>
+              {/* Nome */}
+              <Text style={styles.labelCampo}>NOME DO SERVIÇO *</Text>
+              <TextInput
+                style={styles.inputModal}
+                placeholder="Ex: Corte Degradê / Fade"
+                placeholderTextColor={Colors.textoDesabilitado}
+                value={nomeForm}
+                onChangeText={setNomeForm}
+              />
+
+              {/* Preço e Duração */}
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.labelCampo}>PREÇO (R$) *</Text>
+                  <TextInput
+                    style={styles.inputModal}
+                    placeholder="35,00"
+                    placeholderTextColor={Colors.textoDesabilitado}
+                    keyboardType="numeric"
+                    value={precoForm}
+                    onChangeText={setPrecoForm}
+                  />
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.labelCampo}>DURAÇÃO (MIN) *</Text>
+                  <TextInput
+                    style={styles.inputModal}
+                    placeholder="30"
+                    placeholderTextColor={Colors.textoDesabilitado}
+                    keyboardType="numeric"
+                    value={duracaoForm}
+                    onChangeText={setDuracaoForm}
+                  />
+                </View>
+              </View>
+
+              {/* Descrição */}
+              <Text style={[styles.labelCampo, { marginTop: 10 }]}>DESCRIÇÃO DETALHADA</Text>
+              <TextInput
+                style={[styles.inputModal, { minHeight: 65, textAlignVertical: 'top', paddingTop: 8 }]}
+                placeholder="Detalhes do serviço, produtos usados..."
+                placeholderTextColor={Colors.textoDesabilitado}
+                multiline
+                value={descricaoForm}
+                onChangeText={setDescricaoForm}
+              />
+
+              {/* BIBLIOTECA DE IMAGENS SUGERIDAS (9 RENDERS 3D) */}
+              <Text style={[styles.labelCampo, { marginTop: 14 }]}>IMAGEM DO SERVIÇO (SUGESTÕES DA BIBLIOTECA)</Text>
+              <Text style={styles.subLabelCampo}>
+                Escolha uma das ilustrações profissionais ou envie sua própria foto abaixo.
+              </Text>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bibliotecaScroll}>
+                {BIBLIOTECA_SERVICOS.map((item) => {
+                  const selecionado = !imagemUrlForm && (iconeForm === item.id || (!iconeForm && servicoEmEdicao?.nome?.toLowerCase().includes(item.categoria)));
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[styles.cardSugestaoImg, selecionado && styles.cardSugestaoImgAtivo]}
+                      onPress={() => {
+                        setIconeForm(item.id);
+                        setImagemUrlForm(null);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <IlustracaoServico tipoPredefinido={item.id} corMoldura={corMolduraForm || Colors.ouro} tamanho={46} />
+                      <Text style={[styles.sugestaoLabel, selecionado && styles.sugestaoLabelAtivo]} numberOfLines={1}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {/* OU Enviar Foto Própria */}
+              <TouchableOpacity
+                style={styles.btnFotoPropria}
+                onPress={escolherFotoCustomizadaServico}
+                disabled={enviandoFotoServico}
+                activeOpacity={0.8}
+              >
+                {enviandoFotoServico ? (
+                  <ActivityIndicator size="small" color={Colors.ouro} />
+                ) : (
+                  <>
+                    <Camera size={16} color={Colors.ouro} />
+                    <Text style={styles.btnFotoPropriaTexto}>
+                      {imagemUrlForm ? 'Alterar Foto Própria da Galeria' : 'Escolher Foto Própria da Galeria'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              {/* COR DA MOLDURA EXTERNA DO SERVIÇO */}
+              <Text style={[styles.labelCampo, { marginTop: 14 }]}>COR DA MOLDURA EXTERNA DESTE SERVIÇO</Text>
+              <Text style={styles.subLabelCampo}>
+                A moldura envolve a foto garantindo a identidade visual da barbearia.
+              </Text>
+
+              <View style={styles.amostrasMolduraServico}>
+                {['#CBA14A', '#E63946', '#2A9D8F', '#3182CE', '#8338EC', '#E76F51', '#E0E1DD'].map((hex) => (
+                  <TouchableOpacity
+                    key={`moldura-form-${hex}`}
+                    style={[styles.amostraCirculo, { backgroundColor: hex }, corMolduraForm === hex && styles.amostraCirculoAtivo]}
+                    onPress={() => setCorMolduraForm(hex)}
+                  />
+                ))}
+              </View>
+
+              {/* PRÉVIA AO VIVO DESTE SERVIÇO */}
+              <View style={styles.previewContainerServico}>
+                <Text style={styles.previewTitulo}>Prévia da Foto com Moldura:</Text>
+                <View style={styles.previewItemLinha}>
+                  <IlustracaoServico
+                    imagemUrl={imagemUrlForm}
+                    tipoPredefinido={iconeForm}
+                    nome={nomeForm}
+                    categoria={categoriaForm}
+                    corMoldura={corMolduraForm || Colors.ouro}
+                    tamanho={58}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.previewNomeServico}>{nomeForm || 'Nome do Serviço'}</Text>
+                    <Text style={styles.previewPrecoServico}>
+                      {precoForm ? `R$ ${precoForm}` : 'R$ 0,00'} • {duracaoForm || '30'} min
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Botão Salvar */}
+              <TouchableOpacity
+                style={styles.botaoConfirmarModal}
+                onPress={handleSalvarServicoCompleto}
+                disabled={salvandoServico}
+                activeOpacity={0.8}
+              >
+                {salvandoServico ? (
+                  <ActivityIndicator color={Colors.fundo} size="small" />
+                ) : (
+                  <Text style={styles.botaoConfirmarModalTexto}>
+                    {servicoEmEdicao ? 'Salvar Alterações' : 'Cadastrar Serviço'}
+                  </Text>
+                )}
+              </TouchableOpacity>
             </ScrollView>
           </Pressable>
         </Pressable>
@@ -1094,5 +1434,155 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
     color: '#FFFFFF',
+  },
+
+  // Estilos do Editor de Serviços, Imagens e Molduras
+  servicosAcoesTopo: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  botaoNovoServico: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Colors.ouro,
+    paddingVertical: 12,
+    borderRadius: Radii.md,
+  },
+  botaoNovoServicoTexto: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodySm,
+    color: Colors.fundo,
+  },
+  btnEditarServicoIcone: {
+    backgroundColor: 'rgba(203, 161, 74, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: Radii.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(203, 161, 74, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  subLabelCampo: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11,
+    color: '#8E8E93',
+    marginBottom: 6,
+  },
+  bibliotecaScroll: {
+    gap: 10,
+    paddingVertical: 4,
+  },
+  cardSugestaoImg: {
+    width: 76,
+    alignItems: 'center',
+    padding: 6,
+    borderRadius: Radii.md,
+    backgroundColor: '#1C1C20',
+    borderWidth: 1,
+    borderColor: '#2E2E34',
+    gap: 4,
+  },
+  cardSugestaoImgAtivo: {
+    borderColor: Colors.ouro,
+    backgroundColor: 'rgba(203, 161, 74, 0.12)',
+  },
+  sugestaoLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: 9.5,
+    color: '#A1A1AA',
+    textAlign: 'center',
+  },
+  sugestaoLabelAtivo: {
+    color: Colors.ouro,
+    fontFamily: FontFamily.bold,
+  },
+
+  btnFotoPropria: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: Colors.ouro,
+    borderRadius: Radii.md,
+    paddingVertical: 10,
+    marginTop: 8,
+    backgroundColor: '#1C1C20',
+  },
+  btnFotoPropriaTexto: {
+    color: Colors.ouro,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodySm,
+  },
+
+  amostrasMolduraServico: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingVertical: 4,
+  },
+  amostraCirculo: {
+    width: 28,
+    height: 28,
+    borderRadius: Radii.full,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  amostraCirculoAtivo: {
+    borderWidth: 2.5,
+    borderColor: Colors.branco,
+    transform: [{ scale: 1.15 }],
+  },
+
+  previewContainerServico: {
+    backgroundColor: '#1C1C20',
+    borderRadius: Radii.md,
+    borderWidth: 1,
+    borderColor: '#2E2E34',
+    padding: Spacing.sm,
+    marginTop: 12,
+    gap: 6,
+  },
+  previewTitulo: {
+    fontFamily: FontFamily.bold,
+    fontSize: 11,
+    color: Colors.ouro,
+  },
+  previewItemLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  previewNomeServico: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodySm,
+    color: '#FFFFFF',
+  },
+  previewPrecoServico: {
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.labelXs,
+    color: Colors.ouro,
+    marginTop: 2,
+  },
+
+  botaoConfirmarModal: {
+    backgroundColor: Colors.ouro,
+    borderRadius: Radii.md,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  botaoConfirmarModalTexto: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodyMd,
+    color: Colors.fundo,
   },
 });

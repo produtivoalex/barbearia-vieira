@@ -23,10 +23,13 @@ import {
   Globe,
   Image as ImageIcon,
   Lock,
+  Palette,
   Plus,
   Save,
+  Scissors,
   Search,
   Shield,
+  Sparkles,
   Trash2,
   UserCheck,
   UserPlus,
@@ -34,13 +37,14 @@ import {
   UserX,
   X,
 } from 'lucide-react-native';
-import { useBarbearia } from '@/contexts/BarbeariaContext';
+import { useBarbearia, PALETAS_PREDEFINIDAS, type TemaTenant } from '@/contexts/BarbeariaContext';
 import { useMembrosBarbearia, type PapelMembro, type MembroBarbearia } from '@/hooks/useMembrosBarbearia';
 import { extrairCaminhoStorage, removerMidiaStorage, uploadImagemTenant } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
+import { IlustracaoServico } from '@/components';
 import { Colors, FontFamily, FontSize, Radii, Spacing } from '@/theme';
 
-type AbaGestao = 'dados' | 'midia' | 'equipe';
+type AbaGestao = 'dados' | 'midia' | 'tema' | 'equipe';
 
 interface UsuarioBusca {
   id: string;
@@ -59,7 +63,7 @@ const PAPEL_ROTULOS: Record<PapelMembro, { rotulo: string; cor: string; desc: st
 
 export default function GestaoBarbearia() {
   const router = useRouter();
-  const { barbearia, selecionarBarbearia } = useBarbearia();
+  const { barbearia, selecionarBarbearia, atualizarTemaLocal } = useBarbearia();
   const {
     membros,
     carregando: carregandoMembros,
@@ -87,6 +91,14 @@ export default function GestaoBarbearia() {
   const [enviandoMidia, setEnviandoMidia] = useState<'logo' | 'banner' | 'fotos' | null>(null);
   const [removendoFoto, setRemovendoFoto] = useState<string | null>(null);
 
+  // Estados de tema e cores
+  const [corPrimaria, setCorPrimaria] = useState('#CBA14A');
+  const [corMoldura, setCorMoldura] = useState('#CBA14A');
+  const [corAccent, setCorAccent] = useState('#F0D17D');
+  const [corCard, setCorCard] = useState('#18181B');
+  const [nomeTema, setNomeTema] = useState('Ouro Imperial');
+  const [salvandoTema, setSalvandoTema] = useState(false);
+
   // Estados de membros & busca
   const [modalNovoMembro, setModalNovoMembro] = useState(false);
   const [modalEditarMembro, setModalEditarMembro] = useState<MembroBarbearia | null>(null);
@@ -107,6 +119,15 @@ export default function GestaoBarbearia() {
     setTelefone(barbearia.telefone ?? '');
     setWhatsapp(barbearia.whatsapp ?? '');
     setPublicada(barbearia.publicada === true);
+
+    if (barbearia.tema) {
+      const t = barbearia.tema as Record<string, string>;
+      setCorPrimaria(t.primary || '#CBA14A');
+      setCorMoldura(t.frameColor || t.primary || '#CBA14A');
+      setCorAccent(t.accent || '#F0D17D');
+      setCorCard(t.card || '#18181B');
+      setNomeTema(t.nomeTema || 'Ouro Imperial');
+    }
   }, [barbearia]);
 
   const fotosArray = useMemo(() => {
@@ -358,6 +379,45 @@ export default function GestaoBarbearia() {
     ]);
   }
 
+  // ─── AÇÕES: TEMA & IDENTIDADE VISUAL ───
+  function aplicarPaleta(p: (typeof PALETAS_PREDEFINIDAS)[0]) {
+    setCorPrimaria(p.primary);
+    setCorMoldura(p.frameColor);
+    setCorAccent(p.accent);
+    setCorCard(p.card);
+    setNomeTema(p.nome);
+  }
+
+  async function salvarTema() {
+    if (!barbearia) return;
+    setSalvandoTema(true);
+    try {
+      const novoTema = {
+        primary: corPrimaria,
+        frameColor: corMoldura,
+        accent: corAccent,
+        card: corCard,
+        nomeTema,
+      };
+
+      const { error } = await supabase
+        .from('barbearias')
+        .update({ tema: novoTema, atualizado_em: new Date().toISOString() })
+        .eq('id', barbearia.id);
+
+      if (error) throw error;
+
+      await atualizarTemaLocal(novoTema);
+      await selecionarBarbearia({ ...barbearia, tema: novoTema });
+      Alert.alert('Identidade Visual Salva! 🎨', 'As cores e a moldura externa foram atualizadas no aplicativo.');
+    } catch (err: any) {
+      console.error('[GestaoBarbearia] Falha ao salvar tema:', err);
+      Alert.alert('Erro ao salvar tema', err.message || 'Tente novamente.');
+    } finally {
+      setSalvandoTema(false);
+    }
+  }
+
   // ─── AÇÕES: GESTÃO DE MEMBROS ───
   async function buscarUsuariosParaMembro(termo: string) {
     setBuscaUsuario(termo);
@@ -509,7 +569,15 @@ export default function GestaoBarbearia() {
           onPress={() => setAbaAtiva('midia')}
         >
           <ImageIcon size={16} color={abaAtiva === 'midia' ? Colors.ouro : Colors.textoSecundario} />
-          <Text style={[styles.segmentoTexto, abaAtiva === 'midia' && styles.segmentoTextoAtivo]}>Identidade</Text>
+          <Text style={[styles.segmentoTexto, abaAtiva === 'midia' && styles.segmentoTextoAtivo]}>Mídias</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.segmento, abaAtiva === 'tema' && styles.segmentoAtivo]}
+          onPress={() => setAbaAtiva('tema')}
+        >
+          <Palette size={16} color={abaAtiva === 'tema' ? Colors.ouro : Colors.textoSecundario} />
+          <Text style={[styles.segmentoTexto, abaAtiva === 'tema' && styles.segmentoTextoAtivo]}>Tema & Cores</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -752,7 +820,154 @@ export default function GestaoBarbearia() {
           </View>
         )}
 
-        {/* ─── ABA 3: GESTÃO DE EQUIPE & MEMBROS ─── */}
+        {/* ─── ABA 3: IDENTIDADE VISUAL, CORES & MOLDURAS ─── */}
+        {abaAtiva === 'tema' && (
+          <View style={styles.secao}>
+            <Text style={styles.ajuda}>
+              Personalize as cores oficiais da sua barbearia e a moldura externa que envolve as fotos dos serviços no catálogo do cliente.
+            </Text>
+
+            {/* PALETAS PRÉ-DEFINIDAS DE LUXO */}
+            <View style={styles.cardMidia}>
+              <View style={styles.cardMidiaTopo}>
+                <View style={styles.cardMidiaInfo}>
+                  <Text style={styles.cardMidiaTitulo}>Paletas Pré-definidas de Luxo</Text>
+                  <Text style={styles.cardMidiaSub}>Selecione uma combinação profissional ou personalize abaixo.</Text>
+                </View>
+              </View>
+
+              <View style={styles.paletasGrid}>
+                {PALETAS_PREDEFINIDAS.map((p) => {
+                  const ativa = nomeTema === p.nome || (corPrimaria === p.primary && corMoldura === p.frameColor);
+                  return (
+                    <TouchableOpacity
+                      key={p.id}
+                      style={[styles.paletaCard, ativa && styles.paletaCardAtiva]}
+                      onPress={() => aplicarPaleta(p)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.paletaCoresLinha}>
+                        <View style={[styles.paletaCirculo, { backgroundColor: p.primary }]} />
+                        <View style={[styles.paletaCirculo, { backgroundColor: p.accent }]} />
+                        <View style={[styles.paletaCirculo, { backgroundColor: p.frameColor }]} />
+                        <View style={[styles.paletaCirculo, { backgroundColor: p.card, borderWidth: 1, borderColor: '#333' }]} />
+                      </View>
+                      <View style={styles.paletaInfo}>
+                        <Text style={styles.paletaNome}>{p.nome}</Text>
+                        <Text style={styles.paletaDesc}>{p.descricao}</Text>
+                      </View>
+                      {ativa && (
+                        <View style={styles.badgePaletaAtiva}>
+                          <Check size={12} color={Colors.fundo} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* SELETOR DE CORES PERSONALIZADAS */}
+            <View style={styles.cardMidia}>
+              <Text style={styles.cardMidiaTitulo}>Ajuste Fino de Cores</Text>
+              <Text style={styles.cardMidiaSub}>Defina os códigos hexadecimais para cores exclusivas.</Text>
+
+              {/* Cor Primária */}
+              <View style={styles.campoCorContainer}>
+                <Text style={styles.campoCorLabel}>Cor Primária (Botões e Destaques)</Text>
+                <View style={styles.campoCorLinha}>
+                  <View style={[styles.previewCorCaixa, { backgroundColor: corPrimaria }]} />
+                  <TextInput
+                    style={styles.inputCorHex}
+                    value={corPrimaria}
+                    onChangeText={setCorPrimaria}
+                    placeholder="#CBA14A"
+                    placeholderTextColor={Colors.textoDesabilitado}
+                    autoCapitalize="characters"
+                  />
+                </View>
+                {/* Amostras Rápidas */}
+                <View style={styles.amostrasCores}>
+                  {['#CBA14A', '#E63946', '#2A9D8F', '#3182CE', '#8338EC', '#E76F51', '#E0E1DD'].map((hex) => (
+                    <TouchableOpacity
+                      key={`primaria-${hex}`}
+                      style={[styles.amostraCirculo, { backgroundColor: hex }, corPrimaria === hex && styles.amostraCirculoAtivo]}
+                      onPress={() => setCorPrimaria(hex)}
+                    />
+                  ))}
+                </View>
+              </View>
+
+              {/* Cor da Moldura Externa */}
+              <View style={styles.campoCorContainer}>
+                <Text style={styles.campoCorLabel}>Cor da Moldura Externa das Fotos de Serviços</Text>
+                <View style={styles.campoCorLinha}>
+                  <View style={[styles.previewCorCaixa, { backgroundColor: corMoldura }]} />
+                  <TextInput
+                    style={styles.inputCorHex}
+                    value={corMoldura}
+                    onChangeText={setCorMoldura}
+                    placeholder="#CBA14A"
+                    placeholderTextColor={Colors.textoDesabilitado}
+                    autoCapitalize="characters"
+                  />
+                </View>
+                {/* Amostras Rápidas */}
+                <View style={styles.amostrasCores}>
+                  {['#CBA14A', '#E63946', '#2A9D8F', '#3182CE', '#8338EC', '#E76F51', '#E0E1DD'].map((hex) => (
+                    <TouchableOpacity
+                      key={`moldura-${hex}`}
+                      style={[styles.amostraCirculo, { backgroundColor: hex }, corMoldura === hex && styles.amostraCirculoAtivo]}
+                      onPress={() => setCorMoldura(hex)}
+                    />
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            {/* PRÉVIA AO VIVO DA MOLDURA E BOTÕES */}
+            <View style={styles.cardMidia}>
+              <Text style={styles.cardMidiaTitulo}>Prévia ao Vivo no Catálogo</Text>
+              <Text style={styles.cardMidiaSub}>Assim que os clientes verão os serviços da sua barbearia:</Text>
+
+              <View style={styles.demoCardServico}>
+                <IlustracaoServico id="corte_degrade" corMoldura={corMoldura} tamanho={56} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={styles.demoServicoTitulo}>Corte Degradê / Fade</Text>
+                  <Text style={styles.demoServicoSub}>Fade moderno na régua com acabamento limpo</Text>
+                  <Text style={[styles.demoServicoPreco, { color: corPrimaria }]}>R$ 35,00 • 30 min</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.demoBotao, { backgroundColor: corPrimaria }]}
+                activeOpacity={0.8}
+              >
+                <Scissors size={16} color={Colors.fundo} />
+                <Text style={styles.demoBotaoTexto}>Exemplo de Botão de Ação</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* BOTÃO SALVAR TEMA */}
+            <TouchableOpacity
+              style={styles.botaoSalvarTema}
+              onPress={salvarTema}
+              disabled={salvandoTema}
+              activeOpacity={0.8}
+            >
+              {salvandoTema ? (
+                <ActivityIndicator color={Colors.fundo} size="small" />
+              ) : (
+                <>
+                  <Save size={18} color={Colors.fundo} />
+                  <Text style={styles.botaoSalvarTemaTexto}>Salvar Identidade & Molduras</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ─── ABA 4: GESTÃO DE EQUIPE & MEMBROS ─── */}
         {abaAtiva === 'equipe' && (
           <View style={styles.secao}>
             <View style={styles.equipeTopo}>
@@ -1364,6 +1579,94 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.borda,
   },
   botaoExcluirMembroModalTexto: { color: Colors.vermelho, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
+
+  // Estilos da Aba Tema & Molduras
+  paletasGrid: { gap: Spacing.sm, marginTop: 4 },
+  paletaCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.sm,
+    borderRadius: Radii.md,
+    backgroundColor: Colors.fundo,
+    borderWidth: 1,
+    borderColor: Colors.borda,
+    gap: Spacing.sm,
+  },
+  paletaCardAtiva: {
+    borderColor: Colors.ouro,
+    backgroundColor: 'rgba(203, 161, 74, 0.08)',
+  },
+  paletaCoresLinha: { flexDirection: 'row', gap: 4, alignItems: 'center' },
+  paletaCirculo: { width: 14, height: 14, borderRadius: Radii.full },
+  paletaInfo: { flex: 1 },
+  paletaNome: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
+  paletaDesc: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: 11, marginTop: 1 },
+  badgePaletaAtiva: {
+    width: 22,
+    height: 22,
+    borderRadius: Radii.full,
+    backgroundColor: Colors.ouro,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  campoCorContainer: { gap: 6, marginTop: Spacing.xs },
+  campoCorLabel: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
+  campoCorLinha: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  previewCorCaixa: { width: 44, height: 44, borderRadius: Radii.md, borderWidth: 1, borderColor: Colors.borda },
+  inputCorHex: {
+    flex: 1,
+    height: 44,
+    borderRadius: Radii.md,
+    borderWidth: 1,
+    borderColor: Colors.borda,
+    backgroundColor: Colors.fundo,
+    color: Colors.textoPrimario,
+    paddingHorizontal: Spacing.md,
+    fontFamily: FontFamily.bold,
+    letterSpacing: 1,
+  },
+  amostrasCores: { flexDirection: 'row', gap: 10, marginTop: 4, paddingVertical: 2 },
+  amostraCirculo: { width: 28, height: 28, borderRadius: Radii.full, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  amostraCirculoAtivo: { borderWidth: 2.5, borderColor: Colors.branco, transform: [{ scale: 1.15 }] },
+
+  demoCardServico: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: Radii.md,
+    backgroundColor: Colors.fundo,
+    borderWidth: 1,
+    borderColor: Colors.borda,
+    gap: Spacing.md,
+    marginTop: 4,
+  },
+  demoServicoTitulo: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
+  demoServicoSub: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm },
+  demoServicoPreco: { fontFamily: FontFamily.bold, fontSize: FontSize.bodySm, marginTop: 2 },
+
+  demoBotao: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: Radii.md,
+    paddingVertical: 12,
+    marginTop: 4,
+  },
+  demoBotaoTexto: { color: Colors.fundo, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
+
+  botaoSalvarTema: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.ouro,
+    borderRadius: Radii.md,
+    paddingVertical: 14,
+    marginTop: Spacing.sm,
+  },
+  botaoSalvarTemaTexto: { color: Colors.fundo, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
 
   vazioContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.telaH, gap: Spacing.md },
   vazioTexto: { color: Colors.textoPrimario, fontFamily: FontFamily.medium, textAlign: 'center' },

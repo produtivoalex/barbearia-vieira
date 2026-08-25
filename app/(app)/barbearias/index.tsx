@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Image,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,94 +13,236 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { MapPin, Search, ChevronRight } from 'lucide-react-native';
+import {
+  Building2,
+  ChevronRight,
+  MapPin,
+  Phone,
+  Search,
+  Scissors,
+  Sparkles,
+  Store,
+  X,
+} from 'lucide-react-native';
 import { useBarbearias, type BarbeariaPublica } from '@/hooks/useBarbearias';
 import { usePerfil } from '@/hooks/usePerfil';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
-import { Colors, FontFamily, FontSize, Radii, Spacing } from '@/theme';
+import { Colors, FontFamily, FontSize, Radii, Shadows, Spacing } from '@/theme';
 
 export default function ListaBarbearias() {
   const router = useRouter();
   const { modo } = useLocalSearchParams<{ modo?: string }>();
   const [busca, setBusca] = useState('');
+  const [cidadeSelecionada, setCidadeSelecionada] = useState<string>('Todas');
   const { perfil } = usePerfil();
-  const { selecionarBarbearia } = useBarbearia();
+  const { barbearia: barbeariaAtiva, selecionarBarbearia } = useBarbearia();
+
   const modoPainel = modo === 'painel';
   const somenteVinculos = modoPainel || perfil?.role === 'barbeiro';
   const { barbearias, carregando, erro, recarregar } = useBarbearias({ busca, somenteVinculos });
 
-  function renderItem({ item }: { item: BarbeariaPublica }) {
-    const escolher = async () => {
-      if (somenteVinculos) {
-        await selecionarBarbearia(item);
-        router.replace('/(app)/(barbeiro)/hoje');
-        return;
-      }
-      router.push({ pathname: '/(app)/barbearias/[slug]', params: { slug: item.slug } });
-    };
+  // Lista única de cidades para filtros rápidos
+  const cidadesDisponiveis = useMemo(() => {
+    const set = new Set<string>();
+    barbearias.forEach((b) => {
+      if (b.cidade?.trim()) set.add(b.cidade.trim());
+    });
+    return ['Todas', ...Array.from(set)];
+  }, [barbearias]);
+
+  // Filtro por cidade selecionada
+  const barbeariasExibidas = useMemo(() => {
+    if (cidadeSelecionada === 'Todas') return barbearias;
+    return barbearias.filter((b) => b.cidade?.toLowerCase() === cidadeSelecionada.toLowerCase());
+  }, [barbearias, cidadeSelecionada]);
+
+  async function handleEscolherBarbearia(item: BarbeariaPublica) {
+    await selecionarBarbearia(item);
+    if (somenteVinculos) {
+      router.replace('/(app)/(barbeiro)/hoje');
+    } else {
+      router.replace('/(app)/(tabs)');
+    }
+  }
+
+  function renderCardBarbearia({ item }: { item: BarbeariaPublica }) {
+    const isAtiva = barbeariaAtiva?.id === item.id;
+    const localizacao = [item.bairro, item.cidade].filter(Boolean).join(', ') || 'Localização a confirmar';
 
     return (
-      <TouchableOpacity style={styles.card} onPress={escolher} activeOpacity={0.7}>
-        <View style={styles.logoContainer}>
-          {item.logo_url ? (
-            <Image source={{ uri: item.logo_url }} style={styles.logoImagem} resizeMode="cover" />
+      <View style={[styles.card, isAtiva && styles.cardAtiva]}>
+        {/* Banner de Capa */}
+        <View style={styles.bannerContainer}>
+          {item.banner_url ? (
+            <Image source={{ uri: item.banner_url }} style={styles.bannerImagem} resizeMode="cover" />
           ) : (
-            <View style={styles.logoPlaceholder}>
-              <Text style={styles.logoTexto}>{item.nome.slice(0, 1).toUpperCase()}</Text>
+            <View style={styles.bannerPlaceholder}>
+              <Store size={32} color="rgba(203, 161, 74, 0.4)" />
+            </View>
+          )}
+          <View style={styles.bannerGradiente} />
+
+          {/* Badge de Selecionada */}
+          {isAtiva && (
+            <View style={styles.badgeAtiva}>
+              <Sparkles size={11} color={Colors.fundo} />
+              <Text style={styles.badgeAtivaTexto}>Ativa no App</Text>
             </View>
           )}
         </View>
-        <View style={styles.info}>
-          <Text style={styles.nome}>{item.nome}</Text>
-          <Text style={styles.local}>
-            {[item.bairro, item.cidade].filter(Boolean).join(' • ') || 'Localização não informada'}
-          </Text>
+
+        {/* Informações Principais & Logo */}
+        <View style={styles.cardCorpo}>
+          <View style={styles.topoCard}>
+            {/* Logo Flutuante */}
+            <View style={styles.logoWrapper}>
+              {item.logo_url ? (
+                <Image source={{ uri: item.logo_url }} style={styles.logoImg} resizeMode="cover" />
+              ) : (
+                <View style={styles.logoPlaceholder}>
+                  <Text style={styles.logoLetra}>{item.nome.slice(0, 1).toUpperCase()}</Text>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.titulosContainer}>
+              <Text style={styles.nomeBarbearia} numberOfLines={1}>
+                {item.nome}
+              </Text>
+              <View style={styles.localLinha}>
+                <MapPin size={13} color={Colors.ouro} />
+                <Text style={styles.localTexto} numberOfLines={1}>
+                  {localizacao}
+                </Text>
+              </View>
+            </View>
+          </View>
+
           {item.descricao ? (
-            <Text style={styles.descricao} numberOfLines={2}>
+            <Text style={styles.descricaoBarbearia} numberOfLines={2}>
               {item.descricao}
             </Text>
           ) : null}
+
+          {/* Rodapé do Card com Ações */}
+          <View style={styles.cardAcoes}>
+            <TouchableOpacity
+              style={styles.btnDetalhes}
+              onPress={() => router.push({ pathname: '/(app)/barbearias/[slug]', params: { slug: item.slug } })}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.btnDetalhesTexto}>Ver Vitrine</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.btnEscolher, isAtiva && styles.btnEscolherAtivo]}
+              onPress={() => handleEscolherBarbearia(item)}
+              activeOpacity={0.8}
+            >
+              <Scissors size={15} color={isAtiva ? Colors.ouro : Colors.fundo} />
+              <Text style={[styles.btnEscolherTexto, isAtiva && styles.btnEscolherTextoAtivo]}>
+                {isAtiva ? 'Acessar Barbearia' : 'Escolher Barbearia'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <ChevronRight size={20} color={Colors.ouro} />
-      </TouchableOpacity>
+      </View>
     );
   }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      {/* Header Principal */}
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>MARKETPLACE</Text>
-        <Text style={styles.titulo}>Encontre sua barbearia</Text>
-        <Text style={styles.subtitulo}>Escolha um estabelecimento e conheça os serviços.</Text>
+        <View style={styles.headerTexto}>
+          <Text style={styles.eyebrow}>
+            {modoPainel ? 'PAINEL PROFISSIONAL' : 'PLATAFORMA BARBER'}
+          </Text>
+          <Text style={styles.titulo}>
+            {modoPainel ? 'Selecione a Barbearia' : 'Descubra as Melhores Barbearias 💈'}
+          </Text>
+          <Text style={styles.subtitulo}>
+            {modoPainel
+              ? 'Gerencie agendamentos, equipe e faturamento da sua unidade.'
+              : 'Encontre estilo, tradição e conveniência perto de você.'}
+          </Text>
+        </View>
       </View>
 
-      <View style={styles.busca}>
-        <Search size={18} color={Colors.textoSecundario} />
-        <TextInput
-          style={styles.input}
-          placeholder="Buscar por nome ou descrição..."
-          placeholderTextColor={Colors.textoDesabilitado}
-          value={busca}
-          onChangeText={setBusca}
-        />
+      {/* Barra de Busca */}
+      <View style={styles.buscaContainer}>
+        <View style={styles.buscaWrapper}>
+          <Search size={18} color={Colors.textoSecundario} />
+          <TextInput
+            style={styles.inputBusca}
+            placeholder="Buscar por nome, bairro ou cidade..."
+            placeholderTextColor={Colors.textoDesabilitado}
+            value={busca}
+            onChangeText={setBusca}
+          />
+          {busca.length > 0 && (
+            <TouchableOpacity onPress={() => setBusca('')}>
+              <X size={16} color={Colors.textoSecundario} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
+      {/* Chips de Cidades */}
+      {cidadesDisponiveis.length > 2 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.cidadesContainer}
+        >
+          {cidadesDisponiveis.map((cidade) => {
+            const ativa = cidadeSelecionada === cidade;
+            return (
+              <TouchableOpacity
+                key={cidade}
+                style={[styles.chipCidade, ativa && styles.chipCidadeAtivo]}
+                onPress={() => setCidadeSelecionada(cidade)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.chipCidadeTexto, ativa && styles.chipCidadeTextoAtivo]}>
+                  {cidade}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
+
+      {/* Lista de Barbearias */}
       {carregando && !barbearias.length ? (
-        <ActivityIndicator style={styles.loading} color={Colors.ouro} size="large" />
+        <View style={styles.centroLoading}>
+          <ActivityIndicator color={Colors.ouro} size="large" />
+          <Text style={styles.loadingTexto}>Buscando estabelecimentos...</Text>
+        </View>
       ) : (
         <FlatList
-          data={barbearias}
-          renderItem={renderItem}
+          data={barbeariasExibidas}
+          renderItem={renderCardBarbearia}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.lista}
-          refreshControl={<RefreshControl refreshing={carregando} onRefresh={recarregar} tintColor={Colors.ouro} />}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={carregando}
+              onRefresh={recarregar}
+              tintColor={Colors.ouro}
+              colors={[Colors.ouro]}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.vazio}>
-              <MapPin size={36} color={Colors.textoDesabilitado} />
+              <Building2 size={44} color={Colors.textoDesabilitado} />
               <Text style={styles.vazioTitulo}>
                 {erro ? 'Não foi possível carregar' : 'Nenhuma barbearia encontrada'}
               </Text>
-              <Text style={styles.vazioTexto}>{erro ?? 'Tente buscar por outro nome ou localização.'}</Text>
+              <Text style={styles.vazioTexto}>
+                {erro ?? 'Tente buscar por outro termo ou selecione outra cidade.'}
+              </Text>
             </View>
           }
         />
@@ -110,55 +253,280 @@ export default function ListaBarbearias() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.fundo },
-  header: { padding: Spacing.telaH, paddingBottom: Spacing.sm },
-  eyebrow: { color: Colors.ouro, fontFamily: FontFamily.bold, fontSize: FontSize.labelXs, letterSpacing: 2 },
-  titulo: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.displayMd, marginTop: 4 },
-  subtitulo: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, marginTop: 4 },
-  busca: {
+  header: {
+    paddingHorizontal: Spacing.telaH,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.xs,
+  },
+  headerTexto: { gap: 3 },
+  eyebrow: {
+    color: Colors.ouro,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.labelXs,
+    letterSpacing: 2,
+  },
+  titulo: {
+    color: Colors.textoPrimario,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.displayMd,
+    marginTop: 2,
+  },
+  subtitulo: {
+    color: Colors.textoSecundario,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.bodySm,
+  },
+
+  buscaContainer: {
+    paddingHorizontal: Spacing.telaH,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
+  buscaWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginHorizontal: Spacing.telaH,
     paddingHorizontal: Spacing.md,
     height: 46,
-    borderRadius: Radii.full,
+    borderRadius: Radii.md,
     borderWidth: 1,
     borderColor: Colors.borda,
     backgroundColor: Colors.superficie,
   },
-  input: { flex: 1, color: Colors.textoPrimario, fontFamily: FontFamily.regular },
-  lista: { padding: Spacing.telaH, gap: Spacing.sm },
+  inputBusca: {
+    flex: 1,
+    color: Colors.textoPrimario,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.bodyMd,
+  },
+
+  cidadesContainer: {
+    paddingHorizontal: Spacing.telaH,
+    paddingVertical: Spacing.xs,
+    gap: 8,
+  },
+  chipCidade: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: Radii.full,
+    backgroundColor: Colors.superficie,
+    borderWidth: 1,
+    borderColor: Colors.borda,
+  },
+  chipCidadeAtivo: {
+    backgroundColor: 'rgba(203, 161, 74, 0.15)',
+    borderColor: Colors.ouro,
+  },
+  chipCidadeTexto: {
+    color: Colors.textoSecundario,
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.bodySm,
+  },
+  chipCidadeTextoAtivo: {
+    color: Colors.ouro,
+    fontFamily: FontFamily.bold,
+  },
+
+  lista: {
+    padding: Spacing.telaH,
+    paddingBottom: Spacing.giant,
+    gap: Spacing.lg,
+  },
+
   card: {
+    borderRadius: Radii.lg,
+    backgroundColor: Colors.superficie,
+    borderWidth: 1,
+    borderColor: Colors.borda,
+    overflow: 'hidden',
+    ...Shadows.card,
+  },
+  cardAtiva: {
+    borderColor: 'rgba(203, 161, 74, 0.5)',
+    shadowColor: Colors.ouro,
+    shadowOpacity: 0.15,
+  },
+
+  bannerContainer: {
+    width: '100%',
+    height: 120,
+    backgroundColor: '#161618',
+    position: 'relative',
+  },
+  bannerImagem: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerPlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#161618',
+  },
+  bannerGradiente: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 15, 16, 0.35)',
+  },
+
+  badgeAtiva: {
+    position: 'absolute',
+    top: 10,
+    right: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: 5,
+    backgroundColor: Colors.ouro,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radii.full,
+  },
+  badgeAtivaTexto: {
+    color: Colors.fundo,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.labelXs,
+  },
+
+  cardCorpo: {
     padding: Spacing.md,
-    borderRadius: Radii.md,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    backgroundColor: Colors.superficie,
+    gap: Spacing.sm,
   },
-  logoContainer: {
-    width: 48,
-    height: 48,
+  topoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginTop: -Spacing.xl,
+  },
+  logoWrapper: {
+    width: 60,
+    height: 60,
     borderRadius: Radii.md,
+    borderWidth: 2,
+    borderColor: Colors.ouro,
+    backgroundColor: '#161618',
     overflow: 'hidden',
-    backgroundColor: Colors.fundo,
+    ...Shadows.card,
   },
-  logoImagem: { width: '100%', height: '100%' },
+  logoImg: {
+    width: '100%',
+    height: '100%',
+  },
   logoPlaceholder: {
     flex: 1,
     backgroundColor: Colors.ouro,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoTexto: { fontFamily: FontFamily.bold, fontSize: 22, color: Colors.fundo },
-  info: { flex: 1, gap: 3 },
-  nome: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyLg },
-  local: { color: Colors.ouroClaro, fontFamily: FontFamily.medium, fontSize: FontSize.bodySm },
-  descricao: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm },
-  loading: { marginTop: 40 },
-  vazio: { alignItems: 'center', padding: Spacing.xxl, gap: Spacing.sm },
-  vazioTitulo: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyLg },
-  vazioTexto: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, textAlign: 'center' },
+  logoLetra: {
+    fontFamily: FontFamily.bold,
+    fontSize: 26,
+    color: Colors.fundo,
+  },
+
+  titulosContainer: {
+    flex: 1,
+    paddingTop: Spacing.md,
+  },
+  nomeBarbearia: {
+    color: Colors.textoPrimario,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodyLg,
+  },
+  localLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  localTexto: {
+    color: Colors.ouroClaro,
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.bodySm,
+  },
+
+  descricaoBarbearia: {
+    color: Colors.textoSecundario,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.bodySm,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+
+  cardAcoes: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borda,
+  },
+  btnDetalhes: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: Radii.md,
+    borderWidth: 1,
+    borderColor: Colors.borda,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+  },
+  btnDetalhesTexto: {
+    color: Colors.textoSecundario,
+    fontFamily: FontFamily.medium,
+    fontSize: FontSize.bodySm,
+  },
+  btnEscolher: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.ouro,
+    paddingVertical: 10,
+    borderRadius: Radii.md,
+  },
+  btnEscolherAtivo: {
+    backgroundColor: 'rgba(203, 161, 74, 0.15)',
+    borderWidth: 1,
+    borderColor: Colors.ouro,
+  },
+  btnEscolherTexto: {
+    color: Colors.fundo,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodySm,
+  },
+  btnEscolherTextoAtivo: {
+    color: Colors.ouro,
+  },
+
+  centroLoading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  loadingTexto: {
+    color: Colors.textoSecundario,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.bodySm,
+  },
+
+  vazio: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.giant,
+    gap: Spacing.xs,
+  },
+  vazioTitulo: {
+    color: Colors.textoPrimario,
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodyLg,
+    marginTop: Spacing.sm,
+  },
+  vazioTexto: {
+    color: Colors.textoSecundario,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.bodySm,
+    textAlign: 'center',
+    maxWidth: 280,
+  },
 });

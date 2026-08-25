@@ -157,20 +157,21 @@ export default function TelaLogin() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Logo Oficial Barbearia Vieira */}
+          {/* Header da Plataforma */}
           <View style={styles.logoContainer}>
             <LogoBarbearia
-              tamanho={115}
-              mostrarTelefone={true}
-              telefoneClicavel={true}
-              mensagemWhatsApp="Não estou conseguindo entrar no aplicativo"
+              tamanho={80}
+              tipo="plataforma"
+              mostrarTelefone={false}
             />
+            <Text style={styles.plataformaNome}>BARBER PLATAFORMA</Text>
+            <Text style={styles.plataformaSlogan}>Sua barbearia favorita a um toque</Text>
           </View>
 
           {/* Card de login */}
           <View style={styles.card}>
-            <Text style={styles.titulo}>Bem-vindo de volta!</Text>
-            <Text style={styles.subtitulo}>Faça login para continuar</Text>
+            <Text style={styles.titulo}>Bem-vindo!</Text>
+            <Text style={styles.subtitulo}>Acesse sua conta para agendar</Text>
 
             {/* E-mail */}
             <View style={styles.campoContainer}>
@@ -277,6 +278,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: Spacing.xl,
     marginBottom: Spacing.xs,
+    gap: 4,
+  },
+  plataformaNome: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodyLg,
+    color: Colors.ouro,
+    letterSpacing: 2,
+    marginTop: 6,
+  },
+  plataformaSlogan: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.bodySm,
+    color: Colors.textoSecundario,
   },
   card: {
     width: '100%',

@@ -35,7 +35,7 @@ export default function TelaServicos() {
   const router = useRouter();
   const [categoriaAtiva, setCategoriaAtiva] = useState<CategoriaServico>('todos');
   const [busca, setBusca] = useState('');
-  const { barbearia } = useBarbearia();
+  const { barbearia, tema } = useBarbearia();
   const { todosServicos, carregando, recarregar } = useServicos('todos', barbearia?.id);
 
   function handleSelecionarServico(servico: Servico) {
@@ -102,11 +102,14 @@ export default function TelaServicos() {
         onPress={() => handleSelecionarServico(item)}
         activeOpacity={0.75}
       >
-        {/* Ilustração Exclusiva e Padronizada do Serviço */}
+        {/* Ilustração com Moldura Externa Personalizada */}
         <IlustracaoServico
           id={item.id}
           nome={item.nome}
           categoria={item.categoria}
+          imagemUrl={item.imagem_url}
+          tipoPredefinido={item.icone as any}
+          corMoldura={item.cor_moldura || tema.frameColor || tema.primary}
           tamanho={58}
         />
 

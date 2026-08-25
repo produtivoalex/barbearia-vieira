@@ -71,7 +71,7 @@ export default function TelaCadastro() {
             <TouchableOpacity onPress={() => router.back()} style={styles.btnVoltar} activeOpacity={0.7}>
               <ChevronLeft size={24} color={Colors.textoPrimario} />
             </TouchableOpacity>
-            <LogoBarbearia tamanho={44} variante="compacto" />
+            <LogoBarbearia tamanho={40} tipo="plataforma" variante="compacto" />
             <View style={{ width: 40 }} />
           </View>
 

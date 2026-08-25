@@ -10,13 +10,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePerfil } from '@/hooks/usePerfil';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import * as Notifications from 'expo-notifications';
-import { BarbeariaProvider } from '@/contexts/BarbeariaContext';
+import { BarbeariaProvider, useBarbearia } from '@/contexts/BarbeariaContext';
 
 SplashScreen.preventAutoHideAsync();
 
 function ControleRotas() {
   const { autenticado, carregando } = useAuth();
   const { perfil, carregandoPerfil } = usePerfil();
+  const { barbearia, carregando: carregandoBarbearia } = useBarbearia();
   const segments = useSegments();
   const router = useRouter();
 
@@ -51,8 +52,8 @@ function ControleRotas() {
   }, [router]);
 
   useEffect(() => {
-    // Aguarda autenticação carregar antes de qualquer redirecionamento
-    if (carregando) return;
+    // Aguarda autenticação, perfil e barbearia carregarem antes de qualquer redirecionamento
+    if (carregando || carregandoPerfil || carregandoBarbearia) return;
 
     const grupoAtual = segments[0] as string | undefined;
     const naAreaApp = grupoAtual === '(app)';
@@ -65,19 +66,22 @@ function ControleRotas() {
         router.replace('/(pre-auth)');
       }
     } else {
-      // Se autenticado, aguarda carregar perfil para saber o role
-      if (carregandoPerfil) return;
-
-      // Se ainda não entrou na área (app) ou está na raiz / pre-auth / callback
+      // Se autenticado e ainda não entrou na área (app) ou está na raiz / pre-auth / callback
       if (!naAreaApp) {
         if (perfil?.role === 'barbeiro') {
           router.replace('/(app)/(barbeiro)/hoje');
         } else {
-          router.replace('/(app)/(tabs)');
+          // Cliente: se já escolheu uma barbearia antes, entra direto nela.
+          // Se nunca escolheu barbearia, vai para a vitrine do marketplace.
+          if (barbearia?.id) {
+            router.replace('/(app)/(tabs)');
+          } else {
+            router.replace('/(app)/barbearias');
+          }
         }
       }
     }
-  }, [autenticado, carregando, perfil, carregandoPerfil, segments, router]);
+  }, [autenticado, carregando, perfil, carregandoPerfil, barbearia, carregandoBarbearia, segments, router]);
 
   return null;
 }

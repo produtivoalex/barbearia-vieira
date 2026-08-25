@@ -18,6 +18,8 @@ export interface Servico {
   duracao_minutos: number;
   ativo: boolean;
   imagem_url?: string | null;
+  icone?: string | null;
+  cor_moldura?: string | null;
   ordem_exibicao?: number;
   categoria?: CategoriaServico;
 }

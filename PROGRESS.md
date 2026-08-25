@@ -402,14 +402,32 @@ npx expo start --dev-client
   - **Regra de Segurança de Preservação**: impede que a barbearia fique órfã de gestor bloqueando a desativação ou rebaixamento do último proprietário/gestor ativo.
 - **Vitrine Pública & Marketplace**:
   - Detalhe da barbearia (`barbearias/[slug].tsx`) e lista (`barbearias/index.tsx`) adaptados para exibir banner oficial, logo customizada e galeria de fotos quando publicados.
-- **Onboarding de Estabelecimentos & Polimentos Finais**:
-  - Nova tela `app/(app)/(barbeiro)/cadastrar-barbearia.tsx` para criar e vincular novos estabelecimentos como proprietário.
-  - Resolução dinâmica de profissionais no agendamento através de `barbearia_membros`.
-  - Suporte à logo customizada no componente `LogoBarbearia` com renderização dinâmica na Home, Perfil e Mais.
-  - Atalhos integrados para explorar e trocar de barbearia no app do cliente e no painel do barbeiro.
+## Rebranding da Plataforma, Molduras de Serviços & Temas Customizados (CONCLUÍDO em 25/08/2026)
+
+- **Rebranding White-Label da Plataforma**:
+  - App desacoplado da identidade exclusiva "Barbearia Vieira", transformando-se em uma plataforma SaaS multi-estabelecimentos (*Barber Plataforma*).
+  - Telas de Login (`app/(pre-auth)/index.tsx`) e Cadastro (`app/(pre-auth)/cadastro.tsx`) com identidade neutra e moderna.
+  - A Barbearia Vieira permanece como um estabelecimento completo cadastrado com todos os seus serviços, histórico e mídias.
+- **Fluxo Inteligente de Acesso & Memorização da Barbearia**:
+  - Clientes que já escolheram uma barbearia entram **diretamente no app da última barbearia acessada** após o login.
+  - Novos clientes que nunca escolheram são direcionados para a **Vitrine Premium** (`app/(app)/barbearias/index.tsx`) para encontrar e escolher barbearias na sua região.
+  - Opção de troca de estabelecimento sempre disponível no Perfil e na Home.
+- **Moldura Externa Elegante para Fotos de Serviços (`components/IlustracaoServico.tsx`)**:
+  - Moldura com chanfro e anel duplo envolvendo as fotos de serviços na cor da identidade do barbeiro (`tema.frameColor` ou `cor_moldura`).
+  - Garante que cada barbearia tenha personalidade e distinção visual mesmo utilizando imagens da biblioteca padrão.
+- **Biblioteca de 9 Renders 3D Sugeridos & Upload de Fotos**:
+  - Cortes (Degradê/Fade, Navalhado, Social Clássico, Máquina), Barba (Desenhada, Simples), Combos VIP, Sobrancelha e Limpeza de Pele.
+  - Seletor visual de ilustrações e suporte a upload de fotos da galeria com envio seguro ao Supabase Storage.
+- **Identidade Visual & Temas no Painel do Barbeiro (`app/(app)/(barbeiro)/gestao-barbearia.tsx`)**:
+  - Nova aba **Tema & Cores** com 7 paletas pré-configuradas de luxo (Ouro Imperial, Rubi Barber, Esmeralda Luxo, Azul Royal, Ametista Cyberpunk, Carbono Silver, Âmbar Cobre).
+  - Seletor de cores customizadas (HEX) para cor primária e cor da moldura dos serviços com prévia em tempo real.
+- **Editor Completo de Serviços no Painel (`app/(app)/(barbeiro)/mais.tsx`)**:
+  - Modal para criar e editar serviços com nome, preço, duração, descrição, categoria, imagem da biblioteca/galeria e cor da moldura.
+- **Catálogo do Cliente Atualizado (`app/(app)/(tabs)/servicos/index.tsx`)**:
+  - Serviços renderizados com suas respectivas fotos e molduras externas personalizadas na cor do estabelecimento ativo.
 - **Validações**: `tsc --noEmit`, `npx expo config --type public` e `git diff --check` passaram com 0 erros.
 
-### Handoff / Estado Final do App Multi-Tenant
-- Estado atual: Plataforma Multi-Tenant e Marketplace 100% implementados e integrados.
-- Development Build (`npx expo start --dev-client`) pronto e testável no dispositivo físico.
-- Todos os fluxos operacionais (cliente e barbeiro) isolados por `barbearia_id`.
+### Handoff / Estado Final da Plataforma White-Label
+- Estado atual: Plataforma SaaS Multi-Tenant White-Label 100% implementada, testada e sincronizada.
+- Banco de dados: Migration `20260825200000_custom_themes_and_service_moldes.sql` aplicada no Supabase remoto.
+- Servidor: Development Build pronto para testes em dispositivos físicos e emuladores.
