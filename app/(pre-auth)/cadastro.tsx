@@ -49,7 +49,7 @@ export default function TelaCadastro() {
     } else {
       Alert.alert(
         'Conta criada com sucesso! 💈',
-        'Bem-vindo à Barbearia Vieira. Você já pode fazer seu login.',
+        'Bem-vindo ao Na Régua! Você já pode fazer seu login.',
         [{ text: 'Fazer Login', onPress: () => router.back() }]
       );
     }
@@ -71,7 +71,7 @@ export default function TelaCadastro() {
             <TouchableOpacity onPress={() => router.back()} style={styles.btnVoltar} activeOpacity={0.7}>
               <ChevronLeft size={24} color={Colors.textoPrimario} />
             </TouchableOpacity>
-            <LogoBarbearia tamanho={40} tipo="plataforma" variante="compacto" />
+            <LogoBarbearia tamanho={38} tipo="avatar" variante="compacto" />
             <View style={{ width: 40 }} />
           </View>
 

@@ -219,7 +219,7 @@ export default function TelaConfirmacao() {
 
             <Text style={styles.titulo}>Agendamento confirmado!</Text>
             <Text style={styles.subtitulo}>
-              Sua vaga na Barbearia Vieira está reservada com sucesso.
+              Sua vaga está reservada com sucesso no Na Régua.
             </Text>
 
             {/* Card de detalhes com Ilustração */}

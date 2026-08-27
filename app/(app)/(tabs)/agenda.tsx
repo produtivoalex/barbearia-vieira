@@ -110,7 +110,7 @@ export default function TelaAgenda() {
           <View style={styles.infoServico}>
             <Text style={styles.nomeServico}>{item.servico.nome}</Text>
             <Text style={styles.nomeBarbeiro}>
-              {item.barbeiro.nome_completo || 'Barbearia Vieira'}
+              {item.barbeiro.nome_completo || 'Barbeiro'}
             </Text>
           </View>
           <Text style={styles.preco}>{precoFormatado}</Text>

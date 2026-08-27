@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Barbearia Vieira",
+    "name": "Na Régua",
     "slug": "barbearia-vieira",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -44,7 +44,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Permita que a Barbearia Vieira acesse suas fotos para escolher logo, banner e imagens do estabelecimento."
+          "photosPermission": "Permita que o Na Régua acesse suas fotos para escolher logo, banner e imagens do estabelecimento."
         }
       ],
       [
@@ -57,7 +57,7 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Permita que o aplicativo acerte as barbearias mais próximas de você."
+          "locationAlwaysAndWhenInUsePermission": "Permita que o Na Régua localize as barbearias mais próximas de você."
         }
       ],
       "@react-native-google-signin/google-signin"

@@ -1,9 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Linking, ImageSourcePropType } from 'react-native';
 import { MessageCircle, Scissors, Sparkles } from 'lucide-react-native';
 import { Colors, FontFamily, FontSize, Spacing, Radii } from '@/theme';
 
-export type TipoLogo = 'navalha' | 'avatar' | 'borda_sf' | 'padrao' | 'plataforma';
+export type TipoLogo =
+  | 'banner'
+  | 'avatar'
+  | 'logo_na_regua'
+  | 'padrao'
+  | 'plataforma'
+  | 'navalha'
+  | 'borda_sf';
 
 interface LogoBarbeariaProps {
   tamanho?: number;
@@ -13,27 +20,39 @@ interface LogoBarbeariaProps {
   telefoneClicavel?: boolean;
   numeroTelefone?: string;
   mensagemWhatsApp?: string;
-  variante?: 'vertical' | 'horizontal' | 'compacto';
+  variante?: 'vertical' | 'horizontal' | 'compacto' | 'banner';
 }
 
 export function LogoBarbearia({
   tamanho = 100,
-  tipo = 'navalha',
+  tipo = 'padrao',
   uri,
   mostrarTelefone = false,
   telefoneClicavel = true,
   numeroTelefone = '(86) 98190-7478',
-  mensagemWhatsApp = 'Não estou conseguindo entrar no aplicativo',
+  mensagemWhatsApp = 'Olá! Gostaria de falar com o suporte do Na Régua.',
   variante = 'vertical',
 }: LogoBarbeariaProps) {
-  let sourceImg = require('@/assets/logo-navalha.png');
-  let ratio = 943 / 981;
+  let sourceImg: ImageSourcePropType = require('@/assets/logo-na-regua.png');
+  let ratio = 1;
 
-  if (tipo === 'avatar') {
-    sourceImg = require('@/assets/logo-avatar.png');
-    ratio = 904 / 831;
+  if (tipo === 'banner') {
+    sourceImg = require('@/assets/banner-na-regua.png');
+    ratio = 1024 / 341; // ~3.003
+  } else if (tipo === 'avatar') {
+    sourceImg = require('@/assets/avatar-na-regua.png');
+    ratio = 1;
+  } else if (tipo === 'plataforma') {
+    sourceImg = require('@/assets/banner-na-regua.png');
+    ratio = 1024 / 341;
+  } else if (tipo === 'navalha') {
+    sourceImg = require('@/assets/logo-navalha.png');
+    ratio = 943 / 981;
   } else if (tipo === 'borda_sf') {
     sourceImg = require('@/assets/logo-borda-sf.png');
+    ratio = 1;
+  } else if (tipo === 'logo_na_regua' || tipo === 'padrao') {
+    sourceImg = require('@/assets/logo-na-regua.png');
     ratio = 1;
   }
 
@@ -49,22 +68,6 @@ export function LogoBarbearia({
   }
 
   const renderImagem = () => {
-    if (tipo === 'plataforma' && !uri) {
-      return (
-        <View
-          style={[
-            styles.badgePlataforma,
-            { width: tamanho, height: tamanho, borderRadius: Math.round(tamanho * 0.28) },
-          ]}
-        >
-          <Scissors size={Math.round(tamanho * 0.45)} color={Colors.ouro} />
-          <View style={styles.badgePlataformaSparkle}>
-            <Sparkles size={Math.round(tamanho * 0.22)} color={Colors.ouroClaro} />
-          </View>
-        </View>
-      );
-    }
-
     return (
       <Image
         source={uri ? { uri } : sourceImg}
@@ -78,7 +81,7 @@ export function LogoBarbearia({
     );
   };
 
-  if (variante === 'compacto') {
+  if (variante === 'compacto' || variante === 'banner') {
     return renderImagem();
   }
 
@@ -93,14 +96,14 @@ export function LogoBarbearia({
           activeOpacity={0.7}
         >
           <MessageCircle size={14} color={Colors.verde} />
-          <Text style={styles.telefoneTexto}>(86) 98190-7478</Text>
+          <Text style={styles.telefoneTexto}>{numeroTelefone}</Text>
         </TouchableOpacity>
       );
     }
 
     return (
       <View style={styles.telefoneBadge}>
-        <Text style={styles.telefoneTexto}>(86) 98190-7478</Text>
+        <Text style={styles.telefoneTexto}>{numeroTelefone}</Text>
       </View>
     );
   };
@@ -176,5 +179,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
+
 
 

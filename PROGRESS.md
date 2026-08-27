@@ -1,4 +1,27 @@
-# Progresso do Projeto (App Barbearia)
+# Progresso do Projeto (App Barbearia -> Na Régua)
+
+## Rebranding Oficial — "Na Régua" e Identidade Visual Completa (27/08/2026)
+
+- O nome global do aplicativo foi atualizado oficialmente para **"Na Régua"**.
+- Foram integrados e otimizados todos os novos assets oficiais fornecidos:
+  - **Logo Na Régua** (`assets/logo-na-regua.png`, `assets/icon.png`, `assets/logo.png`): Imagem quadrada com fundo amarelo/ouro com a silhueta de perfil estilizada.
+  - **Banner Na Régua** (`assets/banner-na-regua.png`): Arte oficial com fundo transparente e lettering metálico 3D "Na Régua" com navalha e silhueta.
+  - **Avatar Na Régua** (`assets/avatar-na-regua.png`, `assets/logo-avatar.png`): Silhueta recortada com fundo 100% transparente para uso em cabeçalhos, perfis e badges.
+  - **Favicon Na Régua** (`assets/favicon.png`): Favicon otimizado de alta resolução (64x64) para Web/PWA.
+  - **Adaptive Icon & Splash Screen** (`assets/adaptive-icon.png`, `assets/splash-icon.png`): Otimizados com safe zone para Android e fundo dark no Splash.
+- `app.json`: Atualizado o `name` para `"Na Régua"`, permissões de fotos e localização ajustadas com o novo nome da plataforma.
+- Telas atualizadas:
+  - `TelaLogin` (`app/(pre-auth)/index.tsx`): Integrado o **Banner Na Régua** transparente de alta definição no cabeçalho.
+  - `TelaCadastro` (`app/(pre-auth)/cadastro.tsx`): Header com avatar oficial e mensagem de boas-vindas do Na Régua.
+  - `TelaHome` (`app/(app)/(tabs)/index.tsx`): Cabeçalho e avisos de funcionamento ajustados dinamicamente.
+  - `TelaPerfil` (`app/(app)/(tabs)/perfil.tsx`): Card de usuário e mensagens atualizados.
+  - `ListaBarbearias` (`app/(app)/barbearias/index.tsx`): Eyebrow da plataforma atualizado para "NA RÉGUA".
+  - `TelaMaisBarbeiro` (`app/(app)/(barbeiro)/mais.tsx`): Versão do app e badges do painel profissional atualizados.
+  - `AuthCallback` (`app/auth/callback.tsx`): Mensagem de autenticação atualizada.
+  - `components/Avatar.tsx`: Atualizado com suporte a imagens remotas e fallback com a silhueta do Na Régua.
+  - `components/LogoBarbearia.tsx`: Suporte aos tipos `'banner'`, `'avatar'`, `'logo_na_regua'`, `'plataforma'`, `'padrao'`.
+  - `components/HeaderApp.tsx`: Atualizado para renderizar o banner compacto.
+- TypeScript (`npx tsc --noEmit`): 0 erros ✅.
 
 ## Pivot multi-tenant / marketplace — Partes 1 a 4 CONCLUÍDAS (23/08/2026)
 

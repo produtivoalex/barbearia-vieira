@@ -64,7 +64,7 @@ export function usePushNotifications() {
       // Cria canal de notificação no Android (necessário para push funcionar)
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('default', {
-          name: 'Barbearia Vieira',
+          name: 'Na Régua',
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 250, 250, 250],
           lightColor: '#D32F2F',

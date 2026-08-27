@@ -35,7 +35,7 @@ export function HeaderApp({
 
       <View style={styles.centro}>
         {usarLogo ? (
-          <LogoBarbearia tamanho={32} variante="horizontal" mostrarTelefone={false} />
+          <LogoBarbearia tamanho={30} tipo="banner" variante="compacto" />
         ) : (
           <View>
             {titulo && (

@@ -1,4 +1,4 @@
-# [Barbearia Vieira]
+# [Na Régua]
 
 ## Comportamento
 

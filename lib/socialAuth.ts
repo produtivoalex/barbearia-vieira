@@ -27,7 +27,7 @@ export async function iniciarLoginGoogle(): Promise<Session | null> {
 
   if (isExpoGo) {
     throw new Error(
-      'O Google Sign-In nativo requer o aplicativo de desenvolvimento (Development Build).\n\nAbra o app "Barbearia Vieira" instalado no seu celular.'
+      'O Google Sign-In nativo requer o aplicativo de desenvolvimento (Development Build).\n\nAbra o app "Na Régua" instalado no seu celular.'
     );
   }
 

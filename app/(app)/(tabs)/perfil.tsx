@@ -49,14 +49,15 @@ export default function TelaPerfil() {
   }
 
   function handleAbrirWhatsApp() {
-    const numero = '5586981907478';
-    const msg = encodeURIComponent('Olá! Gostaria de tirar uma dúvida sobre a Barbearia Vieira.');
-    Linking.openURL(`https://wa.me/${numero}?text=${msg}`).catch(() => {});
+    const telefone = barbearia?.telefone?.replace(/\D/g, '') || '5586981907478';
+    const numeroFinal = telefone.startsWith('55') ? telefone : `55${telefone}`;
+    const msg = encodeURIComponent(`Olá! Gostaria de tirar uma dúvida sobre ${barbearia?.nome || 'o Na Régua'}.`);
+    Linking.openURL(`https://wa.me/${numeroFinal}?text=${msg}`).catch(() => {});
   }
 
   const nomeExibicao = carregandoPerfil
     ? 'Carregando...'
-    : perfil?.nome_completo || 'Cliente Vieira';
+    : perfil?.nome_completo || 'Cliente';
   const emailExibicao = session?.user?.email || '';
 
   return (
@@ -69,7 +70,7 @@ export default function TelaPerfil() {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* Card Principal de Identidade com Vieira Avatar */}
+        {/* Card Principal de Identidade com Avatar */}
         <View style={styles.perfilCard}>
           <View style={styles.avatarWrapper}>
             <LogoBarbearia tamanho={64} tipo="avatar" variante="compacto" uri={barbearia?.logo_url} />
@@ -80,7 +81,7 @@ export default function TelaPerfil() {
             <Text style={styles.perfilContato}>{perfil?.telefone || emailExibicao}</Text>
             <View style={styles.badgeCliente}>
               <Sparkles size={11} color={Colors.ouro} />
-              <Text style={styles.badgeClienteTexto}>Cliente {barbearia?.nome || 'Barbearia Vieira'}</Text>
+              <Text style={styles.badgeClienteTexto}>Cliente {barbearia?.nome || 'Na Régua'}</Text>
             </View>
           </View>
         </View>
@@ -364,7 +365,7 @@ export default function TelaPerfil() {
                 <View style={styles.modalItemCard}>
                   <Text style={styles.modalItemRotulo}>Privacidade Garantida</Text>
                   <Text style={styles.modalItemDescricao}>
-                    Nenhum outro cliente tem acesso ao seu perfil ou aos seus horários agendados. O sistema é exclusivo da Barbearia Vieira.
+                    Nenhum outro cliente tem acesso ao seu perfil ou aos seus horários agendados. O sistema Na Régua garante total sigilo e proteção.
                   </Text>
                 </View>
               </View>

@@ -1,17 +1,63 @@
-import React from 'react';
-import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { Colors, FontFamily, FontSize, Radii } from '@/theme';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ViewStyle, Image } from 'react-native';
+import { Colors, FontFamily, Radii } from '@/theme';
 
 interface AvatarProps {
-  nome: string;
-  uri?: string;
+  nome?: string;
+  uri?: string | null;
   tamanho?: number;
   estilo?: ViewStyle;
+  usarNaReguaFallback?: boolean;
 }
 
-export function Avatar({ nome, uri: _uri, tamanho = 44, estilo }: AvatarProps) {
-  // Placeholder com iniciais — substituir por <Image> quando tiver URI real
+export function Avatar({
+  nome = 'Cliente',
+  uri,
+  tamanho = 44,
+  estilo,
+  usarNaReguaFallback = false,
+}: AvatarProps) {
+  const [erroImagem, setErroImagem] = useState(false);
+
+  if (uri && !erroImagem) {
+    return (
+      <View
+        style={[
+          styles.containerImagem,
+          { width: tamanho, height: tamanho, borderRadius: tamanho / 2 },
+          estilo,
+        ]}
+      >
+        <Image
+          source={{ uri }}
+          style={styles.imagemFill}
+          resizeMode="cover"
+          onError={() => setErroImagem(true)}
+        />
+      </View>
+    );
+  }
+
+  if (usarNaReguaFallback || !nome) {
+    return (
+      <View
+        style={[
+          styles.containerImagem,
+          { width: tamanho, height: tamanho, borderRadius: tamanho / 2 },
+          estilo,
+        ]}
+      >
+        <Image
+          source={require('@/assets/avatar-na-regua.png')}
+          style={styles.imagemFill}
+          resizeMode="cover"
+        />
+      </View>
+    );
+  }
+
   const iniciais = nome
+    .trim()
     .split(' ')
     .slice(0, 2)
     .map((p) => p[0])
@@ -27,7 +73,7 @@ export function Avatar({ nome, uri: _uri, tamanho = 44, estilo }: AvatarProps) {
       ]}
     >
       <Text style={[styles.iniciais, { fontSize: tamanho * 0.38 }]}>
-        {iniciais}
+        {iniciais || 'NR'}
       </Text>
     </View>
   );
@@ -35,14 +81,26 @@ export function Avatar({ nome, uri: _uri, tamanho = 44, estilo }: AvatarProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.vermelho,
+    backgroundColor: '#1E1E24',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: Colors.vermelhoClaro,
+    borderWidth: 1.5,
+    borderColor: Colors.ouro,
+  },
+  containerImagem: {
+    borderWidth: 1.5,
+    borderColor: Colors.ouro,
+    backgroundColor: '#1E1E24',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imagemFill: {
+    width: '100%',
+    height: '100%',
   },
   iniciais: {
     fontFamily: FontFamily.bold,
-    color: Colors.textoPrimario,
+    color: Colors.ouro,
   },
 });

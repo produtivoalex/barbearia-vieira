@@ -181,7 +181,7 @@ export default function ListaBarbearias() {
       <View style={styles.header}>
         <View style={styles.headerTexto}>
           <Text style={styles.eyebrow}>
-            {modoPainel ? 'PAINEL PROFISSIONAL' : 'PLATAFORMA BARBER'}
+            {modoPainel ? 'PAINEL PROFISSIONAL' : 'NA RÉGUA'}
           </Text>
           <Text style={styles.titulo}>
             {modoPainel ? 'Selecione a Barbearia' : 'Descubra as Melhores Barbearias 💈'}

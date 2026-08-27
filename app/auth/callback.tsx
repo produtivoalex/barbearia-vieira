@@ -6,7 +6,7 @@ export default function AuthCallback() {
   return (
     <View style={styles.container}>
       <ActivityIndicator size="large" color={Colors.ouro} />
-      <Text style={styles.texto}>Autenticando na Barbearia Vieira...</Text>
+      <Text style={styles.texto}>Autenticando no Na Régua...</Text>
     </View>
   );
 }

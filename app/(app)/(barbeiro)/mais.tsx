@@ -366,7 +366,7 @@ export default function TelaBarbeiroMais() {
             <Text style={styles.perfilContato}>{emailExibicao}</Text>
             <View style={styles.badgeBarbeiro}>
               <Sparkles size={11} color={Colors.ouro} />
-              <Text style={styles.badgeBarbeiroTexto}>{barbearia?.nome || 'Barbearia Vieira'}</Text>
+              <Text style={styles.badgeBarbeiroTexto}>{barbearia?.nome || 'Na Régua'}</Text>
             </View>
           </View>
         </View>
@@ -505,7 +505,7 @@ export default function TelaBarbeiroMais() {
               </View>
               <View style={styles.itemTextoContainer}>
                 <Text style={styles.itemTitulo}>Versão do aplicativo</Text>
-                <Text style={styles.itemSubtitulo}>Barbearia Vieira v1.0.0 (Painel Barbeiro)</Text>
+                <Text style={styles.itemSubtitulo}>Na Régua v1.0.0 (Painel Barbeiro)</Text>
               </View>
             </View>
           </View>

@@ -161,14 +161,13 @@ export default function TelaLogin() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header da Plataforma */}
+          {/* Header da Plataforma Na Régua */}
           <View style={styles.logoContainer}>
-            <LogoBarbearia
-              tamanho={80}
-              tipo="plataforma"
-              mostrarTelefone={false}
+            <Image
+              source={require('@/assets/banner-na-regua.png')}
+              style={styles.bannerLogo}
+              resizeMode="contain"
             />
-            <Text style={styles.plataformaNome}>BARBER PLATAFORMA</Text>
             <Text style={styles.plataformaSlogan}>Sua barbearia favorita a um toque</Text>
           </View>
 
@@ -284,12 +283,10 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
     gap: 4,
   },
-  plataformaNome: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyLg,
-    color: Colors.ouro,
-    letterSpacing: 2,
-    marginTop: 6,
+  bannerLogo: {
+    width: 250,
+    height: 84,
+    alignSelf: 'center',
   },
   plataformaSlogan: {
     fontFamily: FontFamily.regular,

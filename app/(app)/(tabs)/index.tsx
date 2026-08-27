@@ -61,12 +61,12 @@ export default function TelaHome() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Header com Logo Avatar Barbearia Vieira */}
+      {/* Header com Logo Avatar */}
       <View style={styles.header}>
         <View style={styles.headerEsquerda}>
           <LogoBarbearia tamanho={38} tipo="avatar" variante="compacto" uri={barbearia?.logo_url} />
           <View>
-            <Text style={styles.logo}>{barbearia?.nome || 'BARBEARIA VIEIRA'}</Text>
+            <Text style={styles.logo}>{barbearia?.nome || 'NA RÉGUA'}</Text>
             <Text style={styles.telefoneHeader}>{barbearia?.telefone || '(86) 98190-7478'}</Text>
           </View>
         </View>
@@ -121,7 +121,7 @@ export default function TelaHome() {
             <View style={styles.bannerTardeInfo}>
               <Text style={styles.bannerTardeTitulo}>Aviso: Tarde Fechada Hoje</Text>
               <Text style={styles.bannerTardeTexto}>
-                Informamos que a Barbearia Vieira estará fechada hoje na parte da tarde. Agradecemos a compreensão de todos!
+                Informamos que {barbearia?.nome ? `a ${barbearia.nome}` : 'a barbearia'} estará fechada hoje na parte da tarde. Agradecemos a compreensão de todos!
               </Text>
             </View>
           </View>
