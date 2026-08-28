@@ -22,7 +22,8 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0E0E0E"
       },
-      "package": "com.barbearia.vieira"
+      "package": "com.barbearia.vieira",
+      "versionCode": 1
     },
     "web": {
       "bundler": "metro",

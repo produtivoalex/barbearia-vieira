@@ -419,10 +419,10 @@ export default function TelaPerfil() {
             {modalAtivo === 'horarios' && (
               <View style={styles.modalCorpo}>
                 <View style={[styles.modalItemCard, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
-                  <Text style={[styles.modalItemRotulo, { color: theme.textoSecundario }]}>FUNCIONAMENTO PADRÃO</Text>
+                  <Text style={[styles.modalItemRotulo, { color: theme.textoSecundario }]}>FUNCIONAMENTO</Text>
                   <Text style={[styles.modalItemDescricao, { color: theme.textoPrimario }]}>
-                    • Terça a Domingo: 08:00 às 18:00{'\n'}
-                    • Segunda-feira: Fechado para descanso e manutenção técnica.
+                    • Os dias e horários são definidos e liberados em tempo real diretamente na agenda do aplicativo.{'\n'}
+                    • Consulte as vagas disponíveis na tela de agendamento.
                   </Text>
                 </View>
 
