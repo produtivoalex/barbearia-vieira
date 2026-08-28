@@ -161,7 +161,7 @@ export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
       // 3. Verifica a última barbearia registrada no perfil do cliente
       const { data: perfil } = await supabase
         .from('perfis')
-        .select('ultima_barbearia_id')
+        .select('role, ultima_barbearia_id')
         .eq('id', uid)
         .maybeSingle();
 
@@ -218,7 +218,28 @@ export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Cliente novo que realmente nunca escolheu barbearia -> Nenhuma barbearia fixa
+      // 7. Para barbeiros/admins sem barbearia definida: associa à barbearia principal
+      if (perfil?.role === 'barbeiro' || perfil?.role === 'admin') {
+        const { data: barbeariaPadrao } = await supabase
+          .from('barbearias')
+          .select(
+            'id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status, modo_agenda, dias_janela_agendamento, comissao_padrao, regras_fidelidade, mimo_ativo'
+          )
+          .eq('status', 'ativa')
+          .order('criado_em', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (barbeariaPadrao && barbeariaPadrao.id) {
+          setBarbearia(barbeariaPadrao as BarbeariaPublica);
+          await AsyncStorage.setItem(storageKeyUsuario, JSON.stringify(barbeariaPadrao));
+          await supabase.from('perfis').update({ ultima_barbearia_id: barbeariaPadrao.id }).eq('id', uid);
+          setCarregando(false);
+          return;
+        }
+      }
+
+      // Cliente novo ou sem barbearia vinculada -> Permanece null para ser direcionado à vitrine
       setBarbearia(null);
     } catch (err) {
       console.warn('[BarbeariaContext] Erro ao carregar barbearia selecionada:', err);

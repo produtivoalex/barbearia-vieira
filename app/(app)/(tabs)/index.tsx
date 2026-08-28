@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   View,
@@ -41,12 +41,18 @@ export default function TelaHome() {
   const { theme, isEscuro } = useTheme();
   const styles = createStyles(theme);
   const { perfil, carregandoPerfil } = usePerfil();
-  const { barbearia } = useBarbearia();
+  const { barbearia, carregando: carregandoBarbearia } = useBarbearia();
   const { proximos, historico } = useMeusAgendamentos(barbearia?.id);
   const { agenda, carregando: carregandoAgenda, ativarLembrete } = useAgendaSemanal(barbearia?.id);
   const { naoLidas } = useNotificacoes(barbearia?.id);
   const { temPermissao, solicitarPermissao } = usePushNotifications();
   const [tardeFechadaHoje, setTardeFechadaHoje] = useState(false);
+
+  useEffect(() => {
+    if (!carregandoBarbearia && !carregandoPerfil && !barbearia?.id && perfil?.role !== 'barbeiro') {
+      router.replace('/(app)/barbearias');
+    }
+  }, [carregandoBarbearia, carregandoPerfil, barbearia?.id, perfil?.role, router]);
 
   useEffect(() => {
     async function checarAvisoTarde() {
@@ -97,7 +103,8 @@ export default function TelaHome() {
   const cortesFidelidade = historico.filter((item) => item.status === 'concluido').length;
   const metaFidelidade = fidelidade?.meta_cortes ?? 0;
   const fidelidadeVisivel = fidelidade?.ativo === true && metaFidelidade > 0;
-  const agendaPermiteReserva = barbearia?.modo_agenda !== 'fila_virtual' && agenda?.status === 'aberta';
+  const agendaPermiteReserva = barbearia?.modo_agenda === 'continua' || agenda?.status === 'aberta';
+  const modoDropsProgramado = barbearia?.modo_agenda === 'drops' && agenda?.status === 'programada';
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]} edges={['top']}>
@@ -253,7 +260,7 @@ export default function TelaHome() {
 
             </View>
           </View>
-        ) : agenda?.status === 'programada' ? (
+        ) : modoDropsProgramado ? (
           <View style={styles.heroCard}>
             <View style={styles.heroHeaderPill}>
               <Clock size={13} color={theme.ouro} />
@@ -386,7 +393,7 @@ export default function TelaHome() {
         </View>
 
         {/* ─── Card do Estabelecimento & Galeria ─── */}
-        {barbearia && (
+        {barbearia ? (
           <View style={styles.cardEstabelecimento}>
             <View style={styles.cardEstabHeader}>
               <View style={styles.cardEstabIcone}>
@@ -413,6 +420,25 @@ export default function TelaHome() {
               </ScrollView>
             )}
           </View>
+        ) : (
+          <TouchableOpacity
+            style={[styles.cardEstabelecimento, { borderColor: theme.ouro }]}
+            onPress={() => router.push('/(app)/barbearias')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.cardEstabHeader}>
+              <View style={[styles.cardEstabIcone, { backgroundColor: theme.ouroTranslucido }]}>
+                <Sparkles size={18} color={theme.ouroTexto} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.cardEstabTitulo, { color: theme.textoPrimario }]}>Conheça as Barbearias</Text>
+                <Text style={[styles.cardEstabEndereco, { color: theme.textoSecundario }]}>
+                  Toque aqui para escolher a barbearia e agendar seu horário.
+                </Text>
+              </View>
+              <ChevronRight size={18} color={theme.ouroTexto} />
+            </View>
+          </TouchableOpacity>
         )}
       </ScrollView>
     </SafeAreaView>

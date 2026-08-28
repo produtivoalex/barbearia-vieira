@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   ScrollView,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Clock, Save, Sparkles, Check, Zap } from 'lucide-react-native';
+import { ChevronLeft, Clock, Save, Sparkles, Check, Zap, Calendar, CheckSquare, Square } from 'lucide-react-native';
 import { Botao } from '@/components';
 import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -22,6 +22,7 @@ import { useBarbearia } from '@/contexts/BarbeariaContext';
 
 const HORARIOS_DISPONIVEIS = ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
 const NOMES_DIAS = [
+  'Segunda-feira',
   'Terça-feira',
   'Quarta-feira',
   'Quinta-feira',
@@ -30,15 +31,17 @@ const NOMES_DIAS = [
   'Domingo',
 ];
 
-function proximaSemana() {
+function obterSemana(offsetSemanas = 0) {
   const hoje = new Date();
-  const distancia = hoje.getDay() === 0 ? 1 : 8 - hoje.getDay();
+  const diaSemana = hoje.getDay(); // 0 = Dom, 1 = Seg, ...
+  const diffSeg = diaSemana === 0 ? -6 : 1 - diaSemana;
   const segunda = new Date(hoje);
   segunda.setHours(0, 0, 0, 0);
-  segunda.setDate(hoje.getDate() + distancia);
-  return Array.from({ length: 6 }, (_, index) => {
+  segunda.setDate(hoje.getDate() + diffSeg + offsetSemanas * 7);
+
+  return Array.from({ length: 7 }, (_, index) => {
     const data = new Date(segunda);
-    data.setDate(segunda.getDate() + index + 1);
+    data.setDate(segunda.getDate() + index);
     return data;
   });
 }
@@ -52,111 +55,162 @@ export default function PrepararAgenda() {
   const { theme, isEscuro } = useTheme();
   const { session } = useAuth();
   const { barbearia } = useBarbearia();
-  const { carregarProximaParaBarbeiro } = useAgendaSemanal(barbearia?.id);
-  const datas = useMemo(proximaSemana, []);
+  const { carregarSemanaParaBarbeiro } = useAgendaSemanal(barbearia?.id);
 
-  // Estado dos dias (aberto / fechado)
-  const [diasAtivos, setDiasAtivos] = useState<boolean[]>(Array(6).fill(true));
-  // Estado dos horários granulares de cada dia (array de 6 listas de strings)
-  const [horariosPorDia, setHorariosPorDia] = useState<string[][]>(
-    Array(6).fill(HORARIOS_DISPONIVEIS)
-  );
+  // 0 = Esta Semana, 1 = Próxima Semana, 2 = Mês Inteiro (4 semanas)
+  const [semanaOffset, setSemanaOffset] = useState<0 | 1 | 2>(0);
+  const isModoMes = semanaOffset === 2;
+
+  // Semanas carregadas (1 semana nos modos 0 e 1, ou 4 semanas no modo 2)
+  const semanas = useMemo(() => {
+    if (isModoMes) {
+      return [obterSemana(0), obterSemana(1), obterSemana(2), obterSemana(3)];
+    }
+    return [obterSemana(semanaOffset)];
+  }, [isModoMes, semanaOffset]);
+
+  // Lista plana de todas as datas atualmente visíveis
+  const todasDatas = useMemo(() => semanas.flat(), [semanas]);
+
+  // Estado de dias ativos (mapeado por string ISO "YYYY-MM-DD")
+  const [diasAtivosMap, setDiasAtivosMap] = useState<Record<string, boolean>>({});
+  // Estado dos horários granulares (mapeado por string ISO "YYYY-MM-DD")
+  const [horariosMap, setHorariosMap] = useState<Record<string, string[]>>({});
 
   const [abertura, setAbertura] = useState('19:30');
-  const [abrirImediatamente, setAbrirImediatamente] = useState(true); // Padrão aberto imediatamente para facilidade de testes
+  const [abrirImediatamente, setAbrirImediatamente] = useState(true);
   const [carregandoDados, setCarregandoDados] = useState(true);
   const [salvando, setSalvando] = useState(false);
 
+  // Carrega a configuração existente ao trocar de escopo
   useEffect(() => {
     let montado = true;
-    carregarProximaParaBarbeiro()
-      .then(async (existente) => {
-        if (!montado || !existente) return;
-        const novosAtivos = datas.map((data) =>
-          existente.dias.some((dia) => dia.data === dataLocal(data) && dia.ativo)
-        );
-        setDiasAtivos(novosAtivos);
+    setCarregandoDados(true);
 
-        if (existente.status === 'aberta') {
-          setAbrirImediatamente(true);
+    async function carregarConfiguracao() {
+      try {
+        const novosAtivos: Record<string, boolean> = {};
+        const novosHorarios: Record<string, string[]> = {};
+
+        // Inicializa todas as datas como ativas com os horários padrão
+        for (const data of todasDatas) {
+          const strData = dataLocal(data);
+          novosAtivos[strData] = true;
+          novosHorarios[strData] = HORARIOS_DISPONIVEIS;
         }
 
-        if (existente.data_abertura_programada) {
-          const d = new Date(existente.data_abertura_programada);
-          setAbertura(
-            `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-          );
-        }
+        // Busca se há slots já salvos no banco para essas datas
+        if (session?.user?.id && barbearia?.id) {
+          const inicioGeral = dataLocal(todasDatas[0]);
+          const fimGeral = dataLocal(todasDatas[todasDatas.length - 1]);
 
-        // Busca os slots já criados para refletir a seleção granular
-        if (session?.user?.id && existente.id) {
-          const { data: slotsExistentes } = await supabase
+          const { data: slotsBanco } = await supabase
             .from('slots_agenda')
             .select('data_hora, ativo')
             .eq('barbeiro_id', session.user.id)
-            .eq('ativo', true);
+            .eq('barbearia_id', barbearia.id)
+            .gte('data_hora', `${inicioGeral}T00:00:00Z`)
+            .lte('data_hora', `${fimGeral}T23:59:59Z`);
 
-          if (slotsExistentes && slotsExistentes.length > 0) {
-            const novosHorariosPorDia = datas.map((data) => {
+          if (slotsBanco && slotsBanco.length > 0) {
+            const agrupadoPorDia: Record<string, string[]> = {};
+            for (const slot of slotsBanco) {
+              if (!slot.ativo) continue;
+              const d = new Date(slot.data_hora);
+              const strData = dataLocal(d);
+              const hora = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+              if (!agrupadoPorDia[strData]) agrupadoPorDia[strData] = [];
+              if (!agrupadoPorDia[strData].includes(hora)) {
+                agrupadoPorDia[strData].push(hora);
+              }
+            }
+
+            for (const data of todasDatas) {
               const strData = dataLocal(data);
-              const horasAtivas = slotsExistentes
-                .filter((s) => s.data_hora.startsWith(strData))
-                .map((s) => {
-                  const d = new Date(s.data_hora);
-                  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-                });
-              return horasAtivas.length > 0 ? horasAtivas : HORARIOS_DISPONIVEIS;
-            });
-            setHorariosPorDia(novosHorariosPorDia);
+              if (agrupadoPorDia[strData] && agrupadoPorDia[strData].length > 0) {
+                novosAtivos[strData] = true;
+                novosHorarios[strData] = agrupadoPorDia[strData].sort();
+              }
+            }
           }
         }
-      })
-      .finally(() => {
+
+        if (montado) {
+          setDiasAtivosMap(novosAtivos);
+          setHorariosMap(novosHorarios);
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar dias da agenda:', err);
+      } finally {
         if (montado) setCarregandoDados(false);
-      });
+      }
+    }
+
+    carregarConfiguracao();
 
     return () => {
       montado = false;
     };
-  }, [carregarProximaParaBarbeiro, datas, session?.user?.id]);
+  }, [barbearia?.id, session?.user?.id, todasDatas]);
 
-  // Contagem total de vagas selecionadas
+  // Contagem total de vagas ativas
   const totalVagas = useMemo(() => {
-    return diasAtivos.reduce((total, ativo, index) => {
-      if (!ativo) return total;
-      return total + (horariosPorDia[index]?.length || 0);
-    }, 0);
-  }, [diasAtivos, horariosPorDia]);
+    let count = 0;
+    for (const data of todasDatas) {
+      const strData = dataLocal(data);
+      if (diasAtivosMap[strData]) {
+        count += (horariosMap[strData] || []).length;
+      }
+    }
+    return count;
+  }, [diasAtivosMap, horariosMap, todasDatas]);
 
-  function handleToggleDia(index: number, valor: boolean) {
-    setDiasAtivos((prev) => prev.map((item, i) => (i === index ? valor : item)));
-    if (valor) {
-      setHorariosPorDia((prev) =>
-        prev.map((lista, i) => (i === index && lista.length === 0 ? HORARIOS_DISPONIVEIS : lista))
-      );
+  function handleToggleDia(strData: string, valor: boolean) {
+    setDiasAtivosMap((prev) => ({ ...prev, [strData]: valor }));
+    if (valor && (!horariosMap[strData] || horariosMap[strData].length === 0)) {
+      setHorariosMap((prev) => ({ ...prev, [strData]: HORARIOS_DISPONIVEIS }));
     }
   }
 
-  function handleToggleHorario(diaIndex: number, hora: string) {
-    setHorariosPorDia((prev) => {
-      const listaAtual = prev[diaIndex] || [];
-      let novaLista: string[];
-      if (listaAtual.includes(hora)) {
-        novaLista = listaAtual.filter((h) => h !== hora);
-      } else {
-        novaLista = [...listaAtual, hora].sort();
-      }
+  function handleToggleHorario(strData: string, hora: string) {
+    const listaAtual = horariosMap[strData] || [];
+    let novaLista: string[];
+    if (listaAtual.includes(hora)) {
+      novaLista = listaAtual.filter((h) => h !== hora);
+    } else {
+      novaLista = [...listaAtual, hora].sort();
+    }
 
-      if (novaLista.length === 0) {
-        setDiasAtivos((dias) => dias.map((d, i) => (i === diaIndex ? false : d)));
-      } else {
-        setDiasAtivos((dias) => dias.map((d, i) => (i === diaIndex ? true : d)));
-      }
-
-      return prev.map((lista, i) => (i === diaIndex ? novaLista : lista));
-    });
+    setHorariosMap((prev) => ({ ...prev, [strData]: novaLista }));
+    setDiasAtivosMap((prev) => ({ ...prev, [strData]: novaLista.length > 0 }));
   }
 
+  // ─── PRESETS RÁPIDOS ───
+  function aplicarPreset(tipo: 'seg_sab' | 'ter_sab' | 'todos' | 'nenhum') {
+    const novosAtivos: Record<string, boolean> = { ...diasAtivosMap };
+    const novosHorarios: Record<string, string[]> = { ...horariosMap };
+
+    for (const data of todasDatas) {
+      const strData = dataLocal(data);
+      const diaSemana = data.getDay(); // 0 = Dom, 1 = Seg, 2 = Ter, ...
+
+      let ativo = false;
+      if (tipo === 'todos') ativo = true;
+      else if (tipo === 'seg_sab') ativo = diaSemana >= 1 && diaSemana <= 6; // Seg a Sáb
+      else if (tipo === 'ter_sab') ativo = diaSemana >= 2 && diaSemana <= 6; // Ter a Sáb
+      else if (tipo === 'nenhum') ativo = false;
+
+      novosAtivos[strData] = ativo;
+      if (ativo && (!novosHorarios[strData] || novosHorarios[strData].length === 0)) {
+        novosHorarios[strData] = HORARIOS_DISPONIVEIS;
+      }
+    }
+
+    setDiasAtivosMap(novosAtivos);
+    setHorariosMap(novosHorarios);
+  }
+
+  // ─── SALVAR AGENDA (SEMANAL OU MÊS INTEIRO) ───
   async function salvar() {
     if (!session?.user?.id) {
       Alert.alert('Erro', 'Sessão não identificada. Faça login novamente.');
@@ -169,93 +223,101 @@ export default function PrepararAgenda() {
     setSalvando(true);
 
     try {
-      const inicioData = new Date(datas[0]);
-      inicioData.setDate(inicioData.getDate() - 1); // Segunda-feira
-      const inicio = dataLocal(inicioData);
-      const fim = dataLocal(datas[datas.length - 1]); // Domingo
+      // Constrói payload para cada semana
+      const semanasPayload = semanas.map((semanaDatas) => {
+        const inicioSemana = dataLocal(semanaDatas[0]);
+        const fimSemana = dataLocal(semanaDatas[semanaDatas.length - 1]);
 
-      const segundaAnterior = new Date(datas[0]);
-      segundaAnterior.setDate(datas[0].getDate() - 1);
-      const aberturaProgramada = abrirImediatamente
-        ? new Date().toISOString()
-        : new Date(`${dataLocal(segundaAnterior)}T${abertura}:00`).toISOString();
+        const segundaAnterior = new Date(semanaDatas[0]);
+        const aberturaProgramada = abrirImediatamente
+          ? new Date().toISOString()
+          : new Date(`${dataLocal(segundaAnterior)}T${abertura}:00`).toISOString();
 
-      // 1. Cria ou atualiza a agenda da semana
-      const { data: agenda, error } = await supabase
-        .from('agendas_semanais')
-        .upsert(
-          {
-            barbearia_id: barbearia.id,
-            barbeiro_id: session.user.id,
-            data_inicio: inicio,
-            data_fim: fim,
-            status: abrirImediatamente ? 'aberta' : 'programada',
-            data_abertura_programada: aberturaProgramada,
-            notificar_abertura: true,
-          },
-          { onConflict: 'barbearia_id,barbeiro_id,data_inicio' }
-        )
-        .select('id')
-        .single();
+        const diasPayload = semanaDatas.map((data) => {
+          const strData = dataLocal(data);
+          return {
+            data: strData,
+            ativo: diasAtivosMap[strData] && (horariosMap[strData] || []).length > 0,
+          };
+        });
 
-      if (error || !agenda) {
-        throw new Error(error?.message || 'Erro ao criar agenda semanal.');
-      }
+        const slotsPayload = semanaDatas.flatMap((data) => {
+          const strData = dataLocal(data);
+          if (!diasAtivosMap[strData]) return [];
+          const horasEscolhidas = horariosMap[strData] || [];
+          return horasEscolhidas.map((hora) => ({
+            data: strData,
+            hora,
+          }));
+        });
 
-      // 2. Remove dias antigos da agenda para recriação limpa
-      await supabase.from('dias_agenda').delete().eq('agenda_semana_id', agenda.id);
-
-      // 3. Insere os 6 dias da semana
-      const dias = datas.map((data, index) => ({
-        agenda_semana_id: agenda.id,
-        data: dataLocal(data),
-        ativo: diasAtivos[index] && (horariosPorDia[index]?.length || 0) > 0,
-      }));
-
-      const { data: diasCriados, error: erroDias } = await supabase
-        .from('dias_agenda')
-        .insert(dias)
-        .select('id, data, ativo');
-
-      if (erroDias || !diasCriados) {
-        throw new Error(erroDias?.message || 'Erro ao salvar os dias da semana.');
-      }
-
-      // 4. Cria os slots da manhã apenas para os horários específicos que foram ativados
-      const slots = diasCriados.flatMap((dia, diaIndex) => {
-        if (!dia.ativo) return [];
-        const horasEscolhidas = horariosPorDia[diaIndex] || [];
-        return horasEscolhidas.map((hora) => ({
-          barbearia_id: barbearia.id,
-          dia_agenda_id: dia.id,
-          barbeiro_id: session.user.id,
-          data_hora: new Date(`${dia.data}T${hora}:00`).toISOString(),
-          ativo: true,
-        }));
+        return {
+          data_inicio: inicioSemana,
+          data_fim: fimSemana,
+          status: abrirImediatamente ? 'aberta' : 'programada',
+          data_abertura_programada: aberturaProgramada,
+          dias: diasPayload,
+          slots: slotsPayload,
+        };
       });
 
-      const { error: erroSlots } = await supabase
-        .from('slots_agenda')
-        .upsert(slots, { onConflict: 'barbearia_id,barbeiro_id,data_hora' });
+      // 1. Tenta salvar em lote via RPC
+      const { error: erroBatch } = await supabase.rpc('salvar_agenda_multiplas_semanas_rpc', {
+        p_barbearia_id: barbearia.id,
+        p_barbeiro_id: session.user.id,
+        p_semanas: semanasPayload,
+      });
 
-      if (erroSlots) {
-        throw new Error(erroSlots.message);
+      if (erroBatch) {
+        console.warn('RPC salvar_agenda_multiplas_semanas_rpc falhou, executando gravação semanal sequencial:', erroBatch.message);
+
+        // Fallback: salva semana por semana via RPC salvar_agenda_semanal_rpc
+        for (const semanaItem of semanasPayload) {
+          const { error: erroSemana } = await supabase.rpc('salvar_agenda_semanal_rpc', {
+            p_barbearia_id: barbearia.id,
+            p_barbeiro_id: session.user.id,
+            p_data_inicio: semanaItem.data_inicio,
+            p_data_fim: semanaItem.data_fim,
+            p_status: semanaItem.status,
+            p_data_abertura_programada: semanaItem.data_abertura_programada,
+            p_dias: semanaItem.dias,
+            p_slots: semanaItem.slots,
+          });
+
+          if (erroSemana) {
+            throw new Error(`Falha ao salvar semana de ${semanaItem.data_inicio}: ${erroSemana.message}`);
+          }
+        }
       }
 
       if (abrirImediatamente) {
-        await supabase.rpc('notificar_todos_clientes', {
-          p_titulo: 'Agenda Semanal Aberta! 💈',
-          p_mensagem: 'A agenda para a próxima semana está aberta! Garanta já seu horário no aplicativo.',
-          p_tipo: 'abertura_agenda',
-          p_dados: { data_inicio: inicio, data_fim: fim },
-        });
+        try {
+          await supabase.rpc('notificar_todos_clientes', {
+            p_titulo: isModoMes
+              ? 'Agenda do Mês Inteiro Liberada! 💈'
+              : semanaOffset === 0
+              ? 'Horários Atualizados na Barbearia! 💈'
+              : 'Agenda da Próxima Semana Aberta! 💈',
+            p_mensagem: isModoMes
+              ? 'Os horários para os próximos 30 dias estão disponíveis no aplicativo! Garanta seu atendimento antecipado.'
+              : 'Novos horários foram liberados para agendamento! Escolha o melhor dia para seu corte.',
+            p_tipo: 'abertura_agenda',
+            p_dados: { modo: isModoMes ? 'mes_inteiro' : 'semanal', barbearia_id: barbearia.id },
+          });
+        } catch {
+          // Push notification não bloqueia o salvamento
+        }
       }
 
       Alert.alert(
-        abrirImediatamente ? 'Agenda Liberada para os Clientes! 🚀' : 'Agenda Programada com Sucesso! 💈',
         abrirImediatamente
-          ? `A agenda está ABERTA com ${totalVagas} vagas no total. Os clientes já podem escolher serviços e agendar no aplicativo.`
-          : `A próxima semana está pronta com ${totalVagas} vagas no total e abrirá na segunda-feira às ${abertura}.`,
+          ? isModoMes
+            ? 'Mês Inteiro Liberado com Sucesso! 🚀'
+            : 'Agenda Liberada para os Clientes! 🚀'
+          : 'Agenda Programada com Sucesso! 💈',
+        abrirImediatamente
+          ? `${totalVagas} vagas foram abertas no aplicativo para ${isModoMes ? 'os próximos 30 dias (Mês Inteiro)' : semanaOffset === 0 ? 'Esta Semana' : 'Próxima Semana'}. Os clientes já podem agendar!`
+          : `A agenda foi programada com ${totalVagas} vagas no total e abrirá na segunda-feira às ${abertura}.`,
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (err: unknown) {
@@ -280,10 +342,73 @@ export default function PrepararAgenda() {
         <View style={styles.placeholder} />
       </View>
 
+      {/* Seletor de Escopo: Esta Semana vs Próxima Semana vs Mês Inteiro */}
+      <View style={[styles.semanaTabContainer, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
+        <TouchableOpacity
+          style={[
+            styles.semanaTab,
+            semanaOffset === 0 && { backgroundColor: theme.ouro },
+          ]}
+          onPress={() => setSemanaOffset(0)}
+          activeOpacity={0.8}
+        >
+          <Calendar size={13} color={semanaOffset === 0 ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
+          <Text
+            style={[
+              styles.semanaTabTexto,
+              { color: theme.textoSecundario },
+              semanaOffset === 0 && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+            ]}
+          >
+            Esta Semana
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.semanaTab,
+            semanaOffset === 1 && { backgroundColor: theme.ouro },
+          ]}
+          onPress={() => setSemanaOffset(1)}
+          activeOpacity={0.8}
+        >
+          <Calendar size={13} color={semanaOffset === 1 ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
+          <Text
+            style={[
+              styles.semanaTabTexto,
+              { color: theme.textoSecundario },
+              semanaOffset === 1 && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+            ]}
+          >
+            Próxima
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.semanaTab,
+            semanaOffset === 2 && { backgroundColor: theme.ouro },
+          ]}
+          onPress={() => setSemanaOffset(2)}
+          activeOpacity={0.8}
+        >
+          <Sparkles size={13} color={semanaOffset === 2 ? theme.textoEscuroSobreOuro : theme.ouroTexto} />
+          <Text
+            style={[
+              styles.semanaTabTexto,
+              { color: theme.textoSecundario },
+              semanaOffset === 2 && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+            ]}
+          >
+            Mês Inteiro (30d)
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {carregandoDados ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.ouro} />
-          <Text style={[styles.loadingTexto, { color: theme.textoSecundario }]}>Carregando configuração da semana...</Text>
+          <Text style={[styles.loadingTexto, { color: theme.textoSecundario }]}>Carregando configuração da agenda...</Text>
         </View>
       ) : (
         <ScrollView
@@ -296,10 +421,52 @@ export default function PrepararAgenda() {
               <Sparkles size={20} color={theme.ouroTexto} />
             </View>
             <View style={styles.resumoTexto}>
-              <Text style={[styles.resumoTitulo, { color: theme.textoPrimario }]}>Próxima Semana ({totalVagas} vagas no total)</Text>
-              <Text style={[styles.resumoDescricao, { color: theme.textoSecundario }]}>
-                Você pode abrir/fechar o dia inteiro ou liberar apenas horários específicos pela manhã.
+              <Text style={[styles.resumoTitulo, { color: theme.textoPrimario }]}>
+                {isModoMes ? 'Mês Inteiro (Agenda Contínua)' : semanaOffset === 0 ? 'Esta Semana' : 'Próxima Semana'} ({totalVagas} vagas ativas)
               </Text>
+              <Text style={[styles.resumoDescricao, { color: theme.textoSecundario }]}>
+                {isModoMes
+                  ? 'Libere os próximos 30 dias de uma vez só e desmarque facilmente os dias de folga.'
+                  : 'Todos os 7 dias da semana (incluindo Segundas) podem ser ativados livremente.'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Barra de Presets Rápidos */}
+          <View style={styles.presetsContainer}>
+            <Text style={[styles.presetsTitulo, { color: theme.textoSecundario }]}>⚡ PRÉ-CONFIGURAÇÕES RÁPIDAS</Text>
+            <View style={styles.presetsLinha}>
+              <TouchableOpacity
+                style={[styles.presetChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
+                onPress={() => aplicarPreset('seg_sab')}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.presetChipTexto, { color: theme.textoPrimario }]}>Seg a Sáb</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.presetChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
+                onPress={() => aplicarPreset('ter_sab')}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.presetChipTexto, { color: theme.textoPrimario }]}>Ter a Sáb</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.presetChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
+                onPress={() => aplicarPreset('todos')}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.presetChipTexto, { color: theme.ouroTexto }]}>Todos (7 Dias)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.presetChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
+                onPress={() => aplicarPreset('nenhum')}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.presetChipTexto, { color: theme.textoDesabilitado }]}>Limpar</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -318,7 +485,7 @@ export default function PrepararAgenda() {
               </View>
               <Text style={[styles.boxAberturaImediataSub, { color: theme.textoSecundario }]}>
                 {abrirImediatamente
-                  ? 'A agenda ficará ABERTA agora para qualquer cliente agendar.'
+                  ? 'Os horários ficarão ABERTOS agora para qualquer cliente agendar no aplicativo.'
                   : `A agenda ficará programada para abrir na segunda-feira às ${abertura}.`}
               </Text>
             </View>
@@ -330,74 +497,94 @@ export default function PrepararAgenda() {
             />
           </View>
 
-          {/* Seleção de Dias & Horários Granulares */}
-          <Text style={[styles.secaoTitulo, { color: theme.textoSecundario }]}>DIAS & HORÁRIOS DE ATENDIMENTO</Text>
-          <View style={styles.diasLista}>
-            {datas.map((data, index) => {
-              const diaAberto = diasAtivos[index];
-              const horasAtivas = horariosPorDia[index] || [];
-              const qtdVagasDia = diaAberto ? horasAtivas.length : 0;
+          {/* Lista de Semanas & Dias */}
+          {semanas.map((semanaDatas, semIdx) => {
+            const inicioSem = dataLocal(semanaDatas[0]);
+            const fimSem = dataLocal(semanaDatas[semanaDatas.length - 1]);
 
-              return (
-                <View key={data.toISOString()} style={[styles.diaContainer, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
-                  <View style={styles.diaCabecalho}>
-                    <View style={styles.diaTexto}>
-                      <Text style={[styles.diaNome, { color: theme.textoPrimario }]}>{NOMES_DIAS[index]}</Text>
-                      <Text style={[styles.diaData, { color: theme.textoSecundario }]}>
-                        {data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                        {' · '}
-                        <Text style={{ color: qtdVagasDia > 0 ? theme.verde : theme.textoDesabilitado }}>
-                          {qtdVagasDia > 0 ? `${qtdVagasDia} vaga(s) ativa(s)` : 'Dia fechado'}
-                        </Text>
-                      </Text>
-                    </View>
-
-                    <Switch
-                      value={diaAberto}
-                      onValueChange={(valor) => handleToggleDia(index, valor)}
-                      trackColor={{ false: theme.superficie2, true: theme.ouro }}
-                      thumbColor="#FFFFFF"
-                    />
+            return (
+              <View key={`semana-${semIdx}`} style={styles.blocoSemana}>
+                {isModoMes && (
+                  <View style={styles.semanaTituloContainer}>
+                    <Text style={[styles.semanaTituloTexto, { color: theme.ouroTexto }]}>
+                      SEMANA {semIdx + 1} ({semanaDatas[0].toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} a {semanaDatas[6].toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })})
+                    </Text>
                   </View>
+                )}
 
-                  {/* Grade de Horários Granulares do Dia */}
-                  {diaAberto && (
-                    <View style={styles.horariosGranularesGrid}>
-                      {HORARIOS_DISPONIVEIS.map((hora) => {
-                        const ativo = horasAtivas.includes(hora);
-                        return (
-                          <TouchableOpacity
-                            key={hora}
-                            style={[
-                              styles.chipHorario,
-                              { backgroundColor: theme.superficie2, borderColor: theme.borda },
-                              ativo && { backgroundColor: theme.ouro, borderColor: theme.ouro },
-                            ]}
-                            onPress={() => handleToggleHorario(index, hora)}
-                            activeOpacity={0.7}
-                          >
-                            <Text style={[
-                              styles.chipHorarioTexto,
-                              { color: theme.textoSecundario },
-                              ativo && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
-                            ]}>
-                              {hora}
+                <View style={styles.diasLista}>
+                  {semanaDatas.map((data) => {
+                    const strData = dataLocal(data);
+                    const diaAberto = !!diasAtivosMap[strData];
+                    const horasAtivas = horariosMap[strData] || [];
+                    const qtdVagasDia = diaAberto ? horasAtivas.length : 0;
+                    const diaSemanaIdx = (data.getDay() + 6) % 7; // 0 = Seg, ..., 6 = Dom
+
+                    return (
+                      <View key={strData} style={[styles.diaContainer, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
+                        <View style={styles.diaCabecalho}>
+                          <View style={styles.diaTexto}>
+                            <Text style={[styles.diaNome, { color: theme.textoPrimario }]}>
+                              {NOMES_DIAS[diaSemanaIdx]}
                             </Text>
-                            {ativo && <Check size={12} color={theme.textoEscuroSobreOuro} />}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  )}
-                </View>
-              );
-            })}
-          </View>
+                            <Text style={[styles.diaData, { color: theme.textoSecundario }]}>
+                              {data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                              {' · '}
+                              <Text style={{ color: qtdVagasDia > 0 ? theme.verde : theme.textoDesabilitado }}>
+                                {qtdVagasDia > 0 ? `${qtdVagasDia} vaga(s) ativa(s)` : 'Dia fechado / folga'}
+                              </Text>
+                            </Text>
+                          </View>
 
-          {/* Horário de Abertura na Segunda-feira (se não estiver aberta imediatamente) */}
+                          <Switch
+                            value={diaAberto}
+                            onValueChange={(valor) => handleToggleDia(strData, valor)}
+                            trackColor={{ false: theme.superficie2, true: theme.ouro }}
+                            thumbColor="#FFFFFF"
+                          />
+                        </View>
+
+                        {/* Grade de Horários Granulares do Dia */}
+                        {diaAberto && (
+                          <View style={styles.horariosGranularesGrid}>
+                            {HORARIOS_DISPONIVEIS.map((hora) => {
+                              const ativo = horasAtivas.includes(hora);
+                              return (
+                                <TouchableOpacity
+                                  key={hora}
+                                  style={[
+                                    styles.chipHorario,
+                                    { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                                    ativo && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+                                  ]}
+                                  onPress={() => handleToggleHorario(strData, hora)}
+                                  activeOpacity={0.7}
+                                >
+                                  <Text style={[
+                                    styles.chipHorarioTexto,
+                                    { color: theme.textoSecundario },
+                                    ativo && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+                                  ]}>
+                                    {hora}
+                                  </Text>
+                                  {ativo && <Check size={12} color={theme.textoEscuroSobreOuro} />}
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            );
+          })}
+
+          {/* Horário de Abertura Programada */}
           {!abrirImediatamente && (
             <>
-              <Text style={[styles.secaoTitulo, { color: theme.textoSecundario }]}>HORÁRIO DE ABERTURA NA SEGUNDA</Text>
+              <Text style={[styles.secaoTitulo, { color: theme.textoSecundario }]}>HORÁRIO DE ABERTURA PROGRAMADA</Text>
               <View style={styles.horariosContainer}>
                 {['18:00', '19:00', '19:30', '20:00', '21:00'].map((hora) => (
                   <TouchableOpacity
@@ -434,9 +621,11 @@ export default function PrepararAgenda() {
           <Botao
             label={
               salvando
-                ? 'Salvando agenda...'
+                ? 'Salvando vagas...'
                 : abrirImediatamente
-                ? 'Liberar Agenda Imediatamente'
+                ? isModoMes
+                  ? 'Liberar Mês Inteiro (30 Dias)'
+                  : 'Liberar Agenda Imediatamente'
                 : 'Programar e Ativar Agenda'
             }
             iconeEsquerda={<Save size={18} color="#FFFFFF" />}
@@ -461,6 +650,29 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borda,
+  },
+  semanaTabContainer: {
+    flexDirection: 'row',
+    marginHorizontal: Spacing.telaH,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.xs,
+    padding: 4,
+    borderRadius: Radii.lg,
+    borderWidth: 1,
+    gap: 4,
+  },
+  semanaTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 8,
+    borderRadius: Radii.md,
+  },
+  semanaTabTexto: {
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
   },
   botaoVoltar: {
     padding: 4,
@@ -524,6 +736,29 @@ const styles = StyleSheet.create({
     color: Colors.textoSecundario,
     lineHeight: 16,
   },
+  presetsContainer: {
+    gap: Spacing.xs,
+  },
+  presetsTitulo: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.labelXs,
+    letterSpacing: 0.5,
+  },
+  presetsLinha: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  presetChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: Radii.md,
+    borderWidth: 1,
+  },
+  presetChipTexto: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 12,
+  },
   boxAberturaImediata: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -533,10 +768,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.borda,
     gap: Spacing.sm,
-  },
-  boxAberturaImediataAtiva: {
-    borderColor: 'rgba(61, 191, 106, 0.4)',
-    backgroundColor: 'rgba(61, 191, 106, 0.08)',
   },
   boxAberturaImediataTitulo: {
     fontFamily: FontFamily.bold,
@@ -555,6 +786,18 @@ const styles = StyleSheet.create({
     color: Colors.textoSecundario,
     letterSpacing: 0.5,
     marginTop: Spacing.xs,
+  },
+  blocoSemana: {
+    gap: Spacing.xs,
+  },
+  semanaTituloContainer: {
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+  },
+  semanaTituloTexto: {
+    fontFamily: FontFamily.bold,
+    fontSize: 12,
+    letterSpacing: 0.5,
   },
   diasLista: {
     gap: Spacing.sm,
@@ -604,18 +847,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.bordaDestaque,
   },
-  chipHorarioAtivo: {
-    backgroundColor: Colors.vermelho,
-    borderColor: Colors.vermelho,
-  },
   chipHorarioTexto: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.labelXs,
     color: Colors.textoSecundario,
-  },
-  chipHorarioTextoAtivo: {
-    fontFamily: FontFamily.bold,
-    color: Colors.textoPrimario,
   },
   horariosContainer: {
     flexDirection: 'row',
@@ -630,18 +865,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.borda,
   },
-  horaBotaoAtivo: {
-    backgroundColor: Colors.vermelho,
-    borderColor: Colors.vermelho,
-  },
   horaTexto: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.bodySm,
     color: Colors.textoSecundario,
-  },
-  horaTextoAtivo: {
-    fontFamily: FontFamily.bold,
-    color: Colors.textoPrimario,
   },
   infoBox: {
     flexDirection: 'row',

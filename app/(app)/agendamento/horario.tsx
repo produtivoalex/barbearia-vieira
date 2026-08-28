@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import {
   ChevronLeft,
   User,
@@ -18,6 +18,7 @@ import {
   Sunset,
   Check,
   CalendarX,
+  Calendar,
   ArrowRight,
 } from 'lucide-react-native';
 import { IlustracaoServico } from '@/components';
@@ -58,11 +59,10 @@ function diasJanelaContinua(qtdDias = 14): { data: Date; isoDate: string; ativo:
   for (let i = 0; i < qtdDias; i++) {
     const d = new Date(hoje);
     d.setDate(hoje.getDate() + i);
-    const isSegunda = d.getDay() === 1;
     lista.push({
       data: d,
       isoDate: toIsoDate(d),
-      ativo: !isSegunda,
+      ativo: true,
     });
   }
   return lista;
@@ -118,6 +118,7 @@ export default function TelaHorario() {
         const dataObj = new Date(ano, mes - 1, diaNum, 12, 0, 0);
         return {
           data: dataObj,
+
           isoDate: d.data,
           ativo: d.ativo,
         };
@@ -134,6 +135,7 @@ export default function TelaHorario() {
   }, [diasSemana, hoje]);
 
   const [diaAtivoIso, setDiaAtivoIso] = useState<string>(primeiroDiaValido?.isoDate || '');
+  const [usuarioSelecionouDiaManual, setUsuarioSelecionouDiaManual] = useState(false);
   const [slotSelecionado, setSlotSelecionado] = useState<SlotSelecionado | null>(null);
   const [ocupadosPorDia, setOcupadosPorDia] = useState<Record<string, string[]>>({});
   const [slotsPorDia, setSlotsPorDia] = useState<Record<string, string[]>>({});
@@ -206,11 +208,17 @@ export default function TelaHorario() {
     carregarOcupacaoESlots();
   }, [carregarOcupacaoESlots]);
 
+  useFocusEffect(
+    useCallback(() => {
+      carregarOcupacaoESlots();
+    }, [carregarOcupacaoESlots])
+  );
+
   const diaAtivoObj = useMemo(() => {
     return diasSemana.find((d) => d.isoDate === diaAtivoIso) || diasSemana[0];
   }, [diasSemana, diaAtivoIso]);
 
-  function getEstadoSlot(dia: Date, hora: string): 'disponivel' | 'indisponivel' | 'selecionado' {
+  const getEstadoSlot = useCallback((dia: Date, hora: string): 'disponivel' | 'indisponivel' | 'selecionado' => {
     const isoDate = toIsoDate(dia);
 
     const isAtivo =
@@ -236,13 +244,57 @@ export default function TelaHorario() {
     }
 
     return 'disponivel';
-  }
+  }, [hoje, ocupadosPorDia, slotSelecionado]);
+
+  // Contagem de vagas livres por dia
+  const livresPorDia = useMemo(() => {
+    const mapa: Record<string, number> = {};
+    const hojeIso = toIsoDate(hoje);
+
+    for (const item of diasSemana) {
+      if (!item.ativo || item.isoDate < hojeIso) {
+        mapa[item.isoDate] = 0;
+        continue;
+      }
+      const slots = slotsPorDia[item.isoDate] || [];
+      let count = 0;
+      for (const hora of slots) {
+        if (getEstadoSlot(item.data, hora) !== 'indisponivel') {
+          count++;
+        }
+      }
+      mapa[item.isoDate] = count;
+    }
+    return mapa;
+  }, [diasSemana, getEstadoSlot, hoje, slotsPorDia]);
+
+  const proximoDiaComVagas = useMemo(() => {
+    const hojeIso = toIsoDate(hoje);
+    return diasSemana.find(
+      (d) => d.ativo && d.isoDate >= hojeIso && (livresPorDia[d.isoDate] ?? 0) > 0
+    );
+  }, [diasSemana, hoje, livresPorDia]);
+
+  // Se o usuário ainda não escolheu um dia manualmente e o dia atual tem 0 vagas livres,
+  // navega automaticamente para o primeiro dia que realmente possui vagas disponíveis.
+  useEffect(() => {
+    if (carregando || usuarioSelecionouDiaManual) return;
+    const hojeIso = toIsoDate(hoje);
+    const vagasDiaAtual = livresPorDia[diaAtivoIso] ?? 0;
+
+    if (vagasDiaAtual === 0) {
+      const diaComVagas = diasSemana.find(
+        (d) => d.ativo && d.isoDate >= hojeIso && (livresPorDia[d.isoDate] ?? 0) > 0
+      );
+      if (diaComVagas && diaComVagas.isoDate !== diaAtivoIso) {
+        setDiaAtivoIso(diaComVagas.isoDate);
+      }
+    }
+  }, [carregando, diaAtivoIso, diasSemana, hoje, livresPorDia, usuarioSelecionouDiaManual]);
 
   // Horários do dia ativo particionados em Manhã e Tarde
   const { slotsManha, slotsTarde, totalLivresDiaAtivo } = useMemo(() => {
     if (!diaAtivoObj) return { slotsManha: [], slotsTarde: [], totalLivresDiaAtivo: 0 };
-    // NÃ£o exibir horÃ¡rios fictÃ­cios: somente slots existentes no banco
-    // possuem ID e podem ser confirmados pela RPC tenant-aware.
     const todosSlots = slotsPorDia[diaAtivoObj.isoDate] || [];
 
     const manha: string[] = [];
@@ -260,7 +312,7 @@ export default function TelaHorario() {
     });
 
     return { slotsManha: manha, slotsTarde: tarde, totalLivresDiaAtivo: livres };
-  }, [diaAtivoObj, slotsPorDia, ocupadosPorDia, slotSelecionado, hoje]);
+  }, [diaAtivoObj, slotsPorDia, getEstadoSlot]);
 
   function handleContinuar() {
     if (!slotSelecionado) return;
@@ -396,6 +448,8 @@ export default function TelaHorario() {
               const isHoje = iso === toIsoDate(hoje);
               const isPassado = iso < toIsoDate(hoje);
               const isFechado = !item.ativo;
+              const vagasNoDia = livresPorDia[iso] ?? 0;
+              const temVagas = vagasNoDia > 0;
 
               // Nome curto do dia
               const diaNome = isHoje ? 'Hoje' : DIAS_CURTOS[data.getDay()];
@@ -412,7 +466,9 @@ export default function TelaHorario() {
                     (isFechado || isPassado) && { backgroundColor: theme.superficie2, opacity: 0.45 },
                   ]}
                   onPress={() => {
+                    setUsuarioSelecionouDiaManual(true);
                     setDiaAtivoIso(iso);
+                    setSlotSelecionado(null);
                   }}
                   activeOpacity={0.8}
                 >
@@ -446,8 +502,10 @@ export default function TelaHorario() {
                       <View style={[styles.datePillDot, { backgroundColor: theme.borda }]} />
                     ) : isAtivo ? (
                       <View style={[styles.datePillDot, { backgroundColor: theme.textoEscuroSobreOuro }]} />
-                    ) : (
+                    ) : temVagas ? (
                       <View style={[styles.datePillDot, { backgroundColor: theme.verde }]} />
+                    ) : (
+                      <View style={[styles.datePillDot, { backgroundColor: 'rgba(255, 149, 0, 0.7)' }]} />
                     )}
                   </View>
                 </TouchableOpacity>
@@ -472,7 +530,11 @@ export default function TelaHorario() {
                   : isDiaPassado
                   ? 'Horários encerrados para esta data'
                   : totalLivresDiaAtivo === 0
-                  ? 'Todos os horários estão ocupados'
+                  ? ((slotsPorDia[diaAtivoObj?.isoDate || ''] || []).length === 0
+                      ? 'Nenhum horário liberado nesta data'
+                      : diaAtivoObj?.isoDate === toIsoDate(hoje)
+                      ? 'Atendimentos de hoje já encerrados'
+                      : 'Todos os horários estão ocupados')
                   : `${totalLivresDiaAtivo} horário(s) disponível(is)`}
               </Text>
             </View>
@@ -507,10 +569,36 @@ export default function TelaHorario() {
           ) : totalLivresDiaAtivo === 0 ? (
             <View style={[styles.emptyCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
               <Clock size={36} color={theme.ouroTexto} />
-              <Text style={[styles.emptyTitulo, { color: theme.textoPrimario }]}>Vagas Esgotadas para este Dia</Text>
-              <Text style={[styles.emptyTexto, { color: theme.textoSecundario }]}>
-                Todos os horários já foram reservados. Toque em outro dia no topo para encontrar vagas livres.
+              <Text style={[styles.emptyTitulo, { color: theme.textoPrimario }]}>
+                {(slotsPorDia[diaAtivoObj?.isoDate || ''] || []).length === 0
+                  ? 'Sem Horários Disponíveis'
+                  : diaAtivoObj?.isoDate === toIsoDate(hoje)
+                  ? 'Horários de Hoje Encerrados'
+                  : 'Vagas Esgotadas para este Dia'}
               </Text>
+              <Text style={[styles.emptyTexto, { color: theme.textoSecundario }]}>
+                {(slotsPorDia[diaAtivoObj?.isoDate || ''] || []).length === 0
+                  ? 'O profissional ainda não disponibilizou horários para esta data. Selecione outro dia no topo para agendar.'
+                  : diaAtivoObj?.isoDate === toIsoDate(hoje)
+                  ? 'Os horários de atendimento para o dia de hoje já foram encerrados. Selecione amanhã ou outra data acima para agendar seu corte.'
+                  : 'Todos os horários deste dia já foram reservados. Toque em outro dia no topo para encontrar vagas livres.'}
+              </Text>
+
+              {proximoDiaComVagas && proximoDiaComVagas.isoDate !== diaAtivoObj?.isoDate && (
+                <TouchableOpacity
+                  style={[styles.btnVerProximoDia, { backgroundColor: theme.ouro }]}
+                  onPress={() => {
+                    setDiaAtivoIso(proximoDiaComVagas.isoDate);
+                    setUsuarioSelecionouDiaManual(true);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Calendar size={15} color={theme.textoEscuroSobreOuro} />
+                  <Text style={[styles.btnVerProximoDiaTexto, { color: theme.textoEscuroSobreOuro }]}>
+                    Ver Vagas de {DIAS_CURTOS[proximoDiaComVagas.data.getDay()]}, {proximoDiaComVagas.data.getDate()} de {MESES_CURTOS[proximoDiaComVagas.data.getMonth()]} ({livresPorDia[proximoDiaComVagas.isoDate]} livres)
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
             <View style={styles.horariosBloco}>
@@ -1038,5 +1126,19 @@ const styles = StyleSheet.create({
   },
   btnContinuarTextoDesabilitado: {
     color: Colors.textoDesabilitado,
+  },
+  btnVerProximoDia: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderRadius: Radii.md,
+    marginTop: Spacing.sm,
+  },
+  btnVerProximoDiaTexto: {
+    fontFamily: FontFamily.bold,
+    fontSize: 13,
   },
 });

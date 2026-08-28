@@ -69,33 +69,28 @@ export default function TelaConfirmacao() {
         if (erroPerfil) return { error: erroPerfil };
       }
 
-      // 2. Busca slot correspondente no banco
-      let consultaSlot = supabase
-        .from('slots_agenda')
-        .select('id, barbeiro_id, barbearia_id')
-        .eq('ativo', true);
-      if (params.slotId) {
-        // O ID do slot Ã© a referÃªncia exata escolhida pelo usuÃ¡rio. NÃ£o
-        // aplicar aqui o tenant do contexto, que pode ter sido restaurado
-        // novamente durante a transiÃ§Ã£o entre as telas.
-        consultaSlot = consultaSlot.eq('id', params.slotId);
-      } else {
-        consultaSlot = consultaSlot.eq('data_hora', dataHoraIso);
+      let slotId = params.slotId;
+
+      if (!slotId) {
+        // 2. Busca slot correspondente no banco
+        let consultaSlot = supabase
+          .from('slots_agenda')
+          .select('id, barbeiro_id, barbearia_id')
+          .eq('ativo', true)
+          .eq('data_hora', dataHoraIso);
         if (barbeiroId) consultaSlot = consultaSlot.eq('barbeiro_id', barbeiroId);
-        consultaSlot = consultaSlot.eq('barbearia_id', barbeariaId);
-      }
-      const { data: slot, error: erroBuscaSlot } = await consultaSlot.maybeSingle();
+        if (barbeariaId) consultaSlot = consultaSlot.eq('barbearia_id', barbeariaId);
 
-      if (erroBuscaSlot) {
-        return { error: erroBuscaSlot };
+        const { data: slot } = await consultaSlot.maybeSingle();
+        slotId = slot?.id;
       }
 
-      if (!slot?.id) {
+      if (!slotId) {
         return { error: new Error('O horário selecionado não está mais disponível para esta barbearia.') };
       }
 
       const { error: erroRpc } = await supabase.rpc('reservar_slot', {
-        p_slot_id: slot.id,
+        p_slot_id: slotId,
         p_cliente_id: session.user.id,
         p_servico_id: servicoId,
       });

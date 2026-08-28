@@ -21,33 +21,54 @@ export function useAgendamento(barbeariaId?: string) {
   // Carrega barbeiros disponíveis
   const carregarBarbeiros = useCallback(async () => {
     setCarregandoBarbeiros(true);
-    let consultaBarbeiros = supabase
-      .from('perfis')
-      .select('*')
-      .eq('role', 'barbeiro');
-    if (barbeariaId) {
-      const { data: membros } = await supabase
-        .from('barbearia_membros')
-        .select('usuario_id')
-        .eq('barbearia_id', barbeariaId)
-        .eq('ativo', true)
-        .in('papel', ['proprietario', 'gestor', 'barbeiro']);
-      const ids = (membros ?? []).map((membro) => membro.usuario_id);
-      if (!ids.length) {
-        setBarbeiros([]);
-        setCarregandoBarbeiros(false);
-        return;
-      }
-      consultaBarbeiros = consultaBarbeiros.in('id', ids);
-    }
-    const { data } = await consultaBarbeiros;
+    try {
+      let ids: string[] = [];
 
-    if (data && data.length > 0) {
-      setBarbeiros(data as Perfil[]);
-    } else {
+      if (barbeariaId) {
+        const { data: membros } = await supabase
+          .from('barbearia_membros')
+          .select('usuario_id')
+          .eq('barbearia_id', barbeariaId)
+          .eq('ativo', true)
+          .in('papel', ['proprietario', 'gestor', 'barbeiro']);
+
+        ids = (membros ?? []).map((membro) => membro.usuario_id);
+      }
+
+      let consultaBarbeiros = supabase
+        .from('perfis')
+        .select('*')
+        .eq('role', 'barbeiro');
+
+      if (ids.length > 0) {
+        consultaBarbeiros = consultaBarbeiros.in('id', ids);
+      } else if (barbeariaId) {
+        // Fallback: barbeiros vinculados à barbearia ou sem barbearia atribuída
+        consultaBarbeiros = consultaBarbeiros.or(`ultima_barbearia_id.eq.${barbeariaId},ultima_barbearia_id.is.null`);
+      }
+
+      let { data } = await consultaBarbeiros;
+
+      // Fallback final: se não encontrou nenhum barbeiro filtrado, busca todos os barbeiros ativos
+      if (!data || data.length === 0) {
+        const { data: todosBarbeiros } = await supabase
+          .from('perfis')
+          .select('*')
+          .eq('role', 'barbeiro');
+        data = todosBarbeiros;
+      }
+
+      if (data && data.length > 0) {
+        setBarbeiros(data as Perfil[]);
+      } else {
+        setBarbeiros([]);
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar barbeiros:', e);
       setBarbeiros([]);
+    } finally {
+      setCarregandoBarbeiros(false);
     }
-    setCarregandoBarbeiros(false);
   }, [barbeariaId]);
 
   useEffect(() => {

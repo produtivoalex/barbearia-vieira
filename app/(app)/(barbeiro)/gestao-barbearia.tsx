@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -117,8 +117,8 @@ export default function GestaoBarbearia() {
   const [salvandoMembro, setSalvandoMembro] = useState(false);
 
   // Estados de Regras e Comissões
-  const [modoAgenda, setModoAgenda] = useState<'continua' | 'drops' | 'fila_virtual'>(
-    barbearia?.modo_agenda || 'continua'
+  const [modoAgenda, setModoAgenda] = useState<'continua' | 'drops'>(
+    (barbearia?.modo_agenda as 'continua' | 'drops') || 'continua'
   );
   const [diasJanela, setDiasJanela] = useState<number>(barbearia?.dias_janela_agendamento || 7);
   const [comissaoPadrao, setComissaoPadrao] = useState<string>(
@@ -1284,22 +1284,6 @@ export default function GestaoBarbearia() {
                 </View>
                 <Text style={styles.opcaoModoSub}>
                   A agenda abre em data/hora marcada com contagem regressiva e lista de espera quando lotada.
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.opcaoModoCard, modoAgenda === 'fila_virtual' && styles.opcaoModoCardAtivo]}
-                onPress={() => setModoAgenda('fila_virtual')}
-                activeOpacity={0.8}
-              >
-                <View style={styles.opcaoModoHeader}>
-                  <Text style={[styles.opcaoModoTitulo, modoAgenda === 'fila_virtual' && styles.opcaoModoTituloAtivo]}>
-                    🎟️ Fila Virtual & Ordem de Chegada
-                  </Text>
-                  {modoAgenda === 'fila_virtual' && <CheckCircle size={18} color={Colors.ouro} />}
-                </View>
-                <Text style={styles.opcaoModoSub}>
-                  Atendimento presencial por ordem de chegada com acompanhamento da fila pelo aplicativo.
                 </Text>
               </TouchableOpacity>
             </View>

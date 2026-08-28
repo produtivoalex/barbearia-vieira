@@ -86,23 +86,31 @@ export default function DetalheBarbearia() {
 
         {/* Hero Banner / Logo */}
         <View style={styles.heroContainer}>
-          {barbearia.banner_url ? (
-            <Image source={{ uri: barbearia.banner_url }} style={styles.heroBanner} resizeMode="cover" />
-          ) : (
-            <View style={styles.heroBannerPlaceholder}>
-              <Text style={styles.heroBannerLetra}>{barbearia.nome.slice(0, 1).toUpperCase()}</Text>
-            </View>
-          )}
+          <Image
+            source={
+              barbearia.banner_url
+                ? { uri: barbearia.banner_url }
+                : barbearia.slug === 'barbearia-vieira'
+                ? require('@/assets/barbearia-vieira-banner.png')
+                : require('@/assets/banner-na-regua.png')
+            }
+            style={styles.heroBanner}
+            resizeMode="cover"
+          />
 
           {/* Logo Flutuante */}
           <View style={styles.logoWrapper}>
-            {barbearia.logo_url ? (
-              <Image source={{ uri: barbearia.logo_url }} style={styles.logoImg} resizeMode="cover" />
-            ) : (
-              <View style={styles.logoPlaceholder}>
-                <Text style={styles.logoLetra}>{barbearia.nome.slice(0, 1).toUpperCase()}</Text>
-              </View>
-            )}
+            <Image
+              source={
+                barbearia.logo_url
+                  ? { uri: barbearia.logo_url }
+                  : barbearia.slug === 'barbearia-vieira'
+                  ? require('@/assets/barbearia-vieira-logo.png')
+                  : require('@/assets/avatar-na-regua.png')
+              }
+              style={styles.logoImg}
+              resizeMode="cover"
+            />
           </View>
         </View>
 
@@ -187,7 +195,24 @@ export default function DetalheBarbearia() {
             <Text style={styles.servicosVazio}>Nenhum serviço cadastrado no momento.</Text>
           ) : (
             (barbearia.servicos ?? []).map((servico) => (
-              <View key={servico.id} style={styles.servico}>
+              <TouchableOpacity
+                key={servico.id}
+                style={styles.servico}
+                onPress={async () => {
+                  await selecionarBarbearia(barbearia);
+                  router.push({
+                    pathname: '/(app)/agendamento/horario',
+                    params: {
+                      servicoId: servico.id,
+                      servicoNome: servico.nome,
+                      servicoPreco: String(servico.preco),
+                      servicoDuracao: String((servico as any).duracao_minutos || 30),
+                      barbeariaId: barbearia.id,
+                    },
+                  });
+                }}
+                activeOpacity={0.75}
+              >
                 <View style={styles.servicoInfo}>
                   <Text style={styles.servicoNome}>{servico.nome}</Text>
                   {servico.descricao ? <Text style={styles.servicoDescricao}>{servico.descricao}</Text> : null}
@@ -195,7 +220,7 @@ export default function DetalheBarbearia() {
                 <Text style={styles.preco}>
                   {Number(servico.preco).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </Text>
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </View>

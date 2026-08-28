@@ -20,7 +20,7 @@ export interface BarbeariaPublica {
   total_resultados?: number;
   servicos?: Array<{ id: string; nome: string; descricao: string | null; preco: number }>;
   tema?: Record<string, string> | null;
-  modo_agenda?: 'continua' | 'drops' | 'fila_virtual';
+  modo_agenda?: 'continua' | 'drops';
   dias_janela_agendamento?: number;
   comissao_padrao?: number;
   regras_fidelidade?: { ativo: boolean; meta_cortes: number; recompensa: string } | null;

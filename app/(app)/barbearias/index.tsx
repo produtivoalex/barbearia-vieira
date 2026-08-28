@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -84,14 +84,17 @@ export default function ListaBarbearias() {
       <View style={[styles.card, isAtiva && styles.cardAtiva, { borderColor: isAtiva ? corDestaque : Colors.borda }]}>
         {/* Banner de Capa */}
         <View style={styles.bannerContainer}>
-          {item.banner_url ? (
-            <Image source={{ uri: item.banner_url }} style={styles.bannerImagem} resizeMode="cover" />
-          ) : (
-            <View style={styles.bannerPlaceholder}>
-              <Store size={36} color="rgba(203, 161, 74, 0.45)" />
-              <Text style={styles.bannerPlaceholderTexto}>{item.nome}</Text>
-            </View>
-          )}
+          <Image
+            source={
+              item.banner_url
+                ? { uri: item.banner_url }
+                : item.slug === 'barbearia-vieira'
+                ? require('@/assets/barbearia-vieira-banner.png')
+                : require('@/assets/banner-na-regua.png')
+            }
+            style={styles.bannerImagem}
+            resizeMode="cover"
+          />
           <View style={styles.bannerGradiente} />
 
           {/* Badges do Topo */}
@@ -122,13 +125,17 @@ export default function ListaBarbearias() {
           <View style={styles.topoCard}>
             {/* Logo / Avatar do Estabelecimento */}
             <View style={[styles.logoWrapper, { backgroundColor: theme.superficie2, borderColor: corDestaque }]}>
-              {item.logo_url ? (
-                <Image source={{ uri: item.logo_url }} style={styles.logoImg} resizeMode="cover" />
-              ) : (
-                <View style={[styles.logoPlaceholder, { backgroundColor: corDestaque }]}>
-                  <Text style={[styles.logoLetra, { color: theme.textoEscuroSobreOuro }]}>{item.nome.slice(0, 1).toUpperCase()}</Text>
-                </View>
-              )}
+              <Image
+                source={
+                  item.logo_url
+                    ? { uri: item.logo_url }
+                    : item.slug === 'barbearia-vieira'
+                    ? require('@/assets/barbearia-vieira-logo.png')
+                    : require('@/assets/avatar-na-regua.png')
+                }
+                style={styles.logoImg}
+                resizeMode="cover"
+              />
             </View>
 
             <View style={styles.titulosContainer}>

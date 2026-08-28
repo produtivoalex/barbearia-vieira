@@ -51,7 +51,7 @@ export function useAgendaSemanal(barbeariaId?: string) {
       .select('id, data_inicio, data_fim, status, data_abertura_programada, notificar_abertura, notificar_antecedencia_minutos, dias:dias_agenda(id, data, ativo)')
       .gte('data_fim', hoje)
       .in('status', ['programada', 'aberta'])
-      .order('data_inicio', { ascending: false })
+      .order('data_inicio', { ascending: true })
       .limit(1);
     if (barbeariaId) consulta = consulta.eq('barbearia_id', barbeariaId);
     const { data, error } = await consulta.maybeSingle();
@@ -65,18 +65,22 @@ export function useAgendaSemanal(barbeariaId?: string) {
     setCarregando(false);
   }, [barbeariaId]);
 
-  const carregarProximaParaBarbeiro = useCallback(async () => {
+  const carregarSemanaParaBarbeiro = useCallback(async (dataInicio: string) => {
     if (!session?.user?.id) return null;
-    const inicio = inicioDaProximaSemana();
     let consulta = supabase
       .from('agendas_semanais')
       .select('id, data_inicio, data_fim, status, data_abertura_programada, notificar_abertura, notificar_antecedencia_minutos, dias:dias_agenda(id, data, ativo)')
       .eq('barbeiro_id', session.user.id)
-      .eq('data_inicio', formatoData(inicio));
+      .eq('data_inicio', dataInicio);
     if (barbeariaId) consulta = consulta.eq('barbearia_id', barbeariaId);
     const { data } = await consulta.maybeSingle();
     return (data as unknown as AgendaSemanal | null) ?? null;
   }, [session?.user?.id, barbeariaId]);
+
+  const carregarProximaParaBarbeiro = useCallback(async () => {
+    const inicio = inicioDaProximaSemana();
+    return carregarSemanaParaBarbeiro(formatoData(inicio));
+  }, [carregarSemanaParaBarbeiro]);
 
   const ativarLembrete = useCallback(async (agendaId: string) => {
     if (!session?.user?.id) return { error: new Error('Usuário não autenticado.') };
@@ -88,7 +92,7 @@ export function useAgendaSemanal(barbeariaId?: string) {
     carregar();
   }, [carregar]);
 
-  return { agenda, carregando, erro, recarregar: carregar, carregarProximaParaBarbeiro, ativarLembrete };
+  return { agenda, carregando, erro, recarregar: carregar, carregarSemanaParaBarbeiro, carregarProximaParaBarbeiro, ativarLembrete };
 }
 
 export function useNotificacoes(barbeariaId?: string) {

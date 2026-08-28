@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -513,18 +513,108 @@ export default function TelaOpcoesAvancadas() {
       Alert.alert('Selecione horários', 'Marque pelo menos um horário da tarde.');
       return;
     }
+    if (!barbeiroId) {
+      Alert.alert('Erro', 'Barbeiro não autenticado.');
+      return;
+    }
+    if (!barbearia?.id) {
+      Alert.alert('Erro', 'Nenhuma barbearia ativa selecionada.');
+      return;
+    }
 
     setSalvandoVagasTarde(true);
     try {
-      const hojeStr = new Date().toISOString().slice(0, 10);
-      
-      const slotsTarde = tardeHorarios.map((hora) => ({
-        barbeiro_id: barbeiroId,
-        data_hora: new Date(`${hojeStr}T${hora}:00`).toISOString(),
-        ativo: true,
-      }));
+      const hoje = new Date();
+      const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
 
-      await supabase.from('slots_agenda').upsert(slotsTarde, { onConflict: 'barbeiro_id,data_hora' });
+      // 1. Tenta a RPC atômica
+      const { error: erroRpc } = await supabase.rpc('liberar_vagas_tarde_rpc', {
+        p_barbearia_id: barbearia.id,
+        p_barbeiro_id: barbeiroId,
+        p_data: hojeStr,
+        p_horarios: tardeHorarios,
+      });
+
+      if (erroRpc) {
+        console.warn('RPC liberar_vagas_tarde_rpc falhou, executando gravação padrão:', erroRpc.message);
+
+        // Fallback
+        const diaSemana = hoje.getDay();
+        const diffSeg = diaSemana === 0 ? -6 : 1 - diaSemana;
+        const segunda = new Date(hoje);
+        segunda.setDate(hoje.getDate() + diffSeg);
+        const domingo = new Date(segunda);
+        domingo.setDate(segunda.getDate() + 6);
+
+        const inicioSemana = `${segunda.getFullYear()}-${String(segunda.getMonth() + 1).padStart(2, '0')}-${String(segunda.getDate()).padStart(2, '0')}`;
+        const fimSemana = `${domingo.getFullYear()}-${String(domingo.getMonth() + 1).padStart(2, '0')}-${String(domingo.getDate()).padStart(2, '0')}`;
+
+        const { data: agenda, error: erroAgenda } = await supabase
+          .from('agendas_semanais')
+          .upsert(
+            {
+              barbearia_id: barbearia.id,
+              barbeiro_id: barbeiroId,
+              data_inicio: inicioSemana,
+              data_fim: fimSemana,
+              status: 'aberta',
+              notificar_abertura: true,
+            },
+            { onConflict: 'barbearia_id,barbeiro_id,data_inicio' }
+          )
+          .select('id')
+          .single();
+
+        if (erroAgenda || !agenda) {
+          throw new Error(erroAgenda?.message || 'Erro ao obter agenda semanal.');
+        }
+
+        let { data: diaExistente } = await supabase
+          .from('dias_agenda')
+          .select('id')
+          .eq('agenda_semana_id', agenda.id)
+          .eq('data', hojeStr)
+          .maybeSingle();
+
+        let diaId = diaExistente?.id;
+        if (!diaId) {
+          const { data: novoDia, error: erroDia } = await supabase
+            .from('dias_agenda')
+            .insert({
+              agenda_semana_id: agenda.id,
+              barbearia_id: barbearia.id,
+              data: hojeStr,
+              ativo: true,
+            })
+            .select('id')
+            .single();
+          if (erroDia || !novoDia) {
+            throw new Error(erroDia?.message || 'Erro ao registrar dia na agenda.');
+          }
+          diaId = novoDia.id;
+        } else {
+          await supabase
+            .from('dias_agenda')
+            .update({ ativo: true, barbearia_id: barbearia.id })
+            .eq('id', diaId);
+        }
+
+        const slotsTarde = tardeHorarios.map((hora) => ({
+          barbearia_id: barbearia.id,
+          dia_agenda_id: diaId,
+          barbeiro_id: barbeiroId,
+          data_hora: new Date(`${hojeStr}T${hora}:00`).toISOString(),
+          ativo: true,
+        }));
+
+        const { error: erroSlots } = await supabase
+          .from('slots_agenda')
+          .upsert(slotsTarde, { onConflict: 'barbearia_id,barbeiro_id,data_hora' });
+
+        if (erroSlots) {
+          throw new Error(erroSlots.message);
+        }
+      }
 
       // REGRA DE JUSTIÇA: Marca a tarde como FECHADA para ordem de chegada
       await alternarTardeFechada(true);

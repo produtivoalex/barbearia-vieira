@@ -66,21 +66,29 @@ function ControleRotas() {
         router.replace('/(pre-auth)');
       }
     } else {
-      // Se autenticado e ainda não entrou na área (app) ou está na raiz / pre-auth / callback
-      if (!naAreaApp) {
-        if (perfil?.role === 'barbeiro') {
+      // Usuário Autenticado
+      if (perfil?.role === 'barbeiro') {
+        if (!naAreaApp) {
           if (barbearia?.id) {
             router.replace('/(app)/(barbeiro)/hoje');
           } else {
             router.replace('/(app)/(barbeiro)/cadastrar-barbearia');
           }
-        } else {
-          // Cliente: se já escolheu uma barbearia antes, entra direto nela.
-          // Se nunca escolheu barbearia, vai para a vitrine do marketplace.
-          if (barbearia?.id) {
-            router.replace('/(app)/(tabs)');
-          } else {
+        }
+      } else {
+        // Cliente:
+        // Se nunca escolheu uma barbearia (barbearia é null) e não está nas telas de vitrine/busca:
+        const rotaAtual = segments.join('/');
+        const naVitrine = rotaAtual.includes('barbearias');
+
+        if (!barbearia?.id) {
+          if (!naVitrine) {
             router.replace('/(app)/barbearias');
+          }
+        } else {
+          // Cliente já tem barbearia definida e acabou de entrar na aplicação:
+          if (!naAreaApp) {
+            router.replace('/(app)/(tabs)');
           }
         }
       }

@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -42,10 +42,6 @@ export default function TelaServicos() {
   const { todosServicos, carregando, recarregar } = useServicos('todos', barbearia?.id);
 
   function handleSelecionarServico(servico: Servico) {
-    if (barbearia?.modo_agenda === 'fila_virtual') {
-      router.push('/(app)/lista-espera');
-      return;
-    }
     router.push({
       pathname: '/(app)/agendamento/horario',
       params: {
@@ -53,6 +49,7 @@ export default function TelaServicos() {
         servicoNome: servico.nome,
         servicoPreco: String(servico.preco),
         servicoDuracao: String(servico.duracao_minutos),
+        barbeariaId: barbearia?.id || (servico as any).barbearia_id || '',
       },
     });
   }
@@ -97,7 +94,6 @@ export default function TelaServicos() {
       style: 'currency',
       currency: 'BRL',
     });
-
     const ehCombo = (item.categoria || deduzirCategoria(item.nome)) === 'combos';
     const tipoServico = identificarTipoServico(undefined, item.nome, item.categoria);
     const itensCombo = item.descricao && item.descricao.includes('+')
