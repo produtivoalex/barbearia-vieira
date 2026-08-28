@@ -162,6 +162,10 @@ export default function PrepararAgenda() {
       Alert.alert('Erro', 'Sessão não identificada. Faça login novamente.');
       return;
     }
+    if (!barbearia?.id) {
+      Alert.alert('Erro', 'Selecione uma barbearia ativa antes de salvar a agenda.');
+      return;
+    }
     setSalvando(true);
 
     try {
@@ -181,6 +185,7 @@ export default function PrepararAgenda() {
         .from('agendas_semanais')
         .upsert(
           {
+            barbearia_id: barbearia.id,
             barbeiro_id: session.user.id,
             data_inicio: inicio,
             data_fim: fim,
@@ -188,7 +193,7 @@ export default function PrepararAgenda() {
             data_abertura_programada: aberturaProgramada,
             notificar_abertura: true,
           },
-          { onConflict: 'barbeiro_id,data_inicio' }
+          { onConflict: 'barbearia_id,barbeiro_id,data_inicio' }
         )
         .select('id')
         .single();
@@ -221,6 +226,7 @@ export default function PrepararAgenda() {
         if (!dia.ativo) return [];
         const horasEscolhidas = horariosPorDia[diaIndex] || [];
         return horasEscolhidas.map((hora) => ({
+          barbearia_id: barbearia.id,
           dia_agenda_id: dia.id,
           barbeiro_id: session.user.id,
           data_hora: new Date(`${dia.data}T${hora}:00`).toISOString(),
@@ -230,7 +236,7 @@ export default function PrepararAgenda() {
 
       const { error: erroSlots } = await supabase
         .from('slots_agenda')
-        .upsert(slots, { onConflict: 'barbeiro_id,data_hora' });
+        .upsert(slots, { onConflict: 'barbearia_id,barbeiro_id,data_hora' });
 
       if (erroSlots) {
         throw new Error(erroSlots.message);
@@ -252,8 +258,8 @@ export default function PrepararAgenda() {
           : `A próxima semana está pronta com ${totalVagas} vagas no total e abrirá na segunda-feira às ${abertura}.`,
         [{ text: 'OK', onPress: () => router.back() }]
       );
-    } catch (err: any) {
-      Alert.alert('Erro ao salvar agenda', err.message || 'Tente novamente.');
+    } catch (err: unknown) {
+      Alert.alert('Erro ao salvar agenda', err instanceof Error ? err.message : 'Tente novamente.');
     } finally {
       setSalvando(false);
     }

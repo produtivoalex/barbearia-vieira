@@ -194,13 +194,19 @@ export default function GestaoBarbearia() {
   }, [barbearia?.fotos]);
 
   async function handleDispararPushMimo() {
+    if (!barbearia?.id) return;
     setDisparandoPush(true);
-    await new Promise((res) => setTimeout(res, 800));
-    setDisparandoPush(false);
-    Alert.alert(
-      'Notificações Enviadas! 🔔',
-      `O mimo "${mimoTitulo}" foi disparado via notificação push no aplicativo para todos os clientes ausentes há mais de 20 dias.`
-    );
+    try {
+      const { data, error } = await supabase.rpc('disparar_mimos_reativacao', {
+        p_barbearia_id: barbearia.id,
+      });
+      if (error) throw error;
+      Alert.alert('Notificações Enviadas! 🔔', `${data ?? 0} cliente(s) recebeu(ram) o mimo por notificação in-app.`);
+    } catch (error) {
+      Alert.alert('Erro ao disparar mimo', error instanceof Error ? error.message : 'Tente novamente.');
+    } finally {
+      setDisparandoPush(false);
+    }
   }
 
   async function salvarRegras() {
@@ -230,14 +236,19 @@ export default function GestaoBarbearia() {
     };
 
     try {
-      await supabase
+      const { error } = await supabase
         .from('barbearias')
         .update({
           ...dadosAtualizacao,
           atualizado_em: new Date().toISOString(),
         } as any)
         .eq('id', barbearia.id);
-    } catch {}
+      if (error) throw error;
+    } catch (error) {
+      setSalvandoRegras(false);
+      Alert.alert('Erro ao salvar regras', error instanceof Error ? error.message : 'Tente novamente.');
+      return;
+    }
 
     await selecionarBarbearia({
       ...barbearia,

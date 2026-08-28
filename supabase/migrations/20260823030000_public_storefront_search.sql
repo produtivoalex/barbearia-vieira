@@ -80,6 +80,10 @@ as $$
     'logo_url', b.logo_url,
     'banner_url', b.banner_url,
     'fotos', b.fotos,
+    'modo_agenda', b.modo_agenda,
+    'dias_janela_agendamento', b.dias_janela_agendamento,
+    'regras_fidelidade', b.regras_fidelidade,
+    'mimo_ativo', b.mimo_ativo,
     'servicos', coalesce((
       select jsonb_agg(to_jsonb(s) - 'barbearia_id' order by s.ordem_exibicao, s.nome)
       from public.servicos s

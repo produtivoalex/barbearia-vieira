@@ -10,12 +10,18 @@ Em uma nova conversa, ler primeiro este arquivo e o bloco "Pivot multi-tenant" d
 
 ## Estado atual
 
-- Fase: Parte 4 — serviços, agenda e notificações por barbearia.
-- Status: CONCLUÍDA em 23/08/2026.
-- Código operacional: ainda não alterado para multi-tenant.
-- Banco remoto: migration aplicada e auditoria concluída sem inconsistências.
-- Tenant legado: Barbearia Vieira, ainda funcionando no modelo atual.
-- Próxima parte: Parte 5 — vitrine e busca.
+- Fase: manutenção e validação final do fluxo multi-tenant.
+- Status: Partes 1–9 concluídas; correção de confirmação aplicada localmente em 28/08/2026.
+- Banco remoto: rollout multi-tenant e correção da policy de `perfis` registrados como aplicados; confirmar a versão da RPC se o erro persistir.
+- Próximo teste: confirmar um serviço em Development Build usando um slot real da barbearia ativa.
+- Correção aplicada: horários fictícios foram removidos da agenda e as migrations `20260828000000_allow_programada_booking.sql` e `20260828010000_fix_uuid_tenant_aggregation.sql` foram aplicadas no Supabase remoto.
+- Correção aplicada para vínculo ambíguo: o painel envia `barbearia_id` e a agenda passa a ser única por tenant, barbeiro e período na migration `20260828020000_agendas_unique_per_tenant.sql`.
+- Correção aplicada para `ON CONFLICT`: a migration `20260828030000_agendas_upsert_constraint.sql` cria uma constraint `UNIQUE` explícita para o upsert do painel.
+- Correção aplicada para slots: `20260828040000_fix_slot_tenant_derivation.sql` deriva o tenant pelo dia da agenda, não pelo barbeiro.
+- Auditoria de regras concluída: campos persistidos no banco, janela/modos carregados no cliente, fidelidade exibida e disparo de mimo implementado via RPC; migrations `20260828050000` e `20260828060000` aplicadas remotamente.
+- Correção aplicada para slots esgotados: gravação tenant-aware e constraint por barbearia na migration `20260828070000_slots_unique_per_tenant.sql`; agendas antigas devem ser salvas novamente.
+- Correção preparada para leitura pública de slots: RPC segura `buscar_slots_disponiveis` na migration `20260828080000_public_slots_rpc.sql`.
+- RPC `buscar_slots_disponiveis` aplicada no Supabase remoto.
 
 ## Critérios gerais de segurança
 
@@ -176,7 +182,7 @@ Pagamentos da plataforma, comissões, avaliações, favoritos, cupons, chat, pla
 - Fluxos do cliente e o painel principal do barbeiro filtram dados pelo tenant ativo.
 - Hoje, Semana, Clientes, Mais, Opcoes Avancadas e Preparar Agenda recebem a barbearia ativa; Mais ganhou acao para trocar estabelecimento.
 - TypeScript e `git diff --check` passaram.
-- Publicacao das migrations continua pendente no Supabase.
+- Registro histórico: a publicação estava pendente nesta atualização antiga; o rollout foi aplicado posteriormente.
 
 ## Atualizacao final - Parte 8 (23/08/2026)
 
@@ -184,7 +190,7 @@ Pagamentos da plataforma, comissões, avaliações, favoritos, cupons, chat, pla
 - Contrato de Storage: `<barbearia_id>/<logo|banner|fotos>/<arquivo>`; leitura publica somente para barbearia publicada/ativa; escrita restrita a gestor/proprietario.
 - Criados `scripts/multi_tenant_rollout_audit.sql` e `PART8_ROLLOUT.md` com auditorias e sequencia de rollout.
 - TypeScript e `git diff --check` passaram.
-- Nenhuma migration da Parte 8 foi aplicada remotamente; segunda barbearia e testes RLS reais continuam dependentes do Supabase autorizado.
+- Registro histórico: a Parte 8 aguardava aplicação remota nesta atualização antiga; rollout, bucket e teste de isolamento foram validados posteriormente.
 - Partes 1 a 8 locais concluídas. Proxima etapa: Parte 9, apos publicar e validar o rollout remoto.
 
 ## Atualizacao da retomada - Parte 6 auditoria de consultas (23/08/2026)

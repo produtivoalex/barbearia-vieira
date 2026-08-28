@@ -42,6 +42,10 @@ export default function TelaServicos() {
   const { todosServicos, carregando, recarregar } = useServicos('todos', barbearia?.id);
 
   function handleSelecionarServico(servico: Servico) {
+    if (barbearia?.modo_agenda === 'fila_virtual') {
+      router.push('/(app)/lista-espera');
+      return;
+    }
     router.push({
       pathname: '/(app)/agendamento/horario',
       params: {

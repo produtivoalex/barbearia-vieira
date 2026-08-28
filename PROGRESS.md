@@ -1,5 +1,61 @@
 # Progresso do Projeto (App Barbearia -> Na Régua)
 
+## Correção da confirmação de serviço via RPC (28/08/2026)
+
+- Removido o fallback de `insert` direto em `agendamentos` da tela de confirmação.
+- Quando o slot não é encontrado no tenant selecionado, o fluxo agora informa indisponibilidade em vez de tentar uma gravação rejeitada pela RLS.
+- A confirmação passa exclusivamente pela RPC `reservar_slot`, que valida slot, serviço, barbeiro e `barbearia_id` atomicamente.
+- Validação local: `npx.cmd tsc --noEmit` e `git diff --check` passaram.
+- Migrations `20260828000000` e `20260828010000` aplicadas no Supabase remoto; falta apenas repetir o teste funcional no Development Build.
+- Diagnóstico adicional: a agenda exibia horários fictícios quando não havia slots visíveis; removido o fallback `SLOTS_PADRAO`.
+- Criada `supabase/migrations/20260828000000_allow_programada_booking.sql` para permitir reserva de agendas futuras em status `programada`, além de `aberta`.
+
+## Correção do erro `function min(uuid) does not exist` (28/08/2026)
+
+- Identificado o uso inválido de `min(uuid)` na função de trigger `preencher_tenant_operacional` e na assinatura legada de notificações.
+- Criada `supabase/migrations/20260828010000_fix_uuid_tenant_aggregation.sql`, substituindo a agregação por `array_agg(... order by ...)`.
+- A migration foi aplicada no Supabase remoto; o salvamento/liberação da agenda deve ser retestado no app.
+
+## Correção de vínculo ambíguo ao salvar agenda (28/08/2026)
+
+- O painel agora envia `barbearia_id` explicitamente ao criar/atualizar `agendas_semanais`.
+- A unicidade da agenda foi ajustada para `(barbearia_id, barbeiro_id, data_inicio)` em `20260828020000_agendas_unique_per_tenant.sql`.
+- Migration `20260828020000_agendas_unique_per_tenant.sql` aplicada no Supabase remoto.
+
+## Auditoria da área de regras (28/08/2026)
+
+- Corrigido o defeito central: `modo_agenda`, `dias_janela_agendamento`, `comissao_padrao`, `regras_fidelidade` e `mimo_ativo` não existiam na tabela `barbearias`; a tela também ignorava o erro de atualização.
+- Regras adicionadas ao banco e carregadas pelo contexto/vitrine; a janela agora respeita valores acima de 7 dias.
+- Modo `fila_virtual` passou a direcionar para a lista de espera, sem abrir o fluxo de horários.
+- Programa de fidelidade passou a exibir progresso ao cliente com base em atendimentos concluídos.
+- Disparo de mimo deixou de ser simulado: usa RPC real, cria notificações in-app para clientes sem visita há mais de 20 dias e evita duplicidade durante a validade.
+- Migrations `20260828050000` e `20260828060000` aplicadas no Supabase remoto.
+- Validação local: TypeScript e `git diff --check` passaram. Teste funcional no app ainda é necessário para confirmar a experiência visual e o push no dispositivo.
+
+## Correção de slots esgotados após liberar agenda (28/08/2026)
+
+- Slots agora são gravados com `barbearia_id` explícito e usam upsert por tenant, barbeiro e horário.
+- A tela de horários diferencia falha de consulta de agenda realmente esgotada.
+- Migration `20260828070000_slots_unique_per_tenant.sql` aplicada no Supabase remoto. Agendas antigas precisam ser salvas novamente para recriar slots com tenant explícito.
+
+## Correção de leitura pública de slots (28/08/2026)
+
+- O banco remoto confirmou 78 slots válidos na Vieira, mas a consulta encadeada por RLS retornava zero no cliente.
+- Criada a RPC segura `buscar_slots_disponiveis`, com validação de barbearia publicada/ativa, agenda aberta/programada, dia ativo e barbeiro.
+- A tela de horários passou a usar essa RPC e a exibir falhas reais de consulta.
+- Migration `20260828080000_public_slots_rpc.sql` aplicada no Supabase remoto.
+
+## Correção do `ON CONFLICT` ao salvar agenda (28/08/2026)
+
+- O PostgREST não reconheceu o índice único como alvo do upsert.
+- Criada `supabase/migrations/20260828030000_agendas_upsert_constraint.sql`, convertendo o índice em constraint `UNIQUE` explícita.
+- Migration `20260828030000_agendas_upsert_constraint.sql` aplicada no Supabase remoto.
+
+## Correção de derivação de tenant dos slots (28/08/2026)
+
+- Corrigido o trigger para `slots_agenda` herdar `barbearia_id` de `dias_agenda`, evitando ambiguidade quando o barbeiro possui múltiplos vínculos.
+- Migration `20260828040000_fix_slot_tenant_derivation.sql` aplicada no Supabase remoto.
+
 ## Correção do fluxo de agendamento multi-tenant (27/08/2026)
 
 - Corrigido o erro de recursão infinita na policy de `public.perfis`, causado pela policy da Fase 21 consultar a própria tabela `perfis`.
@@ -99,12 +155,11 @@
 - O vínculo da CLI usa arquivos temporários em `supabase/.temp`; não foi criado `supabase/config.toml`.
 - Próximo passo: **Parte 5 — vitrine e busca**.
 
-### Partes pendentes
+### Pendências atuais
 
-1. Parte 5 — Vitrine e busca.
-2. Parte 6 — Tema e fluxo nativo por tenant.
-3. Parte 7 — Painel do barbeiro multi-barbearia.
-4. Parte 8 — Storage, testes e rollout.
+- Teste manual final no Development Build: salvar/liberar agenda, exibir slots reais e confirmar um serviço.
+- Lint global: 44 erros preexistentes de `any` e 62 avisos distribuídos pelo projeto; a validação direcionada do fluxo de agenda está sem erros.
+- As listas de pendências das seções históricas abaixo são registros da época e não representam o estado atual.
 
 ## Diagnostico APK Preview - CONCLUIDO (23/08/2026)
 

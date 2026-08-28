@@ -33,6 +33,8 @@ export interface BarbeariaPublica {
   } | null;
 }
 
+export const CAMPOS_REGRAS_BARBEARIA = 'modo_agenda, dias_janela_agendamento, comissao_padrao, regras_fidelidade, mimo_ativo';
+
 export interface FiltrosBarbearias {
   busca?: string;
   cidade?: string;
@@ -65,7 +67,7 @@ export function useBarbearias(filtros: FiltrosBarbearias = {}) {
       } else {
         const { data, error } = await supabase
           .from('barbearias')
-          .select('id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status')
+          .select(`id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status, ${CAMPOS_REGRAS_BARBEARIA}`)
           .in('id', ids)
           .order('nome');
         if (error) setErro(error.message);
@@ -106,7 +108,7 @@ export async function buscarDetalheBarbearia(slug: string, somenteVinculos = fal
   const ids = (vinculos ?? []).map((item) => item.barbearia_id).filter(Boolean);
   const { data: estabelecimento, error: estabelecimentoError } = await supabase
     .from('barbearias')
-    .select('id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status')
+    .select(`id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status, ${CAMPOS_REGRAS_BARBEARIA}`)
     .eq('slug', slug)
     .in('id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000'])
     .maybeSingle();

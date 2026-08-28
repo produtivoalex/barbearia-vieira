@@ -142,7 +142,7 @@ export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
       const { data: membro } = await supabase
         .from('barbearia_membros')
         .select(
-          'barbearia:barbearia_id(id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status)'
+          'barbearia:barbearia_id(id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status, modo_agenda, dias_janela_agendamento, comissao_padrao, regras_fidelidade, mimo_ativo)'
         )
         .eq('usuario_id', uid)
         .eq('ativo', true)
@@ -202,7 +202,7 @@ export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
       if (barbeariaIdDesejada) {
         const { data: estabCliente } = await supabase
           .from('barbearias')
-          .select('id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status')
+          .select('id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status, modo_agenda, dias_janela_agendamento, comissao_padrao, regras_fidelidade, mimo_ativo')
           .eq('id', barbeariaIdDesejada)
           .maybeSingle();
 

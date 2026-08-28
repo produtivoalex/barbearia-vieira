@@ -42,7 +42,7 @@ export default function TelaHome() {
   const styles = createStyles(theme);
   const { perfil, carregandoPerfil } = usePerfil();
   const { barbearia } = useBarbearia();
-  const { proximos } = useMeusAgendamentos(barbearia?.id);
+  const { proximos, historico } = useMeusAgendamentos(barbearia?.id);
   const { agenda, carregando: carregandoAgenda, ativarLembrete } = useAgendaSemanal(barbearia?.id);
   const { naoLidas } = useNotificacoes(barbearia?.id);
   const { temPermissao, solicitarPermissao } = usePushNotifications();
@@ -93,6 +93,11 @@ export default function TelaHome() {
 
   const corDestaque = barbearia?.tema?.primary || theme.ouro;
   const fotosGaleria = Array.isArray(barbearia?.fotos) ? (barbearia.fotos as string[]).filter(Boolean) : [];
+  const fidelidade = barbearia?.regras_fidelidade;
+  const cortesFidelidade = historico.filter((item) => item.status === 'concluido').length;
+  const metaFidelidade = fidelidade?.meta_cortes ?? 0;
+  const fidelidadeVisivel = fidelidade?.ativo === true && metaFidelidade > 0;
+  const agendaPermiteReserva = barbearia?.modo_agenda !== 'fila_virtual' && agenda?.status === 'aberta';
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]} edges={['top']}>
@@ -273,19 +278,19 @@ export default function TelaHome() {
               <Text style={styles.heroHeaderPillTexto}>
                 {carregandoAgenda
                   ? 'Verificando vagas...'
-                  : agenda?.status === 'aberta'
+                  : agendaPermiteReserva
                   ? 'Agenda Aberta'
                   : 'Vagas Esgotadas'}
               </Text>
             </View>
 
             <Text style={styles.heroTituloDisplay}>
-              {agenda?.status === 'aberta'
+              {agendaPermiteReserva
                 ? 'Garanta seu corte na régua'
                 : 'Horários da semana esgotados'}
             </Text>
             <Text style={styles.heroDescricao}>
-              {agenda?.status === 'aberta'
+              {agendaPermiteReserva
                 ? 'Escolha seu serviço e reserve seu horário com rapidez e sem filas.'
                 : 'Cadastre-se na lista de espera para ser avisado se surgir uma desistência.'}
             </Text>
@@ -293,24 +298,38 @@ export default function TelaHome() {
             <TouchableOpacity
               style={styles.heroBtnReserva}
               onPress={() =>
-                agenda?.status === 'aberta'
+                agendaPermiteReserva
                   ? router.push('/(app)/(tabs)/servicos')
                   : router.push('/(app)/lista-espera')
               }
               activeOpacity={0.85}
             >
               <View style={styles.heroBtnIconeWrapper}>
-                {agenda?.status === 'aberta' ? (
+                {agendaPermiteReserva ? (
                   <Scissors size={18} color={theme.textoEscuroSobreOuro} />
                 ) : (
                   <ListPlus size={18} color={theme.textoEscuroSobreOuro} />
                 )}
               </View>
               <Text style={styles.heroBtnReservaTexto}>
-                {agenda?.status === 'aberta' ? 'Reservar Horário Agora' : 'Entrar na Lista de Espera'}
+                {agendaPermiteReserva ? 'Reservar Horário Agora' : 'Entrar na Lista de Espera'}
               </Text>
               <ArrowRight size={18} color={theme.textoEscuroSobreOuro} />
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ─── Card de Mimo VIP / Oferta Exclusiva ─── */}
+        {fidelidadeVisivel && (
+          <View style={styles.cardMimoCliente}>
+            <View style={styles.mimoClienteIconeWrapper}>
+              <Gift size={22} color={corDestaque} />
+            </View>
+            <View style={{ flex: 1, gap: 3 }}>
+              <Text style={[styles.mimoPillTexto, { color: corDestaque }]}>PROGRAMA DE FIDELIDADE</Text>
+              <Text style={styles.mimoClienteTitulo}>{cortesFidelidade}/{metaFidelidade} atendimentos</Text>
+              <Text style={styles.mimoClienteDesc}>{cortesFidelidade >= metaFidelidade ? 'Recompensa disponível!' : fidelidade?.recompensa}</Text>
+            </View>
           </View>
         )}
 

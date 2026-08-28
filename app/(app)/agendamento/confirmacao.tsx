@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { CheckCircle, AlertCircle, Calendar, Clock, User, Sparkles, BellRing } from 'lucide-react-native';
+import { CheckCircle, AlertCircle, Calendar, User, Sparkles, BellRing } from 'lucide-react-native';
 import { Botao, IndicadorEtapas, IlustracaoServico } from '@/components';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -19,7 +19,7 @@ import { useBarbearia } from '@/contexts/BarbeariaContext';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 export default function TelaConfirmacao() {
-  const { theme, isEscuro } = useTheme();
+  const { theme } = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams<{
     servicoId?: string;
@@ -69,92 +69,40 @@ export default function TelaConfirmacao() {
         if (erroPerfil) return { error: erroPerfil };
       }
 
-      let idBarbeiroFinal = barbeiroId;
-
       // 2. Busca slot correspondente no banco
       let consultaSlot = supabase
         .from('slots_agenda')
-        .select('id, barbeiro_id')
+        .select('id, barbeiro_id, barbearia_id')
         .eq('ativo', true);
       if (params.slotId) {
+        // O ID do slot Ã© a referÃªncia exata escolhida pelo usuÃ¡rio. NÃ£o
+        // aplicar aqui o tenant do contexto, que pode ter sido restaurado
+        // novamente durante a transiÃ§Ã£o entre as telas.
         consultaSlot = consultaSlot.eq('id', params.slotId);
       } else {
         consultaSlot = consultaSlot.eq('data_hora', dataHoraIso);
         if (barbeiroId) consultaSlot = consultaSlot.eq('barbeiro_id', barbeiroId);
+        consultaSlot = consultaSlot.eq('barbearia_id', barbeariaId);
       }
-      if (barbeariaId) consultaSlot = consultaSlot.eq('barbearia_id', barbeariaId);
       const { data: slot, error: erroBuscaSlot } = await consultaSlot.maybeSingle();
 
       if (erroBuscaSlot) {
         return { error: erroBuscaSlot };
       }
 
-      if (params.slotId && !slot?.id) {
-        return { error: new Error('O horário selecionado não está mais disponível.') };
+      if (!slot?.id) {
+        return { error: new Error('O horário selecionado não está mais disponível para esta barbearia.') };
       }
 
-      if (slot?.id) {
-        if (slot.barbeiro_id) {
-          idBarbeiroFinal = slot.barbeiro_id;
-        }
+      const { error: erroRpc } = await supabase.rpc('reservar_slot', {
+        p_slot_id: slot.id,
+        p_cliente_id: session.user.id,
+        p_servico_id: servicoId,
+      });
 
-        const { error: erroRpc } = await supabase.rpc('reservar_slot', {
-          p_slot_id: slot.id,
-          p_cliente_id: session.user.id,
-          p_servico_id: servicoId,
-        });
-
-        if (!erroRpc) {
-          return { error: null };
-        }
-        return { error: erroRpc };
-      }
-
-      // 3. Se barbeiroId for vazio, busca membro ativo da barbearia selecionada
-      if (!idBarbeiroFinal) {
-        if (barbeariaId) {
-          const { data: membroAtivo } = await supabase
-            .from('barbearia_membros')
-            .select('usuario_id')
-            .eq('barbearia_id', barbeariaId)
-            .eq('ativo', true)
-            .in('papel', ['proprietario', 'gestor', 'barbeiro'])
-            .order('criado_em', { ascending: true })
-            .limit(1)
-            .maybeSingle();
-
-          if (membroAtivo?.usuario_id) {
-            idBarbeiroFinal = membroAtivo.usuario_id;
-          }
-        }
-
-        if (!idBarbeiroFinal) {
-          const { data: barbeiroCadastrado } = await supabase
-            .from('perfis')
-            .select('id')
-            .eq('role', 'barbeiro')
-            .limit(1)
-            .maybeSingle();
-
-          idBarbeiroFinal = barbeiroCadastrado?.id || '4b808eeb-9198-42a1-b10c-3a54f72c12dc';
-        }
-      }
-
-      // 4. Inserção direta na tabela agendamentos como fallback confiável
-      const { error: erroInsert } = await supabase
-        .from('agendamentos')
-        .insert({
-          cliente_id: session.user.id,
-          barbeiro_id: idBarbeiroFinal,
-          servico_id: servicoId,
-          barbearia_id: barbeariaId ?? null,
-          data_hora: dataHoraIso,
-          status: 'confirmado',
-        });
-
-      return { error: erroInsert };
-    } catch (err: any) {
-      return { error: err };
+      return { error: erroRpc };
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err : new Error('Falha ao confirmar agendamento.') };
     }
   }
 

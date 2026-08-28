@@ -13,8 +13,6 @@ import {
   ChevronLeft,
   User,
   Clock,
-  Scissors,
-  Calendar,
   Sparkles,
   Sun,
   Sunset,
@@ -22,7 +20,7 @@ import {
   CalendarX,
   ArrowRight,
 } from 'lucide-react-native';
-import { Botao, IndicadorEtapas, IlustracaoServico } from '@/components';
+import { IlustracaoServico } from '@/components';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -30,7 +28,6 @@ import { useAgendamento } from '@/hooks/useAgendamento';
 import { useAgendaSemanal } from '@/hooks/useAgendaSemanal';
 import { supabase } from '@/lib/supabase';
 
-const SLOTS_PADRAO: string[] = ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
 const DIAS_CURTOS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const NOMES_DIAS_EXTENSO = [
   'Domingo',
@@ -78,7 +75,7 @@ interface SlotSelecionado {
 
 export default function TelaHorario() {
   const router = useRouter();
-  const { theme, isEscuro } = useTheme();
+  const { theme } = useTheme();
   const { barbearia } = useBarbearia();
   const params = useLocalSearchParams<{
     servicoId?: string;
@@ -88,7 +85,7 @@ export default function TelaHorario() {
   }>();
 
   const { barbeiros, carregandoBarbeiros, buscarHorariosOcupados } = useAgendamento(barbearia?.id);
-  const { agenda, carregando: carregandoAgenda } = useAgendaSemanal(barbearia?.id);
+  const { agenda } = useAgendaSemanal(barbearia?.id);
   const [barbeiroSelecionadoId, setBarbeiroSelecionadoId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -141,6 +138,7 @@ export default function TelaHorario() {
   const [ocupadosPorDia, setOcupadosPorDia] = useState<Record<string, string[]>>({});
   const [slotsPorDia, setSlotsPorDia] = useState<Record<string, string[]>>({});
   const [slotIdsPorDia, setSlotIdsPorDia] = useState<Record<string, Record<string, string>>>({});
+  const [erroSlots, setErroSlots] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
@@ -158,13 +156,13 @@ export default function TelaHorario() {
 
     try {
       // 1. Busca slots configurados no banco de dados
-      let consultaSlots = supabase
-        .from('slots_agenda')
-        .select('id, data_hora, ativo, barbeiro_id')
-        .eq('ativo', true);
-      if (barbearia?.id) consultaSlots = consultaSlots.eq('barbearia_id', barbearia.id);
-      consultaSlots = consultaSlots.eq('barbeiro_id', barbeiroSelecionadoId);
-      const { data: slotsBanco } = await consultaSlots.order('data_hora', { ascending: true });
+      if (!barbearia?.id) throw new Error('Nenhuma barbearia selecionada.');
+      const { data: slotsBanco, error: erroConsultaSlots } = await supabase.rpc('buscar_slots_disponiveis', {
+        p_barbearia_id: barbearia.id,
+        p_barbeiro_id: barbeiroSelecionadoId,
+      });
+      if (erroConsultaSlots) throw erroConsultaSlots;
+      setErroSlots(null);
 
       const mapaSlots: Record<string, string[]> = {};
       const mapaIds: Record<string, Record<string, string>> = {};
@@ -196,7 +194,9 @@ export default function TelaHorario() {
       }
       setOcupadosPorDia(mapaOcupados);
     } catch (e) {
-      console.log('Erro ao carregar ocupação:', e);
+      const mensagem = e instanceof Error ? e.message : 'Não foi possível carregar os horários.';
+      setErroSlots(mensagem);
+      console.warn('Erro ao carregar ocupação:', mensagem);
     } finally {
       setCarregando(false);
     }
@@ -241,9 +241,9 @@ export default function TelaHorario() {
   // Horários do dia ativo particionados em Manhã e Tarde
   const { slotsManha, slotsTarde, totalLivresDiaAtivo } = useMemo(() => {
     if (!diaAtivoObj) return { slotsManha: [], slotsTarde: [], totalLivresDiaAtivo: 0 };
-    const todosSlots = slotsPorDia[diaAtivoObj.isoDate] && slotsPorDia[diaAtivoObj.isoDate].length > 0
-      ? slotsPorDia[diaAtivoObj.isoDate]
-      : SLOTS_PADRAO;
+    // NÃ£o exibir horÃ¡rios fictÃ­cios: somente slots existentes no banco
+    // possuem ID e podem ser confirmados pela RPC tenant-aware.
+    const todosSlots = slotsPorDia[diaAtivoObj.isoDate] || [];
 
     const manha: string[] = [];
     const tarde: string[] = [];
@@ -497,6 +497,12 @@ export default function TelaHorario() {
                   ? 'O estabelecimento não realiza atendimentos nesta data. Por favor, selecione outro dia no calendário acima.'
                   : 'Esta data já passou. Escolha o dia de hoje ou uma data futura para agendar.'}
               </Text>
+            </View>
+          ) : erroSlots ? (
+            <View style={[styles.emptyCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
+              <CalendarX size={36} color={theme.textoDesabilitado} />
+              <Text style={[styles.emptyTitulo, { color: theme.textoPrimario }]}>Não foi possível carregar as vagas</Text>
+              <Text style={[styles.emptyTexto, { color: theme.textoSecundario }]}>{erroSlots}</Text>
             </View>
           ) : totalLivresDiaAtivo === 0 ? (
             <View style={[styles.emptyCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
