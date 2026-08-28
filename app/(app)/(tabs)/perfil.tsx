@@ -8,6 +8,7 @@ import {
   Linking,
   Modal,
   Pressable,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -25,6 +26,11 @@ import {
   Phone,
   Mail,
   Store,
+  Building2,
+  Moon,
+  Sun,
+  Smartphone,
+  Check,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Avatar, LogoBarbearia } from '@/components';
@@ -33,14 +39,16 @@ import { usePerfil } from '@/hooks/usePerfil';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
-type TipoModal = 'dados_conta' | 'notificacoes' | 'horarios' | 'privacidade' | 'sair' | null;
+type TipoModal = 'dados_conta' | 'notificacoes' | 'horarios' | 'privacidade' | 'aparencia' | 'sair' | null;
 
 export default function TelaPerfil() {
   const router = useRouter();
   const { perfil, carregandoPerfil } = usePerfil();
   const { barbearia } = useBarbearia();
   const { session } = useAuth();
+  const { theme, isEscuro, modoTema, setModoTema } = useTheme();
   const [modalAtivo, setModalAtivo] = useState<TipoModal>(null);
 
   async function handleConfirmarSair() {
@@ -49,9 +57,13 @@ export default function TelaPerfil() {
   }
 
   function handleAbrirWhatsApp() {
-    const telefone = barbearia?.telefone?.replace(/\D/g, '') || '5586981907478';
+    const telefone = barbearia?.whatsapp?.replace(/\D/g, '') || barbearia?.telefone?.replace(/\D/g, '');
+    if (!telefone) {
+      Alert.alert('Contato indisponível', 'Este estabelecimento ainda não cadastrou um número de WhatsApp.');
+      return;
+    }
     const numeroFinal = telefone.startsWith('55') ? telefone : `55${telefone}`;
-    const msg = encodeURIComponent(`Olá! Gostaria de tirar uma dúvida sobre ${barbearia?.nome || 'o Na Régua'}.`);
+    const msg = encodeURIComponent(`Olá! Gostaria de tirar uma dúvida sobre ${barbearia?.nome || 'a barbearia'}.`);
     Linking.openURL(`https://wa.me/${numeroFinal}?text=${msg}`).catch(() => {});
   }
 
@@ -60,10 +72,17 @@ export default function TelaPerfil() {
     : perfil?.nome_completo || 'Cliente';
   const emailExibicao = session?.user?.email || '';
 
+  const labelAparencia =
+    modoTema === 'escuro'
+      ? 'Modo Escuro (Obsidian & Gold)'
+      : modoTema === 'claro'
+      ? 'Modo Claro (Pearl White & Gold)'
+      : 'Automático (Segue o Sistema)';
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.titulo}>Perfil</Text>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]} edges={['top']}>
+      <View style={[styles.header, { borderBottomColor: theme.borda }]}>
+        <Text style={[styles.titulo, { color: theme.textoPrimario }]}>Perfil</Text>
       </View>
 
       <ScrollView
@@ -71,162 +90,202 @@ export default function TelaPerfil() {
         showsVerticalScrollIndicator={false}
       >
         {/* Card Principal de Identidade com Avatar */}
-        <View style={styles.perfilCard}>
+        <View style={[styles.perfilCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
           <View style={styles.avatarWrapper}>
             <LogoBarbearia tamanho={64} tipo="avatar" variante="compacto" uri={barbearia?.logo_url} />
           </View>
 
           <View style={styles.perfilInfo}>
-            <Text style={styles.perfilNome}>{nomeExibicao}</Text>
-            <Text style={styles.perfilContato}>{perfil?.telefone || emailExibicao}</Text>
-            <View style={styles.badgeCliente}>
-              <Sparkles size={11} color={Colors.ouro} />
-              <Text style={styles.badgeClienteTexto}>Cliente {barbearia?.nome || 'Na Régua'}</Text>
+            <Text style={[styles.perfilNome, { color: theme.textoPrimario }]}>{nomeExibicao}</Text>
+            <Text style={[styles.perfilContato, { color: theme.textoSecundario }]}>{perfil?.telefone || emailExibicao}</Text>
+            <View style={[styles.badgeCliente, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
+              <Sparkles size={11} color={theme.ouroTexto} />
+              <Text style={[styles.badgeClienteTexto, { color: theme.ouroTexto }]}>Cliente {barbearia?.nome || 'Na Régua'}</Text>
             </View>
           </View>
         </View>
 
         {/* Seção 1: Minha Conta */}
         <View style={styles.secao}>
-          <Text style={styles.secaoTitulo}>MINHA CONTA</Text>
-          <View style={styles.cardGrupo}>
+          <Text style={[styles.secaoTitulo, { color: theme.textoSecundario }]}>MINHA CONTA</Text>
+          <View style={[styles.cardGrupo, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
             <TouchableOpacity
               style={styles.itemLinha}
               activeOpacity={0.7}
               onPress={() => setModalAtivo('dados_conta')}
             >
-              <View style={styles.itemIconeContainer}>
-                <User size={18} color={Colors.ouro} />
+              <View style={[styles.itemIconeContainer, { backgroundColor: theme.ouroTranslucido }]}>
+                <User size={18} color={theme.ouroTexto} />
               </View>
               <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Dados do perfil</Text>
-                <Text style={styles.itemSubtitulo}>Nome e informações de login</Text>
+                <Text style={[styles.itemTitulo, { color: theme.textoPrimario }]}>Dados do perfil</Text>
+                <Text style={[styles.itemSubtitulo, { color: theme.textoSecundario }]}>Nome e informações de login</Text>
               </View>
-              <ChevronRight size={18} color={Colors.textoDesabilitado} />
+              <ChevronRight size={18} color={theme.textoDesabilitado} />
             </TouchableOpacity>
 
-            <View style={styles.divisorItem} />
+            <View style={[styles.divisorItem, { backgroundColor: theme.borda }]} />
 
             <TouchableOpacity
               style={styles.itemLinha}
               activeOpacity={0.7}
               onPress={() => setModalAtivo('notificacoes')}
             >
-              <View style={styles.itemIconeContainer}>
-                <Bell size={18} color={Colors.ouro} />
+              <View style={[styles.itemIconeContainer, { backgroundColor: theme.ouroTranslucido }]}>
+                <Bell size={18} color={theme.ouroTexto} />
               </View>
               <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Notificações & Lembretes</Text>
-                <Text style={styles.itemSubtitulo}>Avisos de abertura de agenda e cortes</Text>
+                <Text style={[styles.itemTitulo, { color: theme.textoPrimario }]}>Notificações & Lembretes</Text>
+                <Text style={[styles.itemSubtitulo, { color: theme.textoSecundario }]}>Avisos de abertura de agenda e cortes</Text>
               </View>
-              <ChevronRight size={18} color={Colors.textoDesabilitado} />
+              <ChevronRight size={18} color={theme.textoDesabilitado} />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Seção 2: Barbearia Ativa */}
         <View style={styles.secao}>
-          <Text style={styles.secaoTitulo}>{(barbearia?.nome || 'BARBEARIA').toUpperCase()}</Text>
-          <View style={styles.cardGrupo}>
+          <Text style={[styles.secaoTitulo, { color: theme.textoSecundario }]}>{(barbearia?.nome || 'BARBEARIA').toUpperCase()}</Text>
+          <View style={[styles.cardGrupo, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
             <TouchableOpacity
               style={styles.itemLinha}
               activeOpacity={0.7}
               onPress={handleAbrirWhatsApp}
             >
               <View style={[styles.itemIconeContainer, styles.iconeWhatsapp]}>
-                <MessageCircle size={18} color={Colors.verde} />
+                <MessageCircle size={18} color={theme.verde} />
               </View>
               <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>WhatsApp Oficial</Text>
-                <Text style={styles.itemSubtitulo}>{barbearia?.whatsapp || barbearia?.telefone || '(86) 98190-7478'} • Falar com o estabelecimento</Text>
+                <Text style={[styles.itemTitulo, { color: theme.textoPrimario }]}>WhatsApp Oficial</Text>
+                <Text style={[styles.itemSubtitulo, { color: theme.textoSecundario }]}>{barbearia?.whatsapp || barbearia?.telefone || 'Falar com o estabelecimento'}</Text>
               </View>
-              <ChevronRight size={18} color={Colors.textoDesabilitado} />
+              <ChevronRight size={18} color={theme.textoDesabilitado} />
             </TouchableOpacity>
 
-            <View style={styles.divisorItem} />
+            <View style={[styles.divisorItem, { backgroundColor: theme.borda }]} />
 
             <TouchableOpacity
               style={styles.itemLinha}
               activeOpacity={0.7}
               onPress={() => setModalAtivo('horarios')}
             >
-              <View style={styles.itemIconeContainer}>
-                <Clock size={18} color={Colors.ouro} />
+              <View style={[styles.itemIconeContainer, { backgroundColor: theme.ouroTranslucido }]}>
+                <Clock size={18} color={theme.ouroTexto} />
               </View>
               <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Horários & Atendimento</Text>
-                <Text style={styles.itemSubtitulo}>Terça a Domingo (08:00 às 18:00)</Text>
+                <Text style={[styles.itemTitulo, { color: theme.textoPrimario }]}>Horários & Atendimento</Text>
+                <Text style={[styles.itemSubtitulo, { color: theme.textoSecundario }]}>Terça a Domingo (08:00 às 18:00)</Text>
               </View>
-              <ChevronRight size={18} color={Colors.textoDesabilitado} />
+              <ChevronRight size={18} color={theme.textoDesabilitado} />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Seção 3: Informações do App */}
+        {/* Seção 3: Informações & Aparência */}
         <View style={styles.secao}>
-          <Text style={styles.secaoTitulo}>INFORMAÇÕES & CONFIGURAÇÕES</Text>
-          <View style={styles.cardGrupo}>
+          <Text style={[styles.secaoTitulo, { color: theme.textoSecundario }]}>INFORMAÇÕES & CONFIGURAÇÕES</Text>
+          <View style={[styles.cardGrupo, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
+            {/* Seletor de Aparência / Modo Claro / Escuro */}
+            <TouchableOpacity
+              style={styles.itemLinha}
+              activeOpacity={0.7}
+              onPress={() => setModalAtivo('aparencia')}
+            >
+              <View style={[styles.itemIconeContainer, { backgroundColor: theme.ouroTranslucido }]}>
+                {isEscuro ? (
+                  <Moon size={18} color={theme.ouroTexto} />
+                ) : (
+                  <Sun size={18} color={theme.ouroTexto} />
+                )}
+              </View>
+              <View style={styles.itemTextoContainer}>
+                <Text style={[styles.itemTitulo, { color: theme.textoPrimario }]}>Aparência do App</Text>
+                <Text style={[styles.itemSubtitulo, { color: theme.textoSecundario }]}>{labelAparencia}</Text>
+              </View>
+              <ChevronRight size={18} color={theme.textoDesabilitado} />
+            </TouchableOpacity>
+
+            <View style={[styles.divisorItem, { backgroundColor: theme.borda }]} />
+
             <TouchableOpacity
               style={styles.itemLinha}
               activeOpacity={0.7}
               onPress={() => setModalAtivo('privacidade')}
             >
-              <View style={styles.itemIconeContainer}>
-                <ShieldCheck size={18} color={Colors.textoSecundario} />
+              <View style={[styles.itemIconeContainer, { backgroundColor: theme.superficie2 }]}>
+                <ShieldCheck size={18} color={theme.textoSecundario} />
               </View>
               <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Privacidade e Segurança</Text>
-                <Text style={styles.itemSubtitulo}>Proteção e tratamento dos seus dados</Text>
+                <Text style={[styles.itemTitulo, { color: theme.textoPrimario }]}>Privacidade e Segurança</Text>
+                <Text style={[styles.itemSubtitulo, { color: theme.textoSecundario }]}>Proteção e tratamento dos seus dados</Text>
               </View>
-              <ChevronRight size={18} color={Colors.textoDesabilitado} />
+              <ChevronRight size={18} color={theme.textoDesabilitado} />
             </TouchableOpacity>
 
-            <View style={styles.divisorItem} />
+            <View style={[styles.divisorItem, { backgroundColor: theme.borda }]} />
 
-            {/* Opção discreta de troca de unidade para clientes */}
+            {/* Opção de troca de unidade */}
             <TouchableOpacity
               style={styles.itemLinha}
               activeOpacity={0.7}
               onPress={() => router.push('/(app)/barbearias')}
             >
-              <View style={styles.itemIconeContainer}>
-                <Store size={18} color={Colors.textoSecundario} />
+              <View style={[styles.itemIconeContainer, { backgroundColor: theme.superficie2 }]}>
+                <Store size={18} color={theme.textoSecundario} />
               </View>
               <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Unidade de Atendimento</Text>
-                <Text style={styles.itemSubtitulo}>
+                <Text style={[styles.itemTitulo, { color: theme.textoPrimario }]}>Unidade de Atendimento</Text>
+                <Text style={[styles.itemSubtitulo, { color: theme.textoSecundario }]}>
                   {barbearia?.nome ? `${barbearia.nome} • Alterar unidade` : 'Alterar unidade selecionada'}
                 </Text>
               </View>
-              <ChevronRight size={18} color={Colors.textoDesabilitado} />
+              <ChevronRight size={18} color={theme.textoDesabilitado} />
             </TouchableOpacity>
 
-            <View style={styles.divisorItem} />
+            <View style={[styles.divisorItem, { backgroundColor: theme.borda }]} />
 
-            <View style={styles.itemLinha}>
-              <View style={styles.itemIconeContainer}>
-                <Info size={18} color={Colors.textoSecundario} />
+            {/* Cadastrar barbearia / modo profissional */}
+            <TouchableOpacity
+              style={styles.itemLinha}
+              activeOpacity={0.7}
+              onPress={() => router.push('/(app)/(barbeiro)/cadastrar-barbearia')}
+            >
+              <View style={[styles.itemIconeContainer, { backgroundColor: theme.ouroTranslucido }]}>
+                <Building2 size={18} color={theme.ouroTexto} />
               </View>
               <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Versão do aplicativo</Text>
-                <Text style={styles.itemSubtitulo}>Plataforma Barber v1.0.0</Text>
+                <Text style={[styles.itemTitulo, { color: theme.textoPrimario }]}>É Dono de Barbearia?</Text>
+                <Text style={[styles.itemSubtitulo, { color: theme.textoSecundario }]}>Cadastre seu estabelecimento no Na Régua</Text>
               </View>
-            </View>
+              <ChevronRight size={18} color={theme.textoDesabilitado} />
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Botão Sair */}
-        <TouchableOpacity
-          style={styles.botaoSair}
-          onPress={() => setModalAtivo('sair')}
-          activeOpacity={0.7}
-        >
-          <LogOut size={18} color={Colors.erro} />
-          <Text style={styles.botaoSairTexto}>Sair da conta</Text>
-        </TouchableOpacity>
+        {/* Seção 4: Sair */}
+        <View style={styles.secao}>
+          <View style={[styles.cardGrupo, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
+            <TouchableOpacity
+              style={styles.itemLinha}
+              activeOpacity={0.7}
+              onPress={() => setModalAtivo('sair')}
+            >
+              <View style={[styles.itemIconeContainer, styles.iconeSair]}>
+                <LogOut size={18} color="#FF453A" />
+              </View>
+              <View style={styles.itemTextoContainer}>
+                <Text style={[styles.itemTitulo, styles.textoSair]}>Desconectar</Text>
+                <Text style={[styles.itemSubtitulo, { color: theme.textoSecundario }]}>Sair da conta neste aparelho</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Versão do App */}
+        <Text style={[styles.versaoTexto, { color: theme.textoDesabilitado }]}>Na Régua App • v2.4.0 (Build 2026)</Text>
       </ScrollView>
 
-      {/* Modal Bottom Sheet Informativo Premium */}
+      {/* ─── MODAL UNIFICADO ─── */}
       <Modal
         visible={modalAtivo !== null}
         transparent
@@ -234,89 +293,124 @@ export default function TelaPerfil() {
         onRequestClose={() => setModalAtivo(null)}
       >
         <Pressable style={styles.modalOverlay} onPress={() => setModalAtivo(null)}>
-          <Pressable style={styles.modalConteudo} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalTraco} />
-
-            {/* Cabeçalho do Modal */}
-            <View style={styles.modalHeader}>
-              <View style={styles.modalTituloLinha}>
-                <View style={[
-                  styles.modalIconeBadge,
-                  modalAtivo === 'sair' && styles.modalIconeBadgeErro,
-                ]}>
-                  {modalAtivo === 'dados_conta' && <User size={20} color={Colors.ouro} />}
-                  {modalAtivo === 'notificacoes' && <Bell size={20} color={Colors.ouro} />}
-                  {modalAtivo === 'horarios' && <Clock size={20} color={Colors.ouro} />}
-                  {modalAtivo === 'privacidade' && <ShieldCheck size={20} color={Colors.ouro} />}
-                  {modalAtivo === 'sair' && <LogOut size={20} color={Colors.erro} />}
-                </View>
-                <Text style={styles.modalTitulo}>
-                  {modalAtivo === 'dados_conta' && 'Dados da Conta'}
-                  {modalAtivo === 'notificacoes' && 'Notificações do App'}
-                  {modalAtivo === 'horarios' && 'Horários & Atendimento'}
-                  {modalAtivo === 'privacidade' && 'Privacidade & Segurança'}
-                  {modalAtivo === 'sair' && 'Encerrar Sessão'}
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                onPress={() => setModalAtivo(null)}
-                style={styles.modalBtnFechar}
-                activeOpacity={0.7}
-              >
-                <X size={20} color={Colors.textoSecundario} />
+          <Pressable style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
+            <View style={[styles.modalCabecalho, { borderBottomColor: theme.borda }]}>
+              <Text style={[styles.modalTitulo, { color: theme.textoPrimario }]}>
+                {modalAtivo === 'dados_conta' && 'Dados do Perfil'}
+                {modalAtivo === 'notificacoes' && 'Notificações & Lembretes'}
+                {modalAtivo === 'horarios' && 'Horários de Atendimento'}
+                {modalAtivo === 'privacidade' && 'Privacidade & Segurança'}
+                {modalAtivo === 'aparencia' && 'Aparência do Aplicativo'}
+                {modalAtivo === 'sair' && 'Confirmar Saída'}
+              </Text>
+              <TouchableOpacity onPress={() => setModalAtivo(null)} style={styles.modalBtnFecharIcone}>
+                <X size={20} color={theme.textoSecundario} />
               </TouchableOpacity>
             </View>
 
-            {/* Corpo do Modal por Tipo */}
+            {/* MODAL: SELETOR DE APARÊNCIA */}
+            {modalAtivo === 'aparencia' && (
+              <View style={styles.modalCorpo}>
+                <Text style={[styles.modalDescricaoGeral, { color: theme.textoSecundario }]}>
+                  Escolha o tema visual que melhor combina com seu estilo.
+                </Text>
+
+                {/* Opção 1: Automático do Sistema (Padrão) */}
+                <TouchableOpacity
+                  style={[
+                    styles.opcaoTemaCard,
+                    { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                    modoTema === 'sistema' && { borderColor: theme.ouro, backgroundColor: theme.ouroTranslucido },
+                  ]}
+                  onPress={() => setModoTema('sistema')}
+                  activeOpacity={0.75}
+                >
+                  <View style={[styles.opcaoTemaIconeWrapper, { backgroundColor: isEscuro ? '#1C1C22' : '#EAEAEA' }]}>
+                    <Smartphone size={18} color={theme.ouroTexto} />
+                  </View>
+                  <View style={styles.opcaoTemaInfo}>
+                    <Text style={[styles.opcaoTemaTitulo, { color: theme.textoPrimario }]}>Automático (Padrão do Sistema)</Text>
+                    <Text style={[styles.opcaoTemaSub, { color: theme.textoSecundario }]}>Acompanha em tempo real o modo claro ou escuro do seu celular</Text>
+                  </View>
+                  {modoTema === 'sistema' && <Check size={18} color={theme.ouroTexto} strokeWidth={3} />}
+                </TouchableOpacity>
+
+                {/* Opção 2: Modo Escuro */}
+                <TouchableOpacity
+                  style={[
+                    styles.opcaoTemaCard,
+                    { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                    modoTema === 'escuro' && { borderColor: theme.ouro, backgroundColor: theme.ouroTranslucido },
+                  ]}
+                  onPress={() => setModoTema('escuro')}
+                  activeOpacity={0.75}
+                >
+                  <View style={[styles.opcaoTemaIconeWrapper, { backgroundColor: '#09090B' }]}>
+                    <Moon size={18} color="#CBA14A" />
+                  </View>
+                  <View style={styles.opcaoTemaInfo}>
+                    <Text style={[styles.opcaoTemaTitulo, { color: theme.textoPrimario }]}>Modo Escuro (Obsidian & Gold)</Text>
+                    <Text style={[styles.opcaoTemaSub, { color: theme.textoSecundario }]}>Preto Obsidiana com acabamento Dourado Imperial</Text>
+                  </View>
+                  {modoTema === 'escuro' && <Check size={18} color={theme.ouroTexto} strokeWidth={3} />}
+                </TouchableOpacity>
+
+                {/* Opção 3: Modo Claro */}
+                <TouchableOpacity
+                  style={[
+                    styles.opcaoTemaCard,
+                    { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                    modoTema === 'claro' && { borderColor: theme.ouro, backgroundColor: theme.ouroTranslucido },
+                  ]}
+                  onPress={() => setModoTema('claro')}
+                  activeOpacity={0.75}
+                >
+                  <View style={[styles.opcaoTemaIconeWrapper, { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E4E4E7' }]}>
+                    <Sun size={18} color="#8B6508" />
+                  </View>
+                  <View style={styles.opcaoTemaInfo}>
+                    <Text style={[styles.opcaoTemaTitulo, { color: theme.textoPrimario }]}>Modo Claro (Luxury White)</Text>
+                    <Text style={[styles.opcaoTemaSub, { color: theme.textoSecundario }]}>Branco Pérola, tipografia Carvão e Dourado de alto contraste</Text>
+                  </View>
+                  {modoTema === 'claro' && <Check size={18} color={theme.ouroTexto} strokeWidth={3} />}
+                </TouchableOpacity>
+              </View>
+            )}
+
             {modalAtivo === 'dados_conta' && (
               <View style={styles.modalCorpo}>
-                <View style={styles.modalItemCard}>
-                  <Text style={styles.modalItemRotulo}>Nome Completo</Text>
-                  <Text style={styles.modalItemValor}>{nomeExibicao}</Text>
+                <View style={[styles.modalItemCard, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                  <Text style={[styles.modalItemRotulo, { color: theme.textoSecundario }]}>NOME COMPLETO</Text>
+                  <Text style={[styles.modalItemValor, { color: theme.textoPrimario }]}>{perfil?.nome_completo || 'Não informado'}</Text>
                 </View>
 
-                {emailExibicao ? (
-                  <View style={styles.modalItemCard}>
-                    <Text style={styles.modalItemRotulo}>E-mail de Acesso</Text>
-                    <View style={styles.modalRow}>
-                      <Mail size={14} color={Colors.textoSecundario} />
-                      <Text style={styles.modalItemValor}>{emailExibicao}</Text>
-                    </View>
-                  </View>
-                ) : null}
+                <View style={[styles.modalItemCard, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                  <Text style={[styles.modalItemRotulo, { color: theme.textoSecundario }]}>E-MAIL CADASTRADO</Text>
+                  <Text style={[styles.modalItemValor, { color: theme.textoPrimario }]}>{emailExibicao}</Text>
+                </View>
 
-                {perfil?.telefone ? (
-                  <View style={styles.modalItemCard}>
-                    <Text style={styles.modalItemRotulo}>Telefone / WhatsApp</Text>
-                    <View style={styles.modalRow}>
-                      <Phone size={14} color={Colors.verde} />
-                      <Text style={styles.modalItemValor}>{perfil.telefone}</Text>
-                    </View>
+                {perfil?.telefone && (
+                  <View style={[styles.modalItemCard, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                    <Text style={[styles.modalItemRotulo, { color: theme.textoSecundario }]}>WHATSAPP / CELULAR</Text>
+                    <Text style={[styles.modalItemValor, { color: theme.textoPrimario }]}>{perfil.telefone}</Text>
                   </View>
-                ) : null}
+                )}
               </View>
             )}
 
             {modalAtivo === 'notificacoes' && (
               <View style={styles.modalCorpo}>
-                <View style={styles.modalItemCard}>
-                  <View style={styles.modalRow}>
-                    <CheckCircle2 size={16} color={Colors.verde} />
-                    <Text style={styles.modalItemValor}>Lembretes de Atendimento Ativos</Text>
-                  </View>
-                  <Text style={styles.modalItemDescricao}>
-                    Você receberá lembretes automáticos na véspera (às 19:00) e 2 horas antes do seu corte para confirmar presença.
+                <View style={[styles.modalItemCard, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                  <Text style={[styles.modalItemRotulo, { color: theme.textoSecundario }]}>Lembrete de Corte</Text>
+                  <Text style={[styles.modalItemDescricao, { color: theme.textoPrimario }]}>
+                    O aplicativo envia avisos pontuais 2 horas e 30 minutos antes do horário agendado.
                   </Text>
                 </View>
 
-                <View style={styles.modalItemCard}>
-                  <View style={styles.modalRow}>
-                    <CheckCircle2 size={16} color={Colors.verde} />
-                    <Text style={styles.modalItemValor}>Aviso de Abertura de Agenda</Text>
-                  </View>
-                  <Text style={styles.modalItemDescricao}>
-                    Push instantâneo toda segunda-feira assim que o barbeiro abrir as vagas da próxima semana.
+                <View style={[styles.modalItemCard, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                  <Text style={[styles.modalItemRotulo, { color: theme.textoSecundario }]}>Abertura de Agenda Semanal</Text>
+                  <Text style={[styles.modalItemDescricao, { color: theme.textoPrimario }]}>
+                    Você recebe uma notificação assim que a barbearia abre novos horários para a semana.
                   </Text>
                 </View>
               </View>
@@ -324,47 +418,37 @@ export default function TelaPerfil() {
 
             {modalAtivo === 'horarios' && (
               <View style={styles.modalCorpo}>
-                <View style={styles.modalItemCard}>
-                  <Text style={styles.modalItemRotulo}>Dias de Funcionamento</Text>
-                  <Text style={styles.modalItemValor}>Terça-feira a Domingo</Text>
-                  <Text style={styles.modalItemDescricao}>Segunda-feira: Fechado para descanso e organização da agenda.</Text>
-                </View>
-
-                <View style={styles.modalItemCard}>
-                  <Text style={styles.modalItemRotulo}>Período da Manhã (Agendamento)</Text>
-                  <Text style={styles.modalItemValor}>08:00 às 12:00</Text>
-                  <Text style={styles.modalItemDescricao}>Reserve seu horário no app.</Text>
-                </View>
-
-                <View style={styles.modalItemCard}>
-                  <Text style={styles.modalItemRotulo}>Período da Tarde (Ordem de Chegada)</Text>
-                  <Text style={styles.modalItemValor}>14:00 às 18:00</Text>
-                  <Text style={styles.modalItemDescricao}>Atendimento por ordem de chegada na barbearia.</Text>
+                <View style={[styles.modalItemCard, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                  <Text style={[styles.modalItemRotulo, { color: theme.textoSecundario }]}>FUNCIONAMENTO PADRÃO</Text>
+                  <Text style={[styles.modalItemDescricao, { color: theme.textoPrimario }]}>
+                    • Terça a Domingo: 08:00 às 18:00{'\n'}
+                    • Segunda-feira: Fechado para descanso e manutenção técnica.
+                  </Text>
                 </View>
 
                 <TouchableOpacity
-                  style={styles.modalBotaoAcao}
+                  style={[styles.modalBotaoWhats, { backgroundColor: theme.verde }]}
                   onPress={handleAbrirWhatsApp}
                   activeOpacity={0.8}
                 >
                   <MessageCircle size={18} color="#FFFFFF" />
-                  <Text style={styles.modalBotaoAcaoTexto}>Tirar dúvida no WhatsApp</Text>
+                  <Text style={styles.modalBotaoWhatsTexto}>Falar no WhatsApp</Text>
                 </TouchableOpacity>
               </View>
             )}
 
             {modalAtivo === 'privacidade' && (
               <View style={styles.modalCorpo}>
-                <View style={styles.modalItemCard}>
-                  <Text style={styles.modalItemRotulo}>Segurança de Dados</Text>
-                  <Text style={styles.modalItemDescricao}>
+                <View style={[styles.modalItemCard, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                  <Text style={[styles.modalItemRotulo, { color: theme.textoSecundario }]}>Segurança de Dados</Text>
+                  <Text style={[styles.modalItemDescricao, { color: theme.textoPrimario }]}>
                     Seus dados cadastrais e histórico de agendamentos são armazenados com segurança e protegidos por políticas rigorosas de Row Level Security (RLS) no Supabase.
                   </Text>
                 </View>
 
-                <View style={styles.modalItemCard}>
-                  <Text style={styles.modalItemRotulo}>Privacidade Garantida</Text>
-                  <Text style={styles.modalItemDescricao}>
+                <View style={[styles.modalItemCard, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                  <Text style={[styles.modalItemRotulo, { color: theme.textoSecundario }]}>Privacidade Garantida</Text>
+                  <Text style={[styles.modalItemDescricao, { color: theme.textoPrimario }]}>
                     Nenhum outro cliente tem acesso ao seu perfil ou aos seus horários agendados. O sistema Na Régua garante total sigilo e proteção.
                   </Text>
                 </View>
@@ -373,17 +457,17 @@ export default function TelaPerfil() {
 
             {modalAtivo === 'sair' && (
               <View style={styles.modalCorpo}>
-                <Text style={styles.modalTextoConfirmacao}>
+                <Text style={[styles.modalTextoConfirmacao, { color: theme.textoPrimario }]}>
                   Tem certeza que deseja desconectar sua conta deste dispositivo?
                 </Text>
 
                 <View style={styles.modalAcoesRow}>
                   <TouchableOpacity
-                    style={styles.modalBotaoCancelar}
+                    style={[styles.modalBotaoCancelar, { backgroundColor: theme.superficie2 }]}
                     onPress={() => setModalAtivo(null)}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.modalBotaoCancelarTexto}>Cancelar</Text>
+                    <Text style={[styles.modalBotaoCancelarTexto, { color: theme.textoPrimario }]}>Cancelar</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -399,11 +483,11 @@ export default function TelaPerfil() {
 
             {modalAtivo !== 'sair' && modalAtivo !== 'horarios' && (
               <TouchableOpacity
-                style={styles.modalBotaoFechar}
+                style={[styles.modalBotaoFechar, { backgroundColor: theme.ouro }]}
                 onPress={() => setModalAtivo(null)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.modalBotaoFecharTexto}>Entendido</Text>
+                <Text style={[styles.modalBotaoFecharTexto, { color: theme.textoEscuroSobreOuro }]}>Entendido</Text>
               </TouchableOpacity>
             )}
           </Pressable>
@@ -414,18 +498,16 @@ export default function TelaPerfil() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0A0A0A' },
+  safe: { flex: 1 },
   header: {
     paddingHorizontal: Spacing.telaH,
     paddingTop: Spacing.md,
     paddingBottom: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#1F1F22',
   },
   titulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.displayMd,
-    color: '#FFFFFF',
   },
   scroll: {
     padding: Spacing.telaH,
@@ -436,11 +518,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-    backgroundColor: '#161618',
     borderRadius: Radii.lg,
     padding: Spacing.lg,
     borderWidth: 1,
-    borderColor: '#262629',
     ...Shadows.card,
   },
   avatarWrapper: {
@@ -454,30 +534,25 @@ const styles = StyleSheet.create({
   perfilNome: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.headingSm,
-    color: '#FFFFFF',
   },
   perfilContato: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodySm,
-    color: '#8E8E93',
   },
   badgeCliente: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(203, 161, 74, 0.15)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: Radii.full,
-    alignSelf: 'flex-start',
-    marginTop: 4,
     borderWidth: 1,
-    borderColor: 'rgba(203, 161, 74, 0.3)',
+    alignSelf: 'flex-start',
+    marginTop: 3,
   },
   badgeClienteTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: Colors.ouro,
+    fontFamily: FontFamily.semiBold,
+    fontSize: 11,
   },
   secao: {
     gap: Spacing.xs,
@@ -485,33 +560,35 @@ const styles = StyleSheet.create({
   secaoTitulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
     marginLeft: 4,
+    marginBottom: 4,
   },
   cardGrupo: {
-    backgroundColor: '#161618',
     borderRadius: Radii.lg,
     borderWidth: 1,
-    borderColor: '#262629',
     overflow: 'hidden',
+    ...Shadows.card,
   },
   itemLinha: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 14,
     gap: Spacing.sm,
   },
   itemIconeContainer: {
     width: 36,
     height: 36,
-    borderRadius: Radii.sm,
-    backgroundColor: '#222226',
+    borderRadius: Radii.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconeWhatsapp: {
-    backgroundColor: 'rgba(61, 191, 106, 0.15)',
+    backgroundColor: 'rgba(48, 209, 88, 0.12)',
+  },
+  iconeSair: {
+    backgroundColor: 'rgba(255, 69, 58, 0.12)',
   },
   itemTextoContainer: {
     flex: 1,
@@ -520,189 +597,171 @@ const styles = StyleSheet.create({
   itemTitulo: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
+  },
+  textoSair: {
+    color: '#FF453A',
   },
   itemSubtitulo: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
   },
   divisorItem: {
     height: 1,
-    backgroundColor: '#262629',
     marginLeft: 56,
   },
-  botaoSair: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.xs,
-    paddingVertical: Spacing.md,
-    backgroundColor: 'rgba(229, 57, 53, 0.1)',
-    borderRadius: Radii.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(229, 57, 53, 0.25)',
-  },
-  botaoSairTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.erro,
+  versaoTexto: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.labelXs,
+    textAlign: 'center',
+    marginTop: Spacing.xs,
   },
 
-  /* Modal Bottom Sheet */
+  /* Modal */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.telaH,
   },
   modalConteudo: {
-    backgroundColor: '#18181B',
-    borderTopLeftRadius: Radii.xl,
-    borderTopRightRadius: Radii.xl,
-    paddingHorizontal: Spacing.telaH,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.giant,
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: Radii.xl,
+    padding: Spacing.lg,
     borderWidth: 1,
-    borderColor: '#2E2E33',
     gap: Spacing.md,
-    maxHeight: '85%',
+    ...Shadows.cardElevado,
   },
-  modalTraco: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#3F3F46',
-    alignSelf: 'center',
-    marginBottom: Spacing.xs,
-  },
-  modalHeader: {
+  modalCabecalho: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  modalTituloLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  modalIconeBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: Radii.sm,
-    backgroundColor: 'rgba(203, 161, 74, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalIconeBadgeErro: {
-    backgroundColor: 'rgba(229, 57, 53, 0.15)',
+    paddingBottom: Spacing.sm,
+    borderBottomWidth: 1,
   },
   modalTitulo: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.headingSm,
-    color: '#FFFFFF',
+    fontSize: FontSize.bodyLg,
   },
-  modalBtnFechar: {
-    padding: 6,
+  modalBtnFecharIcone: {
+    padding: 4,
   },
   modalCorpo: {
     gap: Spacing.sm,
   },
+  modalDescricaoGeral: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.bodySm,
+    marginBottom: 4,
+  },
+
+  /* Opções de Tema */
+  opcaoTemaCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: Radii.lg,
+    borderWidth: 1.5,
+  },
+  opcaoTemaIconeWrapper: {
+    width: 38,
+    height: 38,
+    borderRadius: Radii.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  opcaoTemaInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  opcaoTemaTitulo: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodyMd,
+  },
+  opcaoTemaSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11.5,
+    lineHeight: 15,
+  },
+
   modalItemCard: {
-    backgroundColor: '#222226',
     borderRadius: Radii.md,
     padding: Spacing.md,
-    gap: 4,
     borderWidth: 1,
-    borderColor: '#2E2E33',
+    gap: 4,
   },
   modalItemRotulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.labelXs,
-    color: Colors.ouro,
     letterSpacing: 0.5,
   },
   modalItemValor: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
   },
   modalItemDescricao: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodySm,
-    color: '#A1A1AA',
-    lineHeight: 19,
-    marginTop: 2,
+    lineHeight: 20,
   },
-  modalRow: {
+  modalBotaoWhats: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: Radii.md,
+    marginTop: Spacing.xs,
+  },
+  modalBotaoWhatsTexto: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodyMd,
+    color: '#FFFFFF',
   },
   modalTextoConfirmacao: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodyLg,
-    color: '#FFFFFF',
+    fontSize: FontSize.bodyMd,
     textAlign: 'center',
-    paddingVertical: Spacing.md,
+    marginVertical: Spacing.sm,
+    lineHeight: 22,
   },
   modalAcoesRow: {
     flexDirection: 'row',
     gap: Spacing.sm,
+    marginTop: Spacing.xs,
   },
   modalBotaoCancelar: {
     flex: 1,
-    backgroundColor: '#27272A',
+    paddingVertical: 12,
     borderRadius: Radii.md,
-    paddingVertical: 14,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   modalBotaoCancelarTexto: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
   },
   modalBotaoSair: {
     flex: 1,
-    backgroundColor: Colors.vermelho,
+    backgroundColor: '#FF453A',
+    paddingVertical: 12,
     borderRadius: Radii.md,
-    paddingVertical: 14,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   modalBotaoSairTexto: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
     color: '#FFFFFF',
   },
-  modalBotaoAcao: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.xs,
-    backgroundColor: Colors.verde,
-    borderRadius: Radii.md,
-    paddingVertical: 14,
-    marginTop: 4,
-  },
-  modalBotaoAcaoTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
-  },
   modalBotaoFechar: {
-    backgroundColor: '#27272A',
+    paddingVertical: 12,
     borderRadius: Radii.md,
-    paddingVertical: 14,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#3F3F46',
+    marginTop: Spacing.xs,
   },
   modalBotaoFecharTexto: {
-    fontFamily: FontFamily.semiBold,
+    fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
   },
 });
-

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
-import { Colors, Radii, Shadows, Spacing } from '@/theme';
+import { Radii, Shadows, Spacing } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type VarianteCard = 'preenchido' | 'contornado' | 'transparente';
 
@@ -17,6 +18,24 @@ export function Card({
   elevado = false,
   estilo,
 }: CardProps) {
+  const { theme, isEscuro } = useTheme();
+
+  const estilosPorVariante: Record<VarianteCard, ViewStyle> = {
+    preenchido: {
+      backgroundColor: theme.superficie,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    contornado: {
+      backgroundColor: theme.transparente,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    transparente: {
+      backgroundColor: theme.transparente,
+    },
+  };
+
   return (
     <View
       style={[
@@ -39,17 +58,3 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 });
-
-const estilosPorVariante: Record<VarianteCard, ViewStyle> = {
-  preenchido: {
-    backgroundColor: Colors.superficie,
-  },
-  contornado: {
-    backgroundColor: Colors.transparente,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-  },
-  transparente: {
-    backgroundColor: Colors.transparente,
-  },
-};

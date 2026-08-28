@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -29,10 +29,12 @@ import { useBarbearias, type BarbeariaPublica } from '@/hooks/useBarbearias';
 import { useLocalizacao } from '@/hooks/useLocalizacao';
 import { usePerfil } from '@/hooks/usePerfil';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Colors, FontFamily, FontSize, Radii, Shadows, Spacing } from '@/theme';
 
 export default function ListaBarbearias() {
   const router = useRouter();
+  const { theme, isEscuro } = useTheme();
   const { modo } = useLocalSearchParams<{ modo?: string }>();
   const [busca, setBusca] = useState('');
   const [cidadeSelecionada, setCidadeSelecionada] = useState<string>('Todas');
@@ -116,27 +118,26 @@ export default function ListaBarbearias() {
           </View>
         </View>
 
-        {/* Informações Principais & Logo */}
-        <View style={styles.cardCorpo}>
+        <View style={[styles.cardCorpo, { backgroundColor: theme.superficie }]}>
           <View style={styles.topoCard}>
-            {/* Logo Flutuante */}
-            <View style={[styles.logoWrapper, { borderColor: corDestaque }]}>
+            {/* Logo / Avatar do Estabelecimento */}
+            <View style={[styles.logoWrapper, { backgroundColor: theme.superficie2, borderColor: corDestaque }]}>
               {item.logo_url ? (
                 <Image source={{ uri: item.logo_url }} style={styles.logoImg} resizeMode="cover" />
               ) : (
                 <View style={[styles.logoPlaceholder, { backgroundColor: corDestaque }]}>
-                  <Text style={styles.logoLetra}>{item.nome.slice(0, 1).toUpperCase()}</Text>
+                  <Text style={[styles.logoLetra, { color: theme.textoEscuroSobreOuro }]}>{item.nome.slice(0, 1).toUpperCase()}</Text>
                 </View>
               )}
             </View>
 
             <View style={styles.titulosContainer}>
-              <Text style={styles.nomeBarbearia} numberOfLines={1}>
+              <Text style={[styles.nomeBarbearia, { color: theme.textoPrimario }]} numberOfLines={1}>
                 {item.nome}
               </Text>
               <View style={styles.localLinha}>
                 <MapPin size={13} color={corDestaque} />
-                <Text style={styles.localTexto} numberOfLines={1}>
+                <Text style={[styles.localTexto, { color: theme.ouroTexto }]} numberOfLines={1}>
                   {localizacao}
                 </Text>
               </View>
@@ -144,7 +145,7 @@ export default function ListaBarbearias() {
           </View>
 
           {item.descricao ? (
-            <Text style={styles.descricaoBarbearia} numberOfLines={2}>
+            <Text style={[styles.descricaoBarbearia, { color: theme.textoSecundario }]} numberOfLines={2}>
               {item.descricao}
             </Text>
           ) : null}
@@ -152,11 +153,11 @@ export default function ListaBarbearias() {
           {/* Rodapé do Card com Ações */}
           <View style={styles.cardAcoes}>
             <TouchableOpacity
-              style={styles.btnDetalhes}
+              style={[styles.btnDetalhes, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
               onPress={() => router.push({ pathname: '/(app)/barbearias/[slug]', params: { slug: item.slug } })}
               activeOpacity={0.7}
             >
-              <Text style={styles.btnDetalhesTexto}>Ver Vitrine</Text>
+              <Text style={[styles.btnDetalhesTexto, { color: theme.textoPrimario }]}>Ver Vitrine</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -164,8 +165,8 @@ export default function ListaBarbearias() {
               onPress={() => handleEscolherBarbearia(item)}
               activeOpacity={0.8}
             >
-              <Scissors size={15} color={isAtiva ? corDestaque : Colors.fundo} />
-              <Text style={[styles.btnEscolherTexto, isAtiva && { color: corDestaque }]}>
+              <Scissors size={15} color={isAtiva ? corDestaque : theme.textoEscuroSobreOuro} />
+              <Text style={[styles.btnEscolherTexto, isAtiva ? { color: corDestaque } : { color: theme.textoEscuroSobreOuro }]}>
                 {isAtiva ? 'Acessar Barbearia' : 'Escolher Barbearia'}
               </Text>
             </TouchableOpacity>
@@ -176,17 +177,17 @@ export default function ListaBarbearias() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]} edges={['top']}>
       {/* Header Principal */}
       <View style={styles.header}>
         <View style={styles.headerTexto}>
-          <Text style={styles.eyebrow}>
+          <Text style={[styles.eyebrow, { color: theme.ouroTexto }]}>
             {modoPainel ? 'PAINEL PROFISSIONAL' : 'NA RÉGUA'}
           </Text>
-          <Text style={styles.titulo}>
+          <Text style={[styles.titulo, { color: theme.textoPrimario }]}>
             {modoPainel ? 'Selecione a Barbearia' : 'Descubra as Melhores Barbearias 💈'}
           </Text>
-          <Text style={styles.subtitulo}>
+          <Text style={[styles.subtitulo, { color: theme.textoSecundario }]}>
             {modoPainel
               ? 'Gerencie agendamentos, equipe e faturamento da sua unidade.'
               : 'Encontre estilo, tradição e conveniência perto de você.'}
@@ -196,18 +197,18 @@ export default function ListaBarbearias() {
 
       {/* Barra de Busca */}
       <View style={styles.buscaContainer}>
-        <View style={styles.buscaWrapper}>
-          <Search size={18} color={Colors.textoSecundario} />
+        <View style={[styles.buscaWrapper, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+          <Search size={18} color={theme.textoSecundario} />
           <TextInput
-            style={styles.inputBusca}
+            style={[styles.inputBusca, { color: theme.textoPrimario }]}
             placeholder="Buscar por nome, bairro ou cidade..."
-            placeholderTextColor={Colors.textoDesabilitado}
+            placeholderTextColor={theme.textoDesabilitado}
             value={busca}
             onChangeText={setBusca}
           />
           {busca.length > 0 && (
             <TouchableOpacity onPress={() => setBusca('')}>
-              <X size={16} color={Colors.textoSecundario} />
+              <X size={16} color={theme.textoSecundario} />
             </TouchableOpacity>
           )}
         </View>
@@ -225,11 +226,19 @@ export default function ListaBarbearias() {
             return (
               <TouchableOpacity
                 key={cidade}
-                style={[styles.chipCidade, ativa && styles.chipCidadeAtivo]}
+                style={[
+                  styles.chipCidade,
+                  { backgroundColor: theme.superficie, borderColor: theme.borda },
+                  ativa && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+                ]}
                 onPress={() => setCidadeSelecionada(cidade)}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.chipCidadeTexto, ativa && styles.chipCidadeTextoAtivo]}>
+                <Text style={[
+                  styles.chipCidadeTexto,
+                  { color: theme.textoSecundario },
+                  ativa && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+                ]}>
                   {cidade}
                 </Text>
               </TouchableOpacity>
@@ -241,8 +250,8 @@ export default function ListaBarbearias() {
       {/* Lista de Barbearias */}
       {carregando && !barbearias.length ? (
         <View style={styles.centroLoading}>
-          <ActivityIndicator color={Colors.ouro} size="large" />
-          <Text style={styles.loadingTexto}>Buscando estabelecimentos...</Text>
+          <ActivityIndicator color={theme.ouro} size="large" />
+          <Text style={[styles.loadingTexto, { color: theme.textoSecundario }]}>Buscando estabelecimentos...</Text>
         </View>
       ) : (
         <FlatList
@@ -255,9 +264,25 @@ export default function ListaBarbearias() {
             <RefreshControl
               refreshing={carregando}
               onRefresh={recarregar}
-              tintColor={Colors.ouro}
-              colors={[Colors.ouro]}
+              tintColor={theme.ouro}
+              colors={[theme.ouro]}
             />
+          }
+          ListFooterComponent={
+            <TouchableOpacity
+              style={[styles.cardFooterCadastro, { backgroundColor: theme.superficie, borderColor: theme.borda }]}
+              activeOpacity={0.8}
+              onPress={() => router.push('/(app)/(barbeiro)/cadastrar-barbearia')}
+            >
+              <View style={[styles.cardFooterIcone, { backgroundColor: theme.ouroTranslucido }]}>
+                <Store size={22} color={theme.ouroTexto} />
+              </View>
+              <View style={styles.cardFooterTextos}>
+                <Text style={[styles.cardFooterTitulo, { color: theme.textoPrimario }]}>Tem uma Barbearia?</Text>
+                <Text style={[styles.cardFooterSub, { color: theme.textoSecundario }]}>Cadastre seu estabelecimento e apareça aqui na vitrine</Text>
+              </View>
+              <ChevronRight size={18} color={theme.ouroTexto} />
+            </TouchableOpacity>
           }
           ListEmptyComponent={
             <View style={styles.vazio}>
@@ -375,7 +400,7 @@ const styles = StyleSheet.create({
   bannerContainer: {
     width: '100%',
     height: 120,
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     position: 'relative',
   },
   bannerImagem: {
@@ -387,7 +412,7 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     gap: 4,
   },
   bannerPlaceholderTexto: {
@@ -458,7 +483,7 @@ const styles = StyleSheet.create({
     borderRadius: Radii.md,
     borderWidth: 2,
     borderColor: Colors.ouro,
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     overflow: 'hidden',
     ...Shadows.card,
   },
@@ -583,5 +608,41 @@ const styles = StyleSheet.create({
     fontSize: FontSize.bodySm,
     textAlign: 'center',
     maxWidth: 280,
+  },
+
+  cardFooterCadastro: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.superficie,
+    borderRadius: Radii.lg,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(203, 161, 74, 0.35)',
+    marginVertical: Spacing.md,
+    ...Shadows.card,
+  },
+  cardFooterIcone: {
+    width: 42,
+    height: 42,
+    borderRadius: Radii.md,
+    backgroundColor: Colors.ouroTranslucido,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardFooterTextos: {
+    flex: 1,
+    gap: 2,
+  },
+  cardFooterTitulo: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodySm,
+    color: Colors.ouro,
+  },
+  cardFooterSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11,
+    color: Colors.textoSecundario,
+    lineHeight: 15,
   },
 });

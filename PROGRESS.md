@@ -1,5 +1,29 @@
 # Progresso do Projeto (App Barbearia -> Na Régua)
 
+## Correção do fluxo de agendamento multi-tenant (27/08/2026)
+
+- Corrigido o erro de recursão infinita na policy de `public.perfis`, causado pela policy da Fase 21 consultar a própria tabela `perfis`.
+- Criada a migration `supabase/migrations/20260827000000_fix_perfis_policy_recursion.sql`, aplicada no Supabase remoto pelo usuário.
+- Fluxo Serviço -> Horário -> Confirmação reforçado com tenant e slot exatos: `barbearia_id`, `barbeiro_id` e `slot_id` são preservados na navegação.
+- Corrigido o carregamento de slots para filtrar o barbeiro selecionado e respeitar o fuso local.
+- Validações locais: `npx.cmd tsc --noEmit` e `git diff --check` passaram.
+
+## Assets de serviços sem moldura duplicada (27/08/2026)
+
+- Removida a moldura dourada incorporada dos 9 PNGs em `assets/servicos/`, mantendo o conteúdo das ilustrações e o tamanho original de 256x256.
+- Restaurada a moldura nativa de `IlustracaoServico` em todas as telas; nenhuma tela usa mais o desvio `semMoldura`.
+- A tela de servicos da Vieira agora resolve a ilustracao pelo nome/categoria do servico, ignorando URLs remotas deslocadas; a imagem ocupa toda a area e a moldura nativa e uma camada absoluta sobreposta que arredonda os cantos.
+- A listagem de servicos agora aplica a ordem canonica do catalogo, independentemente da ordem retornada pelo banco.
+- Validações: `npx.cmd tsc --noEmit` e `git diff --check` passaram.
+
+## Tema claro profissional — estabilização (27/08/2026)
+
+- Corrigida a base do tema claro em `theme/colors.ts`, com fundo marfim, superfícies brancas, texto carvão, dourado de maior contraste e estados semânticos suaves.
+- Corrigidos layouts de navegação e componentes compartilhados (`Card`, `Botao`, `CabecalhoSecao` e `Horario`) para consumirem o tema ativo sem manter cores escuras presas em estilos estáticos.
+- Ajustadas sombras para a hierarquia visual do claro e removidos tons escuros fixos das telas de agenda, home, confirmação, lista de espera e painéis do barbeiro.
+- Primeiro acesso agora inicia em `claro`; preferência persistida e seleção manual continuam funcionando.
+- Validações: `npx.cmd tsc --noEmit` e `git diff --check` passaram. `npm.cmd run lint` permanece bloqueado por erros preexistentes de `any` em arquivos fora do escopo do tema.
+
 ## Rebranding Oficial — "Na Régua" e Identidade Visual Completa (27/08/2026)
 
 - O nome global do aplicativo foi atualizado oficialmente para **"Na Régua"**.
@@ -462,7 +486,35 @@ npx expo start --dev-client
   - Ao escolher um estabelecimento, a seleção é salva no `AsyncStorage` e atualizada no Supabase.
 - **Validações**: `tsc --noEmit`, `npx expo config --type public` e `git diff --check` passaram com 0 erros.
 
-### Handoff / Estado Final da Plataforma White-Label
-- Estado atual: Plataforma SaaS Multi-Tenant White-Label 100% implementada, testada e sincronizada com geolocalização e proximidade.
-- Banco de dados: Migrations aplicadas até `20260825210000_client_last_barbearia_and_location.sql`.
-- Servidor: Development Build pronto para testes em dispositivos físicos e emuladores.
+---
+
+## 🚀 Fase 23 — Experiência Steve Jobs, Notificações & Mimos de Reativação (Concluída em 27/08/2026)
+
+- **Redesign Minimalista da Seleção de Data & Horário (`agendamento/horario.tsx`)**:
+  - Seletor de datas em régua horizontal com indicador de dia ativo.
+  - Divisão de horários por turnos ("Manhã" / "Tarde") para eliminar poluição visual de múltiplos horários.
+  - Barra inferior flutuante com resumo inteligente e micro-animações táteis de confirmação.
+- **Estratégia de Notificações & Não-Invasão**:
+  - Descartado caução Pix e lembretes por WhatsApp em favor das notificações nativas do app.
+  - Banner dinâmico de consentimento de notificações na tela de confirmação (`agendamento/confirmacao.tsx`), exibido apenas para quem ainda não ativou.
+  - CRM do Barbeiro (`(barbeiro)/clientes.tsx`) com Mimo VIP de reativação (+20 dias sem visita) sem spam.
+
+---
+
+## 🎨 Fase 24 — Sistema de Temas Dinâmico & Modo Claro de Luxo (Concluída em 27/08/2026)
+
+- **Padrão Automático do Sistema (`'sistema'`)**:
+  - `ThemeContext.tsx` inicializa como `'sistema'`, detectando a aparência do smartphone do usuário (`useColorScheme()`).
+  - Celular no Modo Claro $\rightarrow$ Carrega **Luxury White & Gold** (fundos `#F5F5F7`, superfícies `#FFFFFF`, títulos em Pitch Charcoal `#111114` com contraste 16:1 WCAG AAA e acentos em Amber Bronze `#8B6508`).
+  - Celular no Modo Escuro $\rightarrow$ Carrega **Obsidian & Gold** (fundos `#0A0A0A`, superfícies `#121215`, acentos em `#CBA14A`).
+  - Transição em tempo real sem necessidade de reiniciar o aplicativo.
+- **Varredura e Adaptação de Toda a UI**:
+  - Componentes base (`Card`, `ItemLista`, `HeaderApp`, `BadgeStatus`, `ControleSegmentado`, `Chip`, `Botao`, `IndicadorEtapas`) totalmente adaptados.
+  - Todas as telas de cliente e barbeiro refatoradas para eliminar cartões escuros estáticos e garantir alto contraste no modo claro.
+- **Validação de Tipagem**: `npx tsc --noEmit` validado com **0 erros**.
+
+---
+
+### Handoff / Estado Atual do Projeto
+- **Status Geral**: App 100% multi-tenant, bilíngue em temas (Claro e Escuro com detecção do SO), tipagem TypeScript estrita e pronto para testes no Expo Go / Dev Build.
+- **Documentação de Referência**: `PRODUTO.md` (regras e fluxos), `PROGRESS.md` (histórico de fases), `MULTI_TENANT_ROADMAP.md` (arquitetura SaaS).

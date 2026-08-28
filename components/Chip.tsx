@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
-import { Colors, FontFamily, FontSize, Radii, Spacing } from '@/theme';
+import { FontFamily, FontSize, Radii, Spacing } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ChipProps {
   label: string;
@@ -10,18 +11,31 @@ interface ChipProps {
 }
 
 export function Chip({ label, selecionado = false, onPress, estilo }: ChipProps) {
+  const { theme } = useTheme();
+
   return (
     <TouchableOpacity
       style={[
         styles.base,
-        selecionado ? styles.selecionado : styles.padrao,
+        {
+          backgroundColor: selecionado ? theme.ouro : theme.superficie2,
+          borderColor: selecionado ? theme.ouro : theme.borda,
+        },
         estilo,
       ]}
       onPress={onPress}
       activeOpacity={0.7}
       disabled={!onPress}
     >
-      <Text style={[styles.texto, selecionado ? styles.textoSelecionado : styles.textoPadrao]}>
+      <Text
+        style={[
+          styles.texto,
+          {
+            color: selecionado ? theme.textoEscuroSobreOuro : theme.textoSecundario,
+            fontFamily: selecionado ? FontFamily.bold : FontFamily.medium,
+          },
+        ]}
+      >
         {label}
       </Text>
     </TouchableOpacity>
@@ -33,26 +47,10 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xxs,
     paddingHorizontal: Spacing.sm,
     borderRadius: Radii.xs,
+    borderWidth: 1,
     alignSelf: 'flex-start',
   },
-  padrao: {
-    backgroundColor: Colors.superficie2,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-  },
-  selecionado: {
-    backgroundColor: Colors.vermelho,
-    borderWidth: 1,
-    borderColor: Colors.vermelho,
-  },
   texto: {
-    fontFamily: FontFamily.medium,
     fontSize: FontSize.bodySm,
-  },
-  textoPadrao: {
-    color: Colors.textoSecundario,
-  },
-  textoSelecionado: {
-    color: Colors.textoPrimario,
   },
 });

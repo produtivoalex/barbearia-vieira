@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, StyleSheet, Image, ImageSourcePropType, ViewStyle } from 'react-native';
 import { Colors } from '@/theme';
 
@@ -14,15 +14,16 @@ export type TipoServicoId =
   | 'limpeza_de_pele';
 
 export const IMAGENS_SERVICOS: Record<TipoServicoId, ImageSourcePropType> = {
-  corte_degrade: require('@/assets/servicos/corte-degrade.png'),
+  // O nome semântico do serviço precisa seguir o conteúdo visual do asset.
+  corte_degrade: require('@/assets/servicos/corte-social.png'),
   corte_navalhado: require('@/assets/servicos/corte-navalhado.png'),
-  corte_social: require('@/assets/servicos/corte-social.png'),
-  social_maquina: require('@/assets/servicos/social-maquina.png'),
-  combo_vip: require('@/assets/servicos/combo-vip.png'),
-  barba_desenhada: require('@/assets/servicos/barba-desenhada.png'),
-  barba_simples: require('@/assets/servicos/barba-simples.png'),
-  sobrancelha: require('@/assets/servicos/sobrancelha.png'),
-  limpeza_de_pele: require('@/assets/servicos/limpeza-pele.png'),
+  corte_social: require('@/assets/servicos/corte-degrade.png'),
+  social_maquina: require('@/assets/servicos/barba-desenhada.png'),
+  combo_vip: require('@/assets/servicos/limpeza-pele.png'),
+  barba_desenhada: require('@/assets/servicos/social-maquina.png'),
+  barba_simples: require('@/assets/servicos/sobrancelha.png'),
+  sobrancelha: require('@/assets/servicos/barba-simples.png'),
+  limpeza_de_pele: require('@/assets/servicos/combo-vip.png'),
 };
 
 export const BIBLIOTECA_SERVICOS: {
@@ -87,23 +88,29 @@ export const BIBLIOTECA_SERVICOS: {
   },
 ];
 
-/** Identifica o tipo de ilustração baseado no nome, id ou categoria do serviço */
+/** Identifica o tipo de ilustração usando o nome oficial do serviço. */
 export function identificarTipoServico(id?: string, nome?: string, categoria?: string): TipoServicoId {
   const str = `${id || ''} ${nome || ''}`.toLowerCase();
+  const nomeNormalizado = (nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-  if (str.includes('combo') || categoria === 'combos') return 'combo_vip';
+  if (nomeNormalizado.includes('combo') || categoria === 'combos') return 'combo_vip';
+  if (nomeNormalizado.includes('corte degrade') || nomeNormalizado.includes('fade')) return 'corte_degrade';
+  if (nomeNormalizado.includes('corte navalhado') || nomeNormalizado.includes('navalha')) return 'corte_navalhado';
+  if (nomeNormalizado.includes('social todo na maquina') || nomeNormalizado.includes('corte na maquina')) return 'social_maquina';
+  if (nomeNormalizado.includes('corte social')) return 'corte_social';
+  if (nomeNormalizado.includes('barba desenhada')) return 'barba_desenhada';
+  if (nomeNormalizado.includes('barba simples')) return 'barba_simples';
+  if (nomeNormalizado.includes('sobrancelha') || categoria === 'sobrancelha') return 'sobrancelha';
+  if (nomeNormalizado.includes('limpeza') || nomeNormalizado.includes('pele') || categoria === 'limpeza_de_pele') return 'limpeza_de_pele';
 
+  if (str.includes('combo')) return 'combo_vip';
   if (str.includes('degrad') || str.includes('fade')) return 'corte_degrade';
   if (str.includes('navalhad') || str.includes('navalha')) return 'corte_navalhado';
   if (str.includes('máquina') || str.includes('maquina')) return 'social_maquina';
   if (str.includes('social') || categoria === 'cortes') return 'corte_social';
-
   if (str.includes('barba desenhada') || str.includes('desenhada')) return 'barba_desenhada';
   if (str.includes('barba simples') || str.includes('simples') || str.includes('raspada')) return 'barba_simples';
   if (str.includes('barba') || categoria === 'barba') return 'barba_desenhada';
-
-  if (str.includes('sobrancelha') || categoria === 'sobrancelha') return 'sobrancelha';
-  if (str.includes('limpeza') || str.includes('pele') || categoria === 'limpeza_de_pele') return 'limpeza_de_pele';
 
   return 'corte_social';
 }
@@ -143,7 +150,6 @@ export function IlustracaoServico({
   // 2. Cor da moldura externa (identidade visual do barbeiro / serviço)
   const corBorda = corMoldura || Colors.ouro;
   const borderRadius = Math.round(tamanho * 0.24);
-  const paddingMoldura = Math.max(2, Math.round(tamanho * 0.05));
 
   return (
     <View
@@ -154,38 +160,15 @@ export function IlustracaoServico({
           height: tamanho,
           borderRadius,
           borderColor: corBorda,
-          padding: paddingMoldura,
         },
         estiloContainer,
       ]}
     >
-      {/* Moldura Interna com Imagem */}
+      <Image source={source} style={styles.imagem} resizeMode="cover" />
       <View
-        style={[
-          styles.conteudoInterno,
-          {
-            borderRadius: Math.max(4, borderRadius - paddingMoldura),
-            borderColor: 'rgba(255, 255, 255, 0.1)',
-          },
-        ]}
-      >
-        <Image
-          source={source}
-          style={styles.imagem}
-          resizeMode="cover"
-        />
-
-        {/* Efeito sutil de brilho superior no chanfro */}
-        <View
-          style={[
-            styles.chanfroBrilho,
-            {
-              borderTopColor: 'rgba(255, 255, 255, 0.25)',
-              borderLeftColor: 'rgba(255, 255, 255, 0.15)',
-            },
-          ]}
-        />
-      </View>
+        pointerEvents="none"
+        style={[styles.molduraOverlay, { borderRadius, borderColor: corBorda }]}
+      />
     </View>
   );
 }
@@ -193,33 +176,21 @@ export function IlustracaoServico({
 const styles = StyleSheet.create({
   molduraExterna: {
     backgroundColor: '#121214',
-    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.35,
     shadowRadius: 4,
     elevation: 3,
   },
-  conteudoInterno: {
-    width: '100%',
-    height: '100%',
-    overflow: 'hidden',
-    borderWidth: 0.5,
-    position: 'relative',
-    backgroundColor: '#1A1A1D',
-  },
   imagem: {
     width: '100%',
     height: '100%',
   },
-  chanfroBrilho: {
+  molduraOverlay: {
     ...StyleSheet.absoluteFillObject,
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 0,
-    borderBottomWidth: 0,
-    pointerEvents: 'none',
+    borderWidth: 1.5,
   },
 });

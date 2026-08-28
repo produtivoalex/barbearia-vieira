@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -33,6 +33,9 @@ import {
   Tag,
   Clock,
   Palette,
+  Moon,
+  Sun,
+  Smartphone,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -49,8 +52,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useServicos, type Servico, type CategoriaServico, CATEGORIAS_CONFIG } from '@/hooks/useServicos';
 import { supabase } from '@/lib/supabase';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
-type TipoModal = 'servicos' | 'privacidade' | 'sair' | null;
+type TipoModal = 'servicos' | 'privacidade' | 'aparencia' | 'sair' | null;
 
 export default function TelaBarbeiroMais() {
   const router = useRouter();
@@ -58,6 +62,7 @@ export default function TelaBarbeiroMais() {
   const { session } = useAuth();
   const barbeiroId = session?.user?.id;
   const { barbearia } = useBarbearia();
+  const { theme, isEscuro, modoTema, setModoTema } = useTheme();
   const { servicos, recarregar: recarregarServicos } = useServicos('todos', barbearia?.id);
 
   const [modalAtivo, setModalAtivo] = useState<TipoModal>(null);
@@ -344,14 +349,14 @@ export default function TelaBarbeiroMais() {
 
   const nomeExibicao = carregandoPerfil
     ? 'Carregando...'
-    : perfil?.nome_completo || 'Barbeiro Vieira';
+    : perfil?.nome_completo || 'Barbeiro Profissional';
   const emailExibicao = session?.user?.email || '';
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.titulo}>Mais Opções</Text>
+        <Text style={styles.titulo}>Meu Negócio</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -371,44 +376,10 @@ export default function TelaBarbeiroMais() {
           </View>
         </View>
 
-        {/* Seção 1: Gestão da Barbearia */}
+        {/* Seção 1: Estabelecimento & Agenda */}
         <View style={styles.secao}>
-          <Text style={styles.secaoTitulo}>GESTÃO DA BARBEARIA</Text>
+          <Text style={styles.secaoTitulo}>MEU ESTABELECIMENTO</Text>
           <View style={styles.cardGrupo}>
-            <TouchableOpacity
-              style={styles.itemLinha}
-              activeOpacity={0.7}
-              onPress={() => router.push('/(app)/(barbeiro)/preparar-agenda')}
-            >
-              <View style={[styles.itemIconeContainer, styles.iconeOuro]}>
-                <CalendarPlus size={18} color={Colors.ouro} />
-              </View>
-              <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Preparar próxima agenda</Text>
-                <Text style={styles.itemSubtitulo}>Definir dias disponíveis e hora de abertura</Text>
-              </View>
-              <ChevronRight size={18} color={Colors.textoDesabilitado} />
-            </TouchableOpacity>
-
-            <View style={styles.divisorItem} />
-
-            <TouchableOpacity
-              style={styles.itemLinha}
-              activeOpacity={0.7}
-              onPress={() => router.push({ pathname: '/(app)/barbearias', params: { modo: 'painel' } })}
-            >
-              <View style={[styles.itemIconeContainer, styles.iconeOuro]}>
-                <Store size={18} color={Colors.ouro} />
-              </View>
-              <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Trocar barbearia ativa</Text>
-                <Text style={styles.itemSubtitulo}>{barbearia?.nome || 'Selecionar estabelecimento'}</Text>
-              </View>
-              <ChevronRight size={18} color={Colors.textoDesabilitado} />
-            </TouchableOpacity>
-
-            <View style={styles.divisorItem} />
-
             <TouchableOpacity
               style={styles.itemLinha}
               activeOpacity={0.7}
@@ -418,25 +389,8 @@ export default function TelaBarbeiroMais() {
                 <Edit3 size={18} color={Colors.ouro} />
               </View>
               <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Gestão da Barbearia</Text>
-                <Text style={styles.itemSubtitulo}>Dados comerciais, mídias, equipe e vitrine</Text>
-              </View>
-              <ChevronRight size={18} color={Colors.textoDesabilitado} />
-            </TouchableOpacity>
-
-            <View style={styles.divisorItem} />
-
-            <TouchableOpacity
-              style={styles.itemLinha}
-              activeOpacity={0.7}
-              onPress={() => router.push('/(app)/(barbeiro)/cadastrar-barbearia')}
-            >
-              <View style={[styles.itemIconeContainer, styles.iconeOuro]}>
-                <Building2 size={18} color={Colors.ouro} />
-              </View>
-              <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Cadastrar Nova Barbearia</Text>
-                <Text style={styles.itemSubtitulo}>Criar e gerenciar um novo estabelecimento</Text>
+                <Text style={styles.itemTitulo}>Meu Espaço & Identidade</Text>
+                <Text style={styles.itemSubtitulo}>Cores, fotos, dados comerciais e equipe</Text>
               </View>
               <ChevronRight size={18} color={Colors.textoDesabilitado} />
             </TouchableOpacity>
@@ -448,19 +402,35 @@ export default function TelaBarbeiroMais() {
               activeOpacity={0.7}
               onPress={() => setModalAtivo('servicos')}
             >
-              <View style={styles.itemIconeContainer}>
+              <View style={[styles.itemIconeContainer, styles.iconeOuro]}>
                 <Scissors size={18} color={Colors.ouro} />
               </View>
               <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Tabela de Serviços & Preços</Text>
-                <Text style={styles.itemSubtitulo}>Consulte valores e faça reajustes com aviso aos clientes</Text>
+                <Text style={styles.itemTitulo}>Cortes & Barba</Text>
+                <Text style={styles.itemSubtitulo}>Tabela de serviços, preços e tempos</Text>
               </View>
               <ChevronRight size={18} color={Colors.textoDesabilitado} />
             </TouchableOpacity>
 
             <View style={styles.divisorItem} />
 
-            {/* BOTÃO OPÇÕES AVANÇADAS (Substituiu Horários de Atendimento) */}
+            <TouchableOpacity
+              style={styles.itemLinha}
+              activeOpacity={0.7}
+              onPress={() => router.push('/(app)/(barbeiro)/preparar-agenda')}
+            >
+              <View style={[styles.itemIconeContainer, styles.iconeOuro]}>
+                <CalendarPlus size={18} color={Colors.ouro} />
+              </View>
+              <View style={styles.itemTextoContainer}>
+                <Text style={styles.itemTitulo}>Preparar Nova Agenda</Text>
+                <Text style={styles.itemSubtitulo}>Programar dias disponíveis e hora de abertura</Text>
+              </View>
+              <ChevronRight size={18} color={Colors.textoDesabilitado} />
+            </TouchableOpacity>
+
+            <View style={styles.divisorItem} />
+
             <TouchableOpacity
               style={styles.itemLinha}
               activeOpacity={0.7}
@@ -470,8 +440,42 @@ export default function TelaBarbeiroMais() {
                 <Sliders size={18} color={Colors.ouro} />
               </View>
               <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Opções Avançadas</Text>
-                <Text style={styles.itemSubtitulo}>Lista negra, encaixes manuais, equipe e vagas da tarde</Text>
+                <Text style={styles.itemTitulo}>Ajustes & Controles</Text>
+                <Text style={styles.itemSubtitulo}>Lista negra, horários da equipe e vagas</Text>
+              </View>
+              <ChevronRight size={18} color={Colors.textoDesabilitado} />
+            </TouchableOpacity>
+
+            <View style={styles.divisorItem} />
+
+            <TouchableOpacity
+              style={styles.itemLinha}
+              activeOpacity={0.7}
+              onPress={() => router.push({ pathname: '/(app)/barbearias', params: { modo: 'painel' } })}
+            >
+              <View style={styles.itemIconeContainer}>
+                <Store size={18} color={Colors.textoSecundario} />
+              </View>
+              <View style={styles.itemTextoContainer}>
+                <Text style={styles.itemTitulo}>Trocar Estabelecimento</Text>
+                <Text style={styles.itemSubtitulo}>{barbearia?.nome || 'Selecionar unidade'}</Text>
+              </View>
+              <ChevronRight size={18} color={Colors.textoDesabilitado} />
+            </TouchableOpacity>
+
+            <View style={styles.divisorItem} />
+
+            <TouchableOpacity
+              style={styles.itemLinha}
+              activeOpacity={0.7}
+              onPress={() => router.push('/(app)/(barbeiro)/cadastrar-barbearia')}
+            >
+              <View style={styles.itemIconeContainer}>
+                <Building2 size={18} color={Colors.textoSecundario} />
+              </View>
+              <View style={styles.itemTextoContainer}>
+                <Text style={styles.itemTitulo}>Cadastrar Nova Unidade</Text>
+                <Text style={styles.itemSubtitulo}>Criar uma nova barbearia no Na Régua</Text>
               </View>
               <ChevronRight size={18} color={Colors.textoDesabilitado} />
             </TouchableOpacity>
@@ -480,8 +484,36 @@ export default function TelaBarbeiroMais() {
 
         {/* Seção 2: Informações do Sistema */}
         <View style={styles.secao}>
-          <Text style={styles.secaoTitulo}>INFORMAÇÕES</Text>
+          <Text style={styles.secaoTitulo}>CONTA & SISTEMA</Text>
           <View style={styles.cardGrupo}>
+            {/* Aparência / Modo Claro / Escuro */}
+            <TouchableOpacity
+              style={styles.itemLinha}
+              activeOpacity={0.7}
+              onPress={() => setModalAtivo('aparencia')}
+            >
+              <View style={[styles.itemIconeContainer, styles.iconeOuro]}>
+                {isEscuro ? (
+                  <Moon size={18} color={Colors.ouro} />
+                ) : (
+                  <Sun size={18} color={Colors.ouro} />
+                )}
+              </View>
+              <View style={styles.itemTextoContainer}>
+                <Text style={styles.itemTitulo}>Aparência do App</Text>
+                <Text style={styles.itemSubtitulo}>
+                  {modoTema === 'escuro'
+                    ? 'Modo Escuro (Obsidian & Gold)'
+                    : modoTema === 'claro'
+                    ? 'Modo Claro (Pearl White & Gold)'
+                    : 'Automático (Segue o Sistema)'}
+                </Text>
+              </View>
+              <ChevronRight size={18} color={Colors.textoDesabilitado} />
+            </TouchableOpacity>
+
+            <View style={styles.divisorItem} />
+
             <TouchableOpacity
               style={styles.itemLinha}
               activeOpacity={0.7}
@@ -491,8 +523,8 @@ export default function TelaBarbeiroMais() {
                 <ShieldCheck size={18} color={Colors.textoSecundario} />
               </View>
               <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Segurança & Banco de Dados</Text>
-                <Text style={styles.itemSubtitulo}>Políticas RLS e proteção de dados</Text>
+                <Text style={styles.itemTitulo}>Segurança & Privacidade</Text>
+                <Text style={styles.itemSubtitulo}>Proteção de dados e criptografia</Text>
               </View>
               <ChevronRight size={18} color={Colors.textoDesabilitado} />
             </TouchableOpacity>
@@ -504,8 +536,8 @@ export default function TelaBarbeiroMais() {
                 <Info size={18} color={Colors.textoSecundario} />
               </View>
               <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Versão do aplicativo</Text>
-                <Text style={styles.itemSubtitulo}>Na Régua v1.0.0 (Painel Barbeiro)</Text>
+                <Text style={styles.itemTitulo}>Versão do Aplicativo</Text>
+                <Text style={styles.itemSubtitulo}>Na Régua Pro v1.0</Text>
               </View>
             </View>
           </View>
@@ -960,6 +992,91 @@ export default function TelaBarbeiroMais() {
         </View>
       </Modal>
 
+      {/* ─── Modal Aparência ─── */}
+      <Modal
+        visible={modalAtivo === 'aparencia'}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalAtivo(null)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setModalAtivo(null)}>
+          <Pressable style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalTraco} />
+            <View style={[styles.modalHeader, { borderBottomColor: theme.borda }]}>
+              <Text style={[styles.modalTitulo, { color: theme.textoPrimario }]}>Aparência do Aplicativo</Text>
+              <TouchableOpacity onPress={() => setModalAtivo(null)} style={styles.modalBtnFechar}>
+                <X size={20} color={theme.textoSecundario} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalCorpo}>
+              <Text style={{ fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, color: theme.textoSecundario, marginBottom: 4 }}>
+                Escolha o tema visual que melhor combina com seu estilo.
+              </Text>
+
+              {/* Opção 1: Automático do Sistema (Padrão) */}
+              <TouchableOpacity
+                style={[
+                  styles.opcaoTemaCard,
+                  { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                  modoTema === 'sistema' && { borderColor: theme.ouro, backgroundColor: theme.ouroTranslucido },
+                ]}
+                onPress={() => setModoTema('sistema')}
+                activeOpacity={0.75}
+              >
+                <View style={[styles.opcaoTemaIconeWrapper, { backgroundColor: isEscuro ? '#1C1C22' : '#EAEAEA' }]}>
+                  <Smartphone size={18} color={theme.ouroTexto} />
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd, color: theme.textoPrimario }}>Automático (Padrão do Sistema)</Text>
+                  <Text style={{ fontFamily: FontFamily.regular, fontSize: 11.5, color: theme.textoSecundario }}>Acompanha em tempo real o modo claro ou escuro do seu celular</Text>
+                </View>
+                {modoTema === 'sistema' && <Check size={18} color={theme.ouroTexto} strokeWidth={3} />}
+              </TouchableOpacity>
+
+              {/* Opção 2: Modo Escuro */}
+              <TouchableOpacity
+                style={[
+                  styles.opcaoTemaCard,
+                  { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                  modoTema === 'escuro' && { borderColor: theme.ouro, backgroundColor: theme.ouroTranslucido },
+                ]}
+                onPress={() => setModoTema('escuro')}
+                activeOpacity={0.75}
+              >
+                <View style={[styles.opcaoTemaIconeWrapper, { backgroundColor: '#09090B' }]}>
+                  <Moon size={18} color="#CBA14A" />
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd, color: theme.textoPrimario }}>Modo Escuro (Obsidian & Gold)</Text>
+                  <Text style={{ fontFamily: FontFamily.regular, fontSize: 11.5, color: theme.textoSecundario }}>Preto Obsidiana com acabamento Dourado Imperial</Text>
+                </View>
+                {modoTema === 'escuro' && <Check size={18} color={theme.ouroTexto} strokeWidth={3} />}
+              </TouchableOpacity>
+
+              {/* Opção 3: Modo Claro */}
+              <TouchableOpacity
+                style={[
+                  styles.opcaoTemaCard,
+                  { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                  modoTema === 'claro' && { borderColor: theme.ouro, backgroundColor: theme.ouroTranslucido },
+                ]}
+                onPress={() => setModoTema('claro')}
+                activeOpacity={0.75}
+              >
+                <View style={[styles.opcaoTemaIconeWrapper, { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E4E4E7' }]}>
+                  <Sun size={18} color="#8B6508" />
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd, color: theme.textoPrimario }}>Modo Claro (Luxury White)</Text>
+                  <Text style={{ fontFamily: FontFamily.regular, fontSize: 11.5, color: theme.textoSecundario }}>Branco Pérola, tipografia Carvão e Dourado de alto contraste</Text>
+                </View>
+                {modoTema === 'claro' && <Check size={18} color={theme.ouroTexto} strokeWidth={3} />}
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* ─── Modal Privacidade ─── */}
       <Modal
         visible={modalAtivo === 'privacidade'}
@@ -1031,18 +1148,18 @@ export default function TelaBarbeiroMais() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0A0A0A' },
+  safe: { flex: 1, backgroundColor: Colors.fundo },
   header: {
     paddingHorizontal: Spacing.telaH,
     paddingTop: Spacing.md,
     paddingBottom: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#1F1F22',
+    borderBottomColor: Colors.borda,
   },
   titulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.displayMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   scroll: {
     padding: Spacing.telaH,
@@ -1053,11 +1170,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     borderRadius: Radii.lg,
     padding: Spacing.lg,
     borderWidth: 1,
-    borderColor: '#262629',
+    borderColor: Colors.borda,
     ...Shadows.card,
   },
   avatarWrapper: {
@@ -1071,12 +1188,12 @@ const styles = StyleSheet.create({
   perfilNome: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.headingSm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   perfilContato: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodySm,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   badgeBarbeiro: {
     flexDirection: 'row',
@@ -1102,15 +1219,15 @@ const styles = StyleSheet.create({
   secaoTitulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     letterSpacing: 1,
     marginLeft: 4,
   },
   cardGrupo: {
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     borderRadius: Radii.lg,
     borderWidth: 1,
-    borderColor: '#262629',
+    borderColor: Colors.borda,
     overflow: 'hidden',
   },
   itemLinha: {
@@ -1123,7 +1240,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: Radii.sm,
-    backgroundColor: '#222226',
+    backgroundColor: Colors.superficie2,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1137,16 +1254,16 @@ const styles = StyleSheet.create({
   itemTitulo: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   itemSubtitulo: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   divisorItem: {
     height: 1,
-    backgroundColor: '#262629',
+    backgroundColor: Colors.borda,
     marginLeft: 56,
   },
   botaoSair: {
@@ -1173,26 +1290,26 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalConteudo: {
-    backgroundColor: '#18181B',
+    backgroundColor: Colors.superficie,
     borderTopLeftRadius: Radii.xl,
     borderTopRightRadius: Radii.xl,
     paddingHorizontal: Spacing.telaH,
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.giant,
     borderWidth: 1,
-    borderColor: '#2E2E33',
+    borderColor: Colors.bordaDestaque,
     gap: Spacing.sm,
     maxHeight: '85%',
   },
   modalConteudoGrande: {
-    backgroundColor: '#18181B',
+    backgroundColor: Colors.superficie,
     borderTopLeftRadius: Radii.xl,
     borderTopRightRadius: Radii.xl,
     paddingHorizontal: Spacing.telaH,
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.xl,
     borderWidth: 1,
-    borderColor: '#2E2E33',
+    borderColor: Colors.bordaDestaque,
     gap: Spacing.sm,
     maxHeight: '92%',
   },
@@ -1200,7 +1317,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#3F3F46',
+    backgroundColor: Colors.bordaDestaque,
     alignSelf: 'center',
     marginBottom: Spacing.xs,
   },
@@ -1225,7 +1342,7 @@ const styles = StyleSheet.create({
   modalTitulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.headingSm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   modalBtnFechar: { padding: 4 },
   botaoReajusteLote: {
@@ -1240,12 +1357,12 @@ const styles = StyleSheet.create({
   botaoReajusteLoteTexto: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   dicaToqueTexto: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   servicosLista: { maxHeight: 340 },
   servicoItem: {
@@ -1254,19 +1371,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: Spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#262629',
+    borderBottomColor: Colors.borda,
     gap: Spacing.sm,
   },
   servicoInfo: { flex: 1, gap: 2 },
   servicoNome: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   servicoDescricao: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   servicoDuracao: {
     fontFamily: FontFamily.medium,
@@ -1293,17 +1410,17 @@ const styles = StyleSheet.create({
     color: Colors.ouro,
   },
   cardInfoServico: {
-    backgroundColor: '#222226',
+    backgroundColor: Colors.superficie2,
     borderRadius: Radii.md,
     padding: Spacing.md,
     gap: 2,
     borderWidth: 1,
-    borderColor: '#2E2E33',
+    borderColor: Colors.bordaDestaque,
   },
   cardInfoServicoNome: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   cardInfoServicoPreco: {
     fontFamily: FontFamily.regular,
@@ -1313,19 +1430,19 @@ const styles = StyleSheet.create({
   labelCampo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     letterSpacing: 0.5,
     marginTop: Spacing.xs,
     marginBottom: 4,
   },
   inputModal: {
-    backgroundColor: '#222226',
+    backgroundColor: Colors.superficie2,
     borderRadius: Radii.sm,
     borderWidth: 1,
-    borderColor: '#2E2E33',
+    borderColor: Colors.bordaDestaque,
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodyMd,
   },
@@ -1340,14 +1457,14 @@ const styles = StyleSheet.create({
   botaoConfirmarReajusteTexto: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   servicosLoteLista: {
     height: 200,
     borderWidth: 1,
-    borderColor: '#262629',
+    borderColor: Colors.borda,
     borderRadius: Radii.sm,
-    backgroundColor: '#1E1E22',
+    backgroundColor: Colors.superficie2,
     paddingHorizontal: Spacing.sm,
   },
   linhaLoteServico: {
@@ -1356,25 +1473,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#262629',
+    borderBottomColor: Colors.borda,
     gap: Spacing.sm,
   },
   linhaLoteNome: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   linhaLoteAtual: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   inputLote: {
     width: 80,
-    backgroundColor: '#222226',
+    backgroundColor: Colors.superficie2,
     borderRadius: Radii.sm,
     borderWidth: 1,
-    borderColor: '#3F3F46',
+    borderColor: Colors.bordaDestaque,
     color: Colors.ouro,
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
@@ -1383,12 +1500,12 @@ const styles = StyleSheet.create({
   },
   modalCorpo: { gap: Spacing.sm },
   modalItemCard: {
-    backgroundColor: '#222226',
+    backgroundColor: Colors.superficie2,
     borderRadius: Radii.md,
     padding: Spacing.md,
     gap: 4,
     borderWidth: 1,
-    borderColor: '#2E2E33',
+    borderColor: Colors.bordaDestaque,
   },
   modalItemRotulo: {
     fontFamily: FontFamily.bold,
@@ -1398,20 +1515,20 @@ const styles = StyleSheet.create({
   modalItemDescricao: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodySm,
-    color: '#A1A1AA',
+    color: Colors.textoDesabilitado,
     lineHeight: 18,
   },
   modalTextoConfirmacao: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodyLg,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
     textAlign: 'center',
     paddingVertical: Spacing.md,
   },
   modalAcoesRow: { flexDirection: 'row', gap: Spacing.sm },
   modalBotaoCancelar: {
     flex: 1,
-    backgroundColor: '#27272A',
+    backgroundColor: Colors.superficie2,
     borderRadius: Radii.md,
     paddingVertical: 14,
     alignItems: 'center',
@@ -1420,7 +1537,7 @@ const styles = StyleSheet.create({
   modalBotaoCancelarTexto: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   modalBotaoSair: {
     flex: 1,
@@ -1433,7 +1550,7 @@ const styles = StyleSheet.create({
   modalBotaoSairTexto: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
 
   // Estilos do Editor de Serviços, Imagens e Molduras
@@ -1471,7 +1588,7 @@ const styles = StyleSheet.create({
   subLabelCampo: {
     fontFamily: FontFamily.regular,
     fontSize: 11,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     marginBottom: 6,
   },
   bibliotecaScroll: {
@@ -1483,9 +1600,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 6,
     borderRadius: Radii.md,
-    backgroundColor: '#1C1C20',
+    backgroundColor: Colors.superficie,
     borderWidth: 1,
-    borderColor: '#2E2E34',
+    borderColor: Colors.bordaDestaque,
     gap: 4,
   },
   cardSugestaoImgAtivo: {
@@ -1495,7 +1612,7 @@ const styles = StyleSheet.create({
   sugestaoLabel: {
     fontFamily: FontFamily.medium,
     fontSize: 9.5,
-    color: '#A1A1AA',
+    color: Colors.textoDesabilitado,
     textAlign: 'center',
   },
   sugestaoLabelAtivo: {
@@ -1514,7 +1631,7 @@ const styles = StyleSheet.create({
     borderRadius: Radii.md,
     paddingVertical: 10,
     marginTop: 8,
-    backgroundColor: '#1C1C20',
+    backgroundColor: Colors.superficie,
   },
   btnFotoPropriaTexto: {
     color: Colors.ouro,
@@ -1541,10 +1658,10 @@ const styles = StyleSheet.create({
   },
 
   previewContainerServico: {
-    backgroundColor: '#1C1C20',
+    backgroundColor: Colors.superficie,
     borderRadius: Radii.md,
     borderWidth: 1,
-    borderColor: '#2E2E34',
+    borderColor: Colors.bordaDestaque,
     padding: Spacing.sm,
     marginTop: 12,
     gap: 6,
@@ -1562,7 +1679,7 @@ const styles = StyleSheet.create({
   previewNomeServico: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   previewPrecoServico: {
     fontFamily: FontFamily.medium,
@@ -1584,5 +1701,21 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
     color: Colors.fundo,
+  },
+  opcaoTemaCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: Radii.lg,
+    borderWidth: 1.5,
+    marginBottom: Spacing.xs,
+  },
+  opcaoTemaIconeWrapper: {
+    width: 38,
+    height: 38,
+    borderRadius: Radii.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

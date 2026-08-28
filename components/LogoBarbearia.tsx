@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Linking, ImageSourcePropType } from 'react-native';
 import { MessageCircle, Scissors, Sparkles } from 'lucide-react-native';
 import { Colors, FontFamily, FontSize, Spacing, Radii } from '@/theme';
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     borderRadius: Radii.md,
   },
   badgePlataforma: {
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     borderWidth: 2,
     borderColor: Colors.ouro,
     alignItems: 'center',
@@ -179,6 +179,3 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
-
-
-

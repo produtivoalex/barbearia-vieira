@@ -1,36 +1,40 @@
 import React, { useEffect } from 'react';
-import { Tabs, useRouter } from 'expo-router';
-import { CalendarCheck, Calendar, Users, MoreHorizontal } from 'lucide-react-native';
-import { Colors, FontFamily, FontSize } from '@/theme';
+import { Tabs, useRouter, useSegments } from 'expo-router';
+import { CalendarCheck, Calendar, Users, Store } from 'lucide-react-native';
+import { FontFamily, FontSize } from '@/theme';
 import { usePerfil } from '@/hooks/usePerfil';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function TabsBarbeiroLayout() {
   const { perfil, carregandoPerfil } = usePerfil();
+  const { theme } = useTheme();
   const router = useRouter();
+  const segments = useSegments();
 
   useEffect(() => {
-    if (!carregandoPerfil && perfil && perfil.role !== 'barbeiro') {
+    const naTelaCriacao = (segments as string[]).includes('cadastrar-barbearia');
+    if (!carregandoPerfil && perfil && perfil.role !== 'barbeiro' && !naTelaCriacao) {
       router.replace('/(app)/(tabs)');
     }
-  }, [perfil, carregandoPerfil, router]);
+  }, [perfil, carregandoPerfil, segments, router]);
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#161618',
-          borderTopColor: '#262629',
+          backgroundColor: theme.superficie,
+          borderTopColor: theme.borda,
           borderTopWidth: 1,
           height: 64,
           paddingBottom: 10,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: Colors.vermelho,
-        tabBarInactiveTintColor: Colors.textoSecundario,
+        tabBarActiveTintColor: theme.ouroTexto,
+        tabBarInactiveTintColor: theme.textoSecundario,
         tabBarLabelStyle: {
           fontFamily: FontFamily.medium,
-          fontSize: FontSize.labelXs,
+          fontSize: 10.5,
           marginTop: 2,
         },
       }}
@@ -40,16 +44,16 @@ export default function TabsBarbeiroLayout() {
         options={{
           title: 'Hoje',
           tabBarIcon: ({ color, size }) => (
-            <CalendarCheck size={size} color={color} />
+            <CalendarCheck size={size - 2} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="semana"
         options={{
-          title: 'Agenda',
+          title: 'Semana',
           tabBarIcon: ({ color, size }) => (
-            <Calendar size={size} color={color} />
+            <Calendar size={size - 2} color={color} />
           ),
         }}
       />
@@ -58,16 +62,16 @@ export default function TabsBarbeiroLayout() {
         options={{
           title: 'Clientes',
           tabBarIcon: ({ color, size }) => (
-            <Users size={size} color={color} />
+            <Users size={size - 2} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="mais"
         options={{
-          title: 'Mais',
+          title: 'Meu Negócio',
           tabBarIcon: ({ color, size }) => (
-            <MoreHorizontal size={size} color={color} />
+            <Store size={size - 2} color={color} />
           ),
         }}
       />

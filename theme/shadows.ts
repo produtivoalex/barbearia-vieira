@@ -1,6 +1,5 @@
 /**
- * Sombras — Barbearia Vieira
- * Dark mode: sombras escuras intensas para separar superfícies
+ * Sombras — separação suave para superfícies claras, sem aparência pesada.
  */
 import { Platform } from 'react-native';
 
@@ -13,10 +12,10 @@ export const Shadows = {
     ios: {
       shadowColor: '#000000',
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.6,
+      shadowOpacity: 0.12,
       shadowRadius: 8,
     },
-    android: { elevation: 4 },
+    android: { elevation: 2 },
     default: {},
   }),
 
@@ -25,22 +24,22 @@ export const Shadows = {
     ios: {
       shadowColor: '#000000',
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.8,
+      shadowOpacity: 0.18,
       shadowRadius: 16,
     },
-    android: { elevation: 8 },
+    android: { elevation: 5 },
     default: {},
   }),
 
-  /** Botão primário — brilho vermelho sutil */
+  /** Botão primário — brilho dourado elegante */
   botaoPrimario: Platform.select({
     ios: {
-      shadowColor: '#8B0013',
+      shadowColor: '#CBA14A',
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.4,
-      shadowRadius: 12,
+      shadowOpacity: 0.35,
+      shadowRadius: 10,
     },
-    android: { elevation: 6 },
+    android: { elevation: 5 },
     default: {},
   }),
 } as const;

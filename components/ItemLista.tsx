@@ -7,7 +7,8 @@ import {
   ViewStyle,
 } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
-import { Colors, FontFamily, FontSize, Radii, Spacing } from '@/theme';
+import { FontFamily, FontSize, Radii, Spacing } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ItemListaProps {
   titulo: string;
@@ -28,23 +29,33 @@ export function ItemLista({
   onPress,
   estilo,
 }: ItemListaProps) {
+  const { theme } = useTheme();
   const Wrapper = onPress ? TouchableOpacity : View;
 
   return (
     <Wrapper
-      style={[styles.container, estilo]}
+      style={[
+        styles.container,
+        {
+          backgroundColor: theme.superficie,
+          borderColor: theme.borda,
+        },
+        estilo,
+      ]}
       onPress={onPress}
       activeOpacity={0.7}
     >
       {iconeEsquerda && (
-        <View style={styles.iconeContainer}>{iconeEsquerda}</View>
+        <View style={[styles.iconeContainer, { backgroundColor: theme.superficie2 }]}>
+          {iconeEsquerda}
+        </View>
       )}
       <View style={styles.conteudo}>
-        <Text style={styles.titulo} numberOfLines={1}>
+        <Text style={[styles.titulo, { color: theme.textoPrimario }]} numberOfLines={1}>
           {titulo}
         </Text>
         {subtitulo && (
-          <Text style={styles.subtitulo} numberOfLines={1}>
+          <Text style={[styles.subtitulo, { color: theme.textoSecundario }]} numberOfLines={1}>
             {subtitulo}
           </Text>
         )}
@@ -53,7 +64,7 @@ export function ItemLista({
         <View style={styles.direita}>{elementoDireita}</View>
       )}
       {mostrarSeta && (
-        <ChevronRight size={18} color={Colors.textoDesabilitado} />
+        <ChevronRight size={18} color={theme.textoDesabilitado} />
       )}
     </Wrapper>
   );
@@ -65,8 +76,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
-    backgroundColor: Colors.superficie,
     borderRadius: Radii.sm,
+    borderWidth: 1,
     gap: Spacing.sm,
     minHeight: 60,
   },
@@ -74,7 +85,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: Radii.full,
-    backgroundColor: Colors.superficie2,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -85,12 +95,10 @@ const styles = StyleSheet.create({
   titulo: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.bodyMd,
-    color: Colors.textoPrimario,
   },
   subtitulo: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
   },
   direita: {
     alignItems: 'flex-end',

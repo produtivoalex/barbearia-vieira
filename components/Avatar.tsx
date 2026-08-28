@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { View, Text, StyleSheet, ViewStyle, Image } from 'react-native';
 import { Colors, FontFamily, Radii } from '@/theme';
 
@@ -81,7 +81,7 @@ export function Avatar({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: Colors.superficie2,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   containerImagem: {
     borderWidth: 1.5,
     borderColor: Colors.ouro,
-    backgroundColor: '#1E1E24',
+    backgroundColor: Colors.superficie2,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',

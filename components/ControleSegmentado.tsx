@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Colors, FontFamily, FontSize, Radii, Spacing } from '@/theme';
+import { FontFamily, FontSize, Radii, Spacing } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface OpcaoControle {
   label: string;
@@ -18,18 +19,29 @@ export function ControleSegmentado({
   valorAtivo,
   onChange,
 }: ControleSegmentadoProps) {
+  const { theme } = useTheme();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
       {opcoes.map((opcao) => {
         const ativo = opcao.valor === valorAtivo;
         return (
           <TouchableOpacity
             key={opcao.valor}
-            style={[styles.opcao, ativo && styles.opcaoAtiva]}
+            style={[
+              styles.opcao,
+              ativo && { backgroundColor: theme.ouro },
+            ]}
             onPress={() => onChange(opcao.valor)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.texto, ativo && styles.textoAtivo]}>
+            <Text
+              style={[
+                styles.texto,
+                { color: theme.textoSecundario },
+                ativo && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+              ]}
+            >
               {opcao.label}
             </Text>
           </TouchableOpacity>
@@ -42,9 +54,9 @@ export function ControleSegmentado({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: Colors.superficie2,
     borderRadius: Radii.full,
     padding: 3,
+    borderWidth: 1,
   },
   opcao: {
     flex: 1,
@@ -53,16 +65,8 @@ const styles = StyleSheet.create({
     borderRadius: Radii.full,
     alignItems: 'center',
   },
-  opcaoAtiva: {
-    backgroundColor: Colors.vermelho,
-  },
   texto: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.bodyMd,
-    color: Colors.textoSecundario,
-  },
-  textoAtivo: {
-    fontFamily: FontFamily.semiBold,
-    color: Colors.textoPrimario,
   },
 });

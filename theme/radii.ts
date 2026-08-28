@@ -3,18 +3,20 @@
  * Extraídos do mockup: chips (4), inputs (8), cards (12-16), botões (24), pills (999)
  */
 export const Radii = {
-  /** 4 — chips, badges */
-  xs: 4,
-  /** 8 — inputs, itens de lista */
-  sm: 8,
-  /** 12 — cards */
-  md: 12,
-  /** 16 — cards de destaque, bottom sheets */
-  lg: 16,
-  /** 24 — botões primários */
+  /** 6 — micro-badges, tags */
+  xs: 6,
+  /** 10 — inputs, chips compactos */
+  sm: 10,
+  /** 14 — cards secundários, botões padrão */
+  md: 14,
+  /** 20 — cards principais, bottom sheets */
+  lg: 20,
+  /** 24 — hero cards, botões de destaque */
   xl: 24,
-  /** 999 — pills completamente arredondadas */
-  full: 999,
+  /** 32 — containers VIP */
+  xxl: 32,
+  /** 9999 — pills completamente arredondadas */
+  full: 9999,
 } as const;
 
 export type RadiiChave = keyof typeof Radii;

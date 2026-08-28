@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -28,11 +28,14 @@ import {
   deduzirCategoria,
 } from '@/hooks/useServicos';
 import { IndicadorEtapas, IlustracaoServico } from '@/components';
+import { identificarTipoServico } from '@/components/IlustracaoServico';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function TelaServicos() {
   const router = useRouter();
+  const { theme, isEscuro } = useTheme();
   const [categoriaAtiva, setCategoriaAtiva] = useState<CategoriaServico>('todos');
   const [busca, setBusca] = useState('');
   const { barbearia, tema } = useBarbearia();
@@ -92,13 +95,18 @@ export default function TelaServicos() {
     });
 
     const ehCombo = (item.categoria || deduzirCategoria(item.nome)) === 'combos';
+    const tipoServico = identificarTipoServico(undefined, item.nome, item.categoria);
     const itensCombo = item.descricao && item.descricao.includes('+')
       ? item.descricao.split('+').map((s) => s.trim()).filter(Boolean)
       : null;
 
     return (
       <TouchableOpacity
-        style={[styles.cardServico, ehCombo && styles.cardCombo]}
+        style={[
+          styles.cardServico,
+          { backgroundColor: theme.superficie, borderColor: theme.borda },
+          ehCombo && { borderColor: theme.ouro, backgroundColor: isEscuro ? '#181612' : '#FFFDF6' },
+        ]}
         onPress={() => handleSelecionarServico(item)}
         activeOpacity={0.75}
       >
@@ -107,8 +115,8 @@ export default function TelaServicos() {
           id={item.id}
           nome={item.nome}
           categoria={item.categoria}
-          imagemUrl={item.imagem_url}
-          tipoPredefinido={item.icone as any}
+          imagemUrl={null}
+          tipoPredefinido={tipoServico}
           corMoldura={item.cor_moldura || tema.frameColor || tema.primary}
           tamanho={58}
         />
@@ -116,11 +124,11 @@ export default function TelaServicos() {
         {/* Detalhes do Serviço */}
         <View style={styles.infoServico}>
           <View style={styles.linhaNome}>
-            <Text style={styles.nomeServico}>{item.nome}</Text>
+            <Text style={[styles.nomeServico, { color: theme.textoPrimario }]}>{item.nome}</Text>
             {ehCombo && (
-              <View style={styles.badgeVip}>
-                <Sparkles size={9} color={Colors.ouro} />
-                <Text style={styles.badgeVipTexto}>VIP</Text>
+              <View style={[styles.badgeVip, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
+                <Sparkles size={9} color={theme.ouroTexto} />
+                <Text style={[styles.badgeVipTexto, { color: theme.ouroTexto }]}>VIP</Text>
               </View>
             )}
           </View>
@@ -129,13 +137,13 @@ export default function TelaServicos() {
           {itensCombo ? (
             <View style={styles.comboTagsContainer}>
               {itensCombo.map((tag, idx) => (
-                <View key={idx} style={styles.comboTagPill}>
-                  <Text style={styles.comboTagTexto}>✓ {tag}</Text>
+                <View key={idx} style={[styles.comboTagPill, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                  <Text style={[styles.comboTagTexto, { color: theme.textoSecundario }]}>✓ {tag}</Text>
                 </View>
               ))}
             </View>
           ) : item.descricao ? (
-            <Text style={styles.descricaoServico}>
+            <Text style={[styles.descricaoServico, { color: theme.textoSecundario }]}>
               {item.descricao}
             </Text>
           ) : null}
@@ -143,9 +151,9 @@ export default function TelaServicos() {
 
         {/* Lado Direito: Preço e Botão */}
         <View style={styles.ladoDireito}>
-          <Text style={styles.precoServico}>{precoFormatado}</Text>
-          <View style={styles.circuloSeta}>
-            <ChevronRight size={15} color={Colors.textoPrimario} />
+          <Text style={[styles.precoServico, { color: theme.ouroTexto }]}>{precoFormatado}</Text>
+          <View style={[styles.circuloSeta, { backgroundColor: theme.superficie2 }]}>
+            <ChevronRight size={15} color={theme.textoPrimario} />
           </View>
         </View>
       </TouchableOpacity>
@@ -153,24 +161,24 @@ export default function TelaServicos() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]} edges={['top']}>
       {/* Indicador de Etapas */}
       <IndicadorEtapas etapaAtual={1} />
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.subtituloBarbearia}>CATÁLOGO COMPLETO</Text>
-        <Text style={styles.titulo}>Escolha o serviço</Text>
+        <Text style={[styles.subtituloBarbearia, { color: theme.ouroTexto }]}>CORTES & BARBA</Text>
+        <Text style={[styles.titulo, { color: theme.textoPrimario }]}>Escolha seu estilo</Text>
       </View>
 
       {/* Barra de Pesquisa */}
       <View style={styles.pesquisaContainer}>
-        <View style={styles.inputPesquisaWrapper}>
-          <Search size={18} color={Colors.textoSecundario} style={styles.iconePesquisa} />
+        <View style={[styles.inputPesquisaWrapper, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
+          <Search size={18} color={theme.textoSecundario} style={styles.iconePesquisa} />
           <TextInput
-            style={styles.inputPesquisa}
+            style={[styles.inputPesquisa, { color: theme.textoPrimario }]}
             placeholder="Buscar corte, barba ou combo..."
-            placeholderTextColor={Colors.textoDesabilitado}
+            placeholderTextColor={theme.textoDesabilitado}
             value={busca}
             onChangeText={setBusca}
             autoCapitalize="none"
@@ -178,7 +186,7 @@ export default function TelaServicos() {
           />
           {busca.length > 0 && (
             <TouchableOpacity onPress={() => setBusca('')} style={styles.btnLimpar}>
-              <X size={16} color={Colors.textoSecundario} />
+              <X size={16} color={theme.textoSecundario} />
             </TouchableOpacity>
           )}
         </View>
@@ -198,19 +206,32 @@ export default function TelaServicos() {
             return (
               <TouchableOpacity
                 key={cat.id}
-                style={[styles.chipCategoria, ativa && styles.chipCategoriaAtivo]}
+                style={[
+                  styles.chipCategoria,
+                  { backgroundColor: theme.superficie, borderColor: theme.borda },
+                  ativa && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+                ]}
                 onPress={() => setCategoriaAtiva(cat.id)}
                 activeOpacity={0.7}
               >
                 <Text style={styles.emojiCategoria}>{cat.iconeEmoji}</Text>
-                <Text style={[styles.textoCategoria, ativa && styles.textoCategoriaAtivo]}>
+                <Text style={[
+                  styles.textoCategoria,
+                  { color: theme.textoSecundario },
+                  ativa && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+                ]}>
                   {cat.label}
                 </Text>
-                <View style={[styles.badgeContagem, ativa && styles.badgeContagemAtiva]}>
+                <View style={[
+                  styles.badgeContagem,
+                  { backgroundColor: theme.superficie2 },
+                  ativa && { backgroundColor: 'rgba(0,0,0,0.18)' },
+                ]}>
                   <Text
                     style={[
                       styles.textoContagem,
-                      ativa && styles.textoContagemAtiva,
+                      { color: theme.textoSecundario },
+                      ativa && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
                     ]}
                   >
                     {qtd}
@@ -225,7 +246,7 @@ export default function TelaServicos() {
       {/* Lista de Serviços */}
       {carregando && todosServicos.length === 0 ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.vermelho} />
+          <ActivityIndicator size="large" color={Colors.ouro} />
         </View>
       ) : (
         <FlatList
@@ -236,8 +257,8 @@ export default function TelaServicos() {
             <RefreshControl
               refreshing={carregando}
               onRefresh={recarregar}
-              tintColor={Colors.vermelho}
-              colors={[Colors.vermelho]}
+              tintColor={Colors.ouro}
+              colors={[Colors.ouro]}
             />
           }
           ListEmptyComponent={
@@ -262,15 +283,15 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.fundo },
   header: {
     paddingHorizontal: Spacing.telaH,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.xs,
+    paddingTop: Spacing.xs,
+    paddingBottom: Spacing.sm,
+    gap: 2,
   },
   subtituloBarbearia: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.labelXs,
     color: Colors.ouro,
-    letterSpacing: 2,
-    marginBottom: 2,
+    letterSpacing: 1.5,
   },
   titulo: {
     fontFamily: FontFamily.bold,
@@ -279,20 +300,21 @@ const styles = StyleSheet.create({
   },
   pesquisaContainer: {
     paddingHorizontal: Spacing.telaH,
-    paddingVertical: Spacing.xs,
+    paddingBottom: Spacing.xs,
   },
   inputPesquisaWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.superficie,
-    borderRadius: Radii.full,
+    borderRadius: Radii.md,
     borderWidth: 1,
     borderColor: Colors.borda,
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.sm,
     height: 46,
+    gap: Spacing.xs,
   },
   iconePesquisa: {
-    marginRight: Spacing.xs,
+    marginRight: 2,
   },
   inputPesquisa: {
     flex: 1,
@@ -325,8 +347,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.borda,
   },
   chipCategoriaAtivo: {
-    backgroundColor: Colors.vermelho,
-    borderColor: Colors.vermelhoClaro,
+    backgroundColor: Colors.ouro,
+    borderColor: Colors.ouroClaro,
   },
   emojiCategoria: {
     fontSize: 13,
@@ -338,7 +360,7 @@ const styles = StyleSheet.create({
   },
   textoCategoriaAtivo: {
     fontFamily: FontFamily.bold,
-    color: Colors.branco,
+    color: Colors.textoEscuroSobreOuro,
   },
   badgeContagem: {
     paddingHorizontal: 6,
@@ -347,7 +369,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.superficie2,
   },
   badgeContagemAtiva: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(0, 0, 0, 0.18)',
   },
   textoContagem: {
     fontFamily: FontFamily.bold,
@@ -355,7 +377,7 @@ const styles = StyleSheet.create({
     color: Colors.textoSecundario,
   },
   textoContagemAtiva: {
-    color: Colors.branco,
+    color: Colors.textoEscuroSobreOuro,
   },
   loadingContainer: {
     flex: 1,
@@ -371,19 +393,19 @@ const styles = StyleSheet.create({
   cardServico: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#151518',
+    backgroundColor: Colors.superficie,
     borderRadius: 16,
     paddingVertical: 12,
     paddingHorizontal: 14,
     gap: 12,
     borderWidth: 1,
-    borderColor: '#242428',
+    borderColor: Colors.borda,
     minHeight: 84,
     ...Shadows.card,
   },
   cardCombo: {
     borderColor: 'rgba(203, 161, 74, 0.35)',
-    backgroundColor: '#181412',
+    backgroundColor: Colors.superficie,
   },
   infoServico: {
     flex: 1,
@@ -399,7 +421,7 @@ const styles = StyleSheet.create({
   nomeServico: {
     fontFamily: FontFamily.bold,
     fontSize: 15,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   badgeVip: {
     flexDirection: 'row',
@@ -421,7 +443,7 @@ const styles = StyleSheet.create({
   descricaoServico: {
     fontFamily: FontFamily.regular,
     fontSize: 12,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     lineHeight: 16,
   },
   comboTagsContainer: {
@@ -464,7 +486,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#202024',
+    backgroundColor: Colors.superficie2,
     alignItems: 'center',
     justifyContent: 'center',
   },

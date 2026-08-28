@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -114,7 +114,7 @@ export default function CadastrarBarbearia() {
           tema: {
             primary: '#CBA14A',
             secondary: '#141416',
-            background: '#0F0F10',
+            background: Colors.fundo,
             text: '#FFFFFF',
             accent: '#F0D17D',
           },

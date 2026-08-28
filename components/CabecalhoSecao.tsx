@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
-import { Colors, FontFamily, FontSize, Spacing } from '@/theme';
+import { FontFamily, FontSize, Spacing } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface CabecalhoSecaoProps {
   titulo: string;
@@ -15,12 +16,14 @@ export function CabecalhoSecao({
   onAcao,
   estilo,
 }: CabecalhoSecaoProps) {
+  const { theme } = useTheme();
+
   return (
     <View style={[styles.container, estilo]}>
-      <Text style={styles.titulo}>{titulo}</Text>
+      <Text style={[styles.titulo, { color: theme.textoPrimario }]}>{titulo}</Text>
       {acaoLabel && onAcao && (
         <TouchableOpacity onPress={onAcao} activeOpacity={0.7}>
-          <Text style={styles.acao}>{acaoLabel}</Text>
+          <Text style={[styles.acao, { color: theme.ouroTexto }]}>{acaoLabel}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -37,11 +40,9 @@ const styles = StyleSheet.create({
   titulo: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.headingSm,
-    color: Colors.textoPrimario,
   },
   acao: {
-    fontFamily: FontFamily.medium,
+    fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodySm,
-    color: Colors.vermelho,
   },
 });

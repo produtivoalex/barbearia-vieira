@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+﻿import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Bell, ChevronLeft, ChevronRight, AlertTriangle, X, Scissors, Calendar } from 'lucide-react-native';
 import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
@@ -42,6 +43,7 @@ interface Notificacao {
 
 export default function TelaNotificacoes() {
   const router = useRouter();
+  const { theme, isEscuro } = useTheme();
   const { session } = useAuth();
   const { barbearia } = useBarbearia();
   const [itens, setItens] = useState<Notificacao[]>([]);
@@ -113,19 +115,19 @@ export default function TelaNotificacoes() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: theme.borda }]}>
         <TouchableOpacity onPress={() => router.back()}>
-          <ChevronLeft size={24} color={Colors.textoPrimario} />
+          <ChevronLeft size={24} color={theme.textoPrimario} />
         </TouchableOpacity>
-        <Text style={styles.titulo}>Notificações</Text>
+        <Text style={[styles.titulo, { color: theme.textoPrimario }]}>Notificações</Text>
         <View style={styles.placeholder} />
       </View>
 
       {carregando && itens.length === 0 ? (
         <View style={styles.loading}>
-          <ActivityIndicator color={Colors.vermelho} />
+          <ActivityIndicator color={theme.ouro} />
         </View>
       ) : (
         <ScrollView
@@ -134,15 +136,15 @@ export default function TelaNotificacoes() {
             <RefreshControl
               refreshing={carregando}
               onRefresh={carregar}
-              tintColor={Colors.vermelho}
+              tintColor={theme.ouro}
             />
           }
         >
           {itens.length === 0 ? (
             <View style={styles.vazio}>
-              <Bell size={42} color={Colors.textoDesabilitado} />
-              <Text style={styles.vazioTitulo}>Tudo em dia</Text>
-              <Text style={styles.vazioTexto}>Avisos importantes e comunicados aparecerão aqui.</Text>
+              <Bell size={42} color={theme.textoDesabilitado} />
+              <Text style={[styles.vazioTitulo, { color: theme.textoPrimario }]}>Tudo em dia</Text>
+              <Text style={[styles.vazioTexto, { color: theme.textoSecundario }]}>Avisos importantes e comunicados aparecerão aqui.</Text>
             </View>
           ) : (
             itens.map((item) => {
@@ -152,17 +154,18 @@ export default function TelaNotificacoes() {
                   key={item.id}
                   style={[
                     styles.card,
-                    !item.lida_em && styles.cardNaoLido,
-                    temSeloImportante && styles.cardComImportante,
+                    { backgroundColor: theme.superficie, borderColor: theme.borda, borderWidth: 1 },
+                    !item.lida_em && { borderLeftWidth: 3, borderLeftColor: theme.ouro },
+                    temSeloImportante && { borderColor: 'rgba(234, 179, 8, 0.4)', backgroundColor: isEscuro ? '#181712' : '#FFFDF5' },
                   ]}
                   onPress={() => abrir(item)}
                   activeOpacity={0.75}
                 >
-                  <View style={[styles.icone, temSeloImportante && styles.iconeImportante]}>
+                  <View style={[styles.icone, { backgroundColor: theme.superficie2 }, temSeloImportante && styles.iconeImportante]}>
                     {temSeloImportante ? (
-                      <AlertTriangle size={18} color={Colors.amarelo} />
+                      <AlertTriangle size={18} color={theme.amarelo} />
                     ) : (
-                      <Bell size={18} color={item.lida_em ? Colors.textoSecundario : Colors.vermelho} />
+                      <Bell size={18} color={item.lida_em ? theme.textoSecundario : theme.ouroTexto} />
                     )}
                   </View>
 
@@ -170,26 +173,26 @@ export default function TelaNotificacoes() {
                     {/* Selo IMPORTANTE (permanece visível mesmo após lida até a data da mudança) */}
                     {temSeloImportante && (
                       <View style={styles.badgeImportante}>
-                        <AlertTriangle size={11} color={Colors.amarelo} />
+                        <AlertTriangle size={11} color={theme.amarelo} />
                         <Text style={styles.badgeImportanteTexto}>
                           IMPORTANTE {item.dados?.dataVigencia ? `· VIGÊNCIA EM ${item.dados.dataVigencia}` : ''}
                         </Text>
                       </View>
                     )}
 
-                    <Text style={styles.cardTitulo}>{item.titulo}</Text>
-                    <Text style={styles.mensagem}>{item.mensagem}</Text>
-                    <Text style={styles.data}>{new Date(item.criada_em).toLocaleString('pt-BR')}</Text>
+                    <Text style={[styles.cardTitulo, { color: theme.textoPrimario }]}>{item.titulo}</Text>
+                    <Text style={[styles.mensagem, { color: theme.textoSecundario }]}>{item.mensagem}</Text>
+                    <Text style={[styles.data, { color: theme.textoDesabilitado }]}>{new Date(item.criada_em).toLocaleString('pt-BR')}</Text>
 
                     {item.tipo === 'reajuste_preco' && (
                       <View style={styles.ctaSaibaMais}>
-                        <Text style={styles.ctaSaibaMaisTexto}>Toque para ver os valores e detalhes</Text>
-                        <ChevronRight size={14} color={Colors.ouro} />
+                        <Text style={[styles.ctaSaibaMaisTexto, { color: theme.ouroTexto }]}>Toque para ver os valores e detalhes</Text>
+                        <ChevronRight size={14} color={theme.ouroTexto} />
                       </View>
                     )}
                   </View>
 
-                  {item.tipo === 'oferta_fila' && <ChevronRight size={18} color={Colors.textoSecundario} />}
+                  {item.tipo === 'oferta_fila' && <ChevronRight size={18} color={theme.textoSecundario} />}
                 </TouchableOpacity>
               );
             })
@@ -205,72 +208,72 @@ export default function TelaNotificacoes() {
         onRequestClose={() => setNotificacaoReajusteSelecionada(null)}
       >
         <Pressable style={styles.modalOverlay} onPress={() => setNotificacaoReajusteSelecionada(null)}>
-          <Pressable style={styles.modalConteudo} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalTraco} />
+          <Pressable style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
+            <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
 
             {notificacaoReajusteSelecionada && (
               <>
                 <View style={styles.modalHeader}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Scissors size={20} color={Colors.ouro} />
-                    <Text style={styles.modalTitulo}>Comunicado de Valores</Text>
+                    <Scissors size={20} color={theme.ouroTexto} />
+                    <Text style={[styles.modalTitulo, { color: theme.textoPrimario }]}>Comunicado de Valores</Text>
                   </View>
                   <TouchableOpacity
                     onPress={() => setNotificacaoReajusteSelecionada(null)}
                     style={styles.modalBtnFechar}
                   >
-                    <X size={20} color={Colors.textoSecundario} />
+                    <X size={20} color={theme.textoSecundario} />
                   </TouchableOpacity>
                 </View>
 
                 {notificacaoReajusteSelecionada.dados?.dataVigencia && (
-                  <View style={styles.vigenciaBox}>
-                    <Calendar size={16} color={Colors.ouro} />
-                    <Text style={styles.vigenciaTexto}>
-                      Entrada em vigor: <Text style={{ fontFamily: FontFamily.bold, color: '#FFFFFF' }}>{notificacaoReajusteSelecionada.dados.dataVigencia}</Text>
+                  <View style={[styles.vigenciaBox, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
+                    <Calendar size={16} color={theme.ouroTexto} />
+                    <Text style={[styles.vigenciaTexto, { color: theme.ouroTexto }]}>
+                      Entrada em vigor: <Text style={{ fontFamily: FontFamily.bold, color: theme.textoPrimario }}>{notificacaoReajusteSelecionada.dados.dataVigencia}</Text>
                     </Text>
                   </View>
                 )}
 
                 {/* Lista de Itens com Preço Antigo -> Novo Preço */}
-                <Text style={styles.modalSecaoTitulo}>TABELA DE VALORES REAJUSTADOS</Text>
+                <Text style={[styles.modalSecaoTitulo, { color: theme.textoSecundario }]}>TABELA DE VALORES REAJUSTADOS</Text>
                 <ScrollView style={{ maxHeight: 220 }} showsVerticalScrollIndicator={false}>
                   {notificacaoReajusteSelecionada.dados?.itens && notificacaoReajusteSelecionada.dados.itens.length > 0 ? (
                     notificacaoReajusteSelecionada.dados.itens.map((item, idx) => (
-                      <View key={idx} style={styles.itemPrecoLinha}>
-                        <Text style={styles.itemPrecoNome}>{item.nome}</Text>
+                      <View key={idx} style={[styles.itemPrecoLinha, { borderBottomColor: theme.borda }]}>
+                        <Text style={[styles.itemPrecoNome, { color: theme.textoPrimario }]}>{item.nome}</Text>
                         <View style={styles.itemPrecoValores}>
-                          <Text style={styles.itemPrecoAntigo}>
+                          <Text style={[styles.itemPrecoAntigo, { color: theme.textoSecundario }]}>
                             R$ {Number(item.preco_anterior).toFixed(2)}
                           </Text>
-                          <Text style={styles.itemPrecoSeta}>→</Text>
-                          <Text style={styles.itemPrecoNovo}>
+                          <Text style={[styles.itemPrecoSeta, { color: theme.ouroTexto }]}>→</Text>
+                          <Text style={[styles.itemPrecoNovo, { color: theme.verde }]}>
                             R$ {Number(item.novo_preco).toFixed(2)}
                           </Text>
                         </View>
                       </View>
                     ))
                   ) : (
-                    <Text style={styles.mensagemCompleta}>{notificacaoReajusteSelecionada.mensagem}</Text>
+                    <Text style={[styles.mensagemCompleta, { color: theme.textoSecundario }]}>{notificacaoReajusteSelecionada.mensagem}</Text>
                   )}
                 </ScrollView>
 
                 {/* Mensagem Opcional do Barbeiro (só exibida se o barbeiro tiver colocado) */}
                 {notificacaoReajusteSelecionada.dados?.justificativa && (
-                  <View style={styles.justificativaBox}>
-                    <Text style={styles.justificativaTitulo}>Mensagem da Barbearia:</Text>
-                    <Text style={styles.justificativaTexto}>
+                  <View style={[styles.justificativaBox, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                    <Text style={[styles.justificativaTitulo, { color: theme.ouroTexto }]}>Mensagem da Barbearia:</Text>
+                    <Text style={[styles.justificativaTexto, { color: theme.textoPrimario }]}>
                       "{notificacaoReajusteSelecionada.dados.justificativa}"
                     </Text>
                   </View>
                 )}
 
                 <TouchableOpacity
-                  style={styles.botaoEntendido}
+                  style={[styles.botaoEntendido, { backgroundColor: theme.ouro }]}
                   onPress={() => setNotificacaoReajusteSelecionada(null)}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.botaoEntendidoTexto}>Entendido</Text>
+                  <Text style={[styles.botaoEntendidoTexto, { color: theme.textoEscuroSobreOuro }]}>Entendido</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -303,11 +306,11 @@ const styles = StyleSheet.create({
     borderRadius: Radii.md,
     backgroundColor: Colors.superficie,
   },
-  cardNaoLido: { borderLeftWidth: 3, borderLeftColor: Colors.vermelho },
+  cardNaoLido: { borderLeftWidth: 3, borderLeftColor: Colors.ouro },
   cardComImportante: {
     borderWidth: 1,
     borderColor: 'rgba(234, 179, 8, 0.3)',
-    backgroundColor: '#181712',
+    backgroundColor: Colors.superficie,
   },
   icone: {
     width: 34,
@@ -364,14 +367,14 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalConteudo: {
-    backgroundColor: '#18181B',
+    backgroundColor: Colors.superficie,
     borderTopLeftRadius: Radii.xl,
     borderTopRightRadius: Radii.xl,
     paddingHorizontal: Spacing.telaH,
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.giant,
     borderWidth: 1,
-    borderColor: '#2E2E33',
+    borderColor: Colors.bordaDestaque,
     gap: Spacing.sm,
     maxHeight: '85%',
   },
@@ -379,7 +382,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#3F3F46',
+    backgroundColor: Colors.bordaDestaque,
     alignSelf: 'center',
     marginBottom: Spacing.xs,
   },
@@ -391,7 +394,7 @@ const styles = StyleSheet.create({
   modalTitulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.headingSm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   modalBtnFechar: { padding: 4 },
   vigenciaBox: {
@@ -412,7 +415,7 @@ const styles = StyleSheet.create({
   modalSecaoTitulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     letterSpacing: 0.5,
     marginTop: Spacing.xs,
   },
@@ -422,12 +425,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#262629',
+    borderBottomColor: Colors.borda,
   },
   itemPrecoNome: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   itemPrecoValores: {
     flexDirection: 'row',
@@ -437,7 +440,7 @@ const styles = StyleSheet.create({
   itemPrecoAntigo: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodySm,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     textDecorationLine: 'line-through',
   },
   itemPrecoSeta: {
@@ -457,11 +460,11 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
   },
   justificativaBox: {
-    backgroundColor: '#222226',
+    backgroundColor: Colors.superficie2,
     borderRadius: Radii.sm,
     padding: Spacing.sm,
     borderWidth: 1,
-    borderColor: '#2E2E33',
+    borderColor: Colors.bordaDestaque,
     gap: 2,
   },
   justificativaTitulo: {
@@ -487,6 +490,6 @@ const styles = StyleSheet.create({
   botaoEntendidoTexto: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
-    color: '#0E0E0E',
+    color: Colors.textoEscuroSobreOuro,
   },
 });

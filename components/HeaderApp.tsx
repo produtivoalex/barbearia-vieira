@@ -2,12 +2,11 @@ import React from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   ViewStyle,
 } from 'react-native';
-import { Colors, FontFamily, FontSize, Spacing } from '@/theme';
-
+import { FontFamily, FontSize, Spacing } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { LogoBarbearia } from './LogoBarbearia';
 
 interface HeaderAppProps {
@@ -27,8 +26,10 @@ export function HeaderApp({
   acaoEsquerda,
   estilo,
 }: HeaderAppProps) {
+  const { theme } = useTheme();
+
   return (
-    <View style={[styles.container, estilo]}>
+    <View style={[styles.container, { backgroundColor: theme.fundo, borderBottomColor: theme.borda }, estilo]}>
       <View style={styles.esquerda}>
         {acaoEsquerda}
       </View>
@@ -39,12 +40,12 @@ export function HeaderApp({
         ) : (
           <View>
             {titulo && (
-              <Text style={styles.titulo} numberOfLines={1}>
+              <Text style={[styles.titulo, { color: theme.textoPrimario }]} numberOfLines={1}>
                 {titulo}
               </Text>
             )}
             {subtitulo && (
-              <Text style={styles.subtitulo} numberOfLines={1}>
+              <Text style={[styles.subtitulo, { color: theme.textoSecundario }]} numberOfLines={1}>
                 {subtitulo}
               </Text>
             )}
@@ -65,7 +66,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.telaH,
     paddingVertical: Spacing.headerV,
-    backgroundColor: Colors.fundo,
+    borderBottomWidth: 1,
     minHeight: 56,
   },
   esquerda: {
@@ -80,25 +81,14 @@ const styles = StyleSheet.create({
     width: 40,
     alignItems: 'flex-end',
   },
-  logoPlaceholder: {
-    // Substituir por Image quando tiver logo.png
-  },
-  logoTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyLg,
-    color: Colors.textoPrimario,
-    letterSpacing: 1.5,
-  },
   titulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.headingSm,
-    color: Colors.textoPrimario,
     textAlign: 'center',
   },
   subtitulo: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
     textAlign: 'center',
   },
 });

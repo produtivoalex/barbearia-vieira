@@ -7,7 +7,8 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
+import { FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type Variante = 'primario' | 'secundario' | 'fantasma' | 'perigo';
 
@@ -34,7 +35,49 @@ export function Botao({
   estiloContainer,
   estiloTexto,
 }: BotaoProps) {
-  const estilos = estilosPorVariante[variante];
+  const { theme } = useTheme();
+
+  const estilosDinamicos: Record<Variante, { container: ViewStyle; texto: TextStyle }> = {
+    primario: {
+      container: {
+        backgroundColor: theme.ouro,
+      },
+      texto: {
+        color: theme.textoEscuroSobreOuro,
+        fontFamily: FontFamily.bold,
+      },
+    },
+    secundario: {
+      container: {
+        backgroundColor: theme.ouroTranslucido,
+        borderWidth: 1.5,
+        borderColor: theme.ouro,
+      },
+      texto: {
+        color: theme.ouroTexto,
+        fontFamily: FontFamily.bold,
+      },
+    },
+    fantasma: {
+      container: {
+        backgroundColor: theme.transparente,
+      },
+      texto: {
+        color: theme.textoSecundario,
+      },
+    },
+    perigo: {
+      container: {
+        backgroundColor: theme.erro,
+      },
+      texto: {
+        color: theme.branco,
+        fontFamily: FontFamily.bold,
+      },
+    },
+  };
+
+  const estilos = estilosDinamicos[variante];
 
   return (
     <TouchableOpacity
@@ -53,7 +96,7 @@ export function Botao({
       {carregando ? (
         <ActivityIndicator
           size="small"
-          color={variante === 'primario' ? Colors.textoPrimario : Colors.vermelho}
+          color={variante === 'primario' ? theme.textoEscuroSobreOuro : theme.ouro}
         />
       ) : (
         <Text style={[styles.textoBase, estilos.texto, estiloTexto]}>
@@ -77,7 +120,7 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
   textoBase: {
-    fontFamily: FontFamily.semiBold,
+    fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyLg,
     letterSpacing: 0.3,
   },
@@ -85,40 +128,3 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
 });
-
-const estilosPorVariante: Record<Variante, { container: ViewStyle; texto: TextStyle }> = {
-  primario: {
-    container: {
-      backgroundColor: Colors.vermelho,
-    },
-    texto: {
-      color: Colors.textoPrimario,
-    },
-  },
-  secundario: {
-    container: {
-      backgroundColor: Colors.transparente,
-      borderWidth: 1.5,
-      borderColor: Colors.vermelho,
-    },
-    texto: {
-      color: Colors.vermelho,
-    },
-  },
-  fantasma: {
-    container: {
-      backgroundColor: Colors.transparente,
-    },
-    texto: {
-      color: Colors.textoSecundario,
-    },
-  },
-  perigo: {
-    container: {
-      backgroundColor: Colors.erro,
-    },
-    texto: {
-      color: Colors.textoPrimario,
-    },
-  },
-};

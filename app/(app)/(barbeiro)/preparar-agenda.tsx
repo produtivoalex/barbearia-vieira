@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   ScrollView,
@@ -14,12 +14,13 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft, Clock, Save, Sparkles, Check, Zap } from 'lucide-react-native';
 import { Botao } from '@/components';
 import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useAgendaSemanal } from '@/hooks/useAgendaSemanal';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
 
-const HORARIOS_PADRAO = ['08:00', '09:00', '10:00', '11:00'];
+const HORARIOS_DISPONIVEIS = ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
 const NOMES_DIAS = [
   'Terça-feira',
   'Quarta-feira',
@@ -48,6 +49,7 @@ function dataLocal(data: Date) {
 
 export default function PrepararAgenda() {
   const router = useRouter();
+  const { theme, isEscuro } = useTheme();
   const { session } = useAuth();
   const { barbearia } = useBarbearia();
   const { carregarProximaParaBarbeiro } = useAgendaSemanal(barbearia?.id);
@@ -57,7 +59,7 @@ export default function PrepararAgenda() {
   const [diasAtivos, setDiasAtivos] = useState<boolean[]>(Array(6).fill(true));
   // Estado dos horários granulares de cada dia (array de 6 listas de strings)
   const [horariosPorDia, setHorariosPorDia] = useState<string[][]>(
-    Array(6).fill(HORARIOS_PADRAO)
+    Array(6).fill(HORARIOS_DISPONIVEIS)
   );
 
   const [abertura, setAbertura] = useState('19:30');
@@ -103,7 +105,7 @@ export default function PrepararAgenda() {
                   const d = new Date(s.data_hora);
                   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
                 });
-              return horasAtivas.length > 0 ? horasAtivas : HORARIOS_PADRAO;
+              return horasAtivas.length > 0 ? horasAtivas : HORARIOS_DISPONIVEIS;
             });
             setHorariosPorDia(novosHorariosPorDia);
           }
@@ -130,7 +132,7 @@ export default function PrepararAgenda() {
     setDiasAtivos((prev) => prev.map((item, i) => (i === index ? valor : item)));
     if (valor) {
       setHorariosPorDia((prev) =>
-        prev.map((lista, i) => (i === index && lista.length === 0 ? HORARIOS_PADRAO : lista))
+        prev.map((lista, i) => (i === index && lista.length === 0 ? HORARIOS_DISPONIVEIS : lista))
       );
     }
   }
@@ -258,24 +260,24 @@ export default function PrepararAgenda() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: theme.borda }]}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.botaoVoltar}
           activeOpacity={0.7}
         >
-          <ChevronLeft size={24} color="#FFFFFF" />
+          <ChevronLeft size={24} color={theme.textoPrimario} />
         </TouchableOpacity>
-        <Text style={styles.titulo}>Preparar Agenda</Text>
+        <Text style={[styles.titulo, { color: theme.textoPrimario }]}>Preparar Agenda</Text>
         <View style={styles.placeholder} />
       </View>
 
       {carregandoDados ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.vermelho} />
-          <Text style={styles.loadingTexto}>Carregando configuração da semana...</Text>
+          <ActivityIndicator size="large" color={theme.ouro} />
+          <Text style={[styles.loadingTexto, { color: theme.textoSecundario }]}>Carregando configuração da semana...</Text>
         </View>
       ) : (
         <ScrollView
@@ -283,28 +285,32 @@ export default function PrepararAgenda() {
           showsVerticalScrollIndicator={false}
         >
           {/* Card Resumo */}
-          <View style={styles.resumoCard}>
-            <View style={styles.resumoIconeWrapper}>
-              <Sparkles size={20} color={Colors.ouro} />
+          <View style={[styles.resumoCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
+            <View style={[styles.resumoIconeWrapper, { backgroundColor: theme.ouroTranslucido }]}>
+              <Sparkles size={20} color={theme.ouroTexto} />
             </View>
             <View style={styles.resumoTexto}>
-              <Text style={styles.resumoTitulo}>Próxima Semana ({totalVagas} vagas no total)</Text>
-              <Text style={styles.resumoDescricao}>
+              <Text style={[styles.resumoTitulo, { color: theme.textoPrimario }]}>Próxima Semana ({totalVagas} vagas no total)</Text>
+              <Text style={[styles.resumoDescricao, { color: theme.textoSecundario }]}>
                 Você pode abrir/fechar o dia inteiro ou liberar apenas horários específicos pela manhã.
               </Text>
             </View>
           </View>
 
           {/* BOX DE LIBERAÇÃO IMEDIATA */}
-          <View style={[styles.boxAberturaImediata, abrirImediatamente && styles.boxAberturaImediataAtiva]}>
+          <View style={[
+            styles.boxAberturaImediata,
+            { backgroundColor: theme.superficie, borderColor: theme.borda },
+            abrirImediatamente && { borderColor: theme.verde, backgroundColor: isEscuro ? 'rgba(34, 197, 94, 0.08)' : '#F0FDF4' },
+          ]}>
             <View style={{ flex: 1, gap: 2 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Zap size={16} color={abrirImediatamente ? Colors.verde : Colors.ouro} />
-                <Text style={styles.boxAberturaImediataTitulo}>
+                <Zap size={16} color={abrirImediatamente ? theme.verde : theme.ouroTexto} />
+                <Text style={[styles.boxAberturaImediataTitulo, { color: theme.textoPrimario }]}>
                   Liberar Imediatamente (Aberta Agora)
                 </Text>
               </View>
-              <Text style={styles.boxAberturaImediataSub}>
+              <Text style={[styles.boxAberturaImediataSub, { color: theme.textoSecundario }]}>
                 {abrirImediatamente
                   ? 'A agenda ficará ABERTA agora para qualquer cliente agendar.'
                   : `A agenda ficará programada para abrir na segunda-feira às ${abertura}.`}
@@ -313,13 +319,13 @@ export default function PrepararAgenda() {
             <Switch
               value={abrirImediatamente}
               onValueChange={setAbrirImediatamente}
-              trackColor={{ false: '#262629', true: Colors.verde }}
+              trackColor={{ false: theme.superficie2, true: theme.verde }}
               thumbColor="#FFFFFF"
             />
           </View>
 
           {/* Seleção de Dias & Horários Granulares */}
-          <Text style={styles.secaoTitulo}>DIAS & HORÁRIOS DA MANHÃ</Text>
+          <Text style={[styles.secaoTitulo, { color: theme.textoSecundario }]}>DIAS & HORÁRIOS DE ATENDIMENTO</Text>
           <View style={styles.diasLista}>
             {datas.map((data, index) => {
               const diaAberto = diasAtivos[index];
@@ -327,14 +333,14 @@ export default function PrepararAgenda() {
               const qtdVagasDia = diaAberto ? horasAtivas.length : 0;
 
               return (
-                <View key={data.toISOString()} style={styles.diaContainer}>
+                <View key={data.toISOString()} style={[styles.diaContainer, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
                   <View style={styles.diaCabecalho}>
                     <View style={styles.diaTexto}>
-                      <Text style={styles.diaNome}>{NOMES_DIAS[index]}</Text>
-                      <Text style={styles.diaData}>
+                      <Text style={[styles.diaNome, { color: theme.textoPrimario }]}>{NOMES_DIAS[index]}</Text>
+                      <Text style={[styles.diaData, { color: theme.textoSecundario }]}>
                         {data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                         {' · '}
-                        <Text style={{ color: qtdVagasDia > 0 ? Colors.verde : Colors.textoSecundario }}>
+                        <Text style={{ color: qtdVagasDia > 0 ? theme.verde : theme.textoDesabilitado }}>
                           {qtdVagasDia > 0 ? `${qtdVagasDia} vaga(s) ativa(s)` : 'Dia fechado'}
                         </Text>
                       </Text>
@@ -343,7 +349,7 @@ export default function PrepararAgenda() {
                     <Switch
                       value={diaAberto}
                       onValueChange={(valor) => handleToggleDia(index, valor)}
-                      trackColor={{ false: '#262629', true: Colors.vermelho }}
+                      trackColor={{ false: theme.superficie2, true: theme.ouro }}
                       thumbColor="#FFFFFF"
                     />
                   </View>
@@ -351,19 +357,27 @@ export default function PrepararAgenda() {
                   {/* Grade de Horários Granulares do Dia */}
                   {diaAberto && (
                     <View style={styles.horariosGranularesGrid}>
-                      {HORARIOS_PADRAO.map((hora) => {
+                      {HORARIOS_DISPONIVEIS.map((hora) => {
                         const ativo = horasAtivas.includes(hora);
                         return (
                           <TouchableOpacity
                             key={hora}
-                            style={[styles.chipHorario, ativo && styles.chipHorarioAtivo]}
+                            style={[
+                              styles.chipHorario,
+                              { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                              ativo && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+                            ]}
                             onPress={() => handleToggleHorario(index, hora)}
                             activeOpacity={0.7}
                           >
-                            <Text style={[styles.chipHorarioTexto, ativo && styles.chipHorarioTextoAtivo]}>
+                            <Text style={[
+                              styles.chipHorarioTexto,
+                              { color: theme.textoSecundario },
+                              ativo && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+                            ]}>
                               {hora}
                             </Text>
-                            {ativo && <Check size={12} color="#FFFFFF" />}
+                            {ativo && <Check size={12} color={theme.textoEscuroSobreOuro} />}
                           </TouchableOpacity>
                         );
                       })}
@@ -377,25 +391,33 @@ export default function PrepararAgenda() {
           {/* Horário de Abertura na Segunda-feira (se não estiver aberta imediatamente) */}
           {!abrirImediatamente && (
             <>
-              <Text style={styles.secaoTitulo}>HORÁRIO DE ABERTURA NA SEGUNDA</Text>
+              <Text style={[styles.secaoTitulo, { color: theme.textoSecundario }]}>HORÁRIO DE ABERTURA NA SEGUNDA</Text>
               <View style={styles.horariosContainer}>
                 {['18:00', '19:00', '19:30', '20:00', '21:00'].map((hora) => (
                   <TouchableOpacity
                     key={hora}
                     onPress={() => setAbertura(hora)}
-                    style={[styles.horaBotao, abertura === hora && styles.horaBotaoAtivo]}
+                    style={[
+                      styles.horaBotao,
+                      { backgroundColor: theme.superficie, borderColor: theme.borda },
+                      abertura === hora && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+                    ]}
                     activeOpacity={0.7}
                   >
-                    <Text style={[styles.horaTexto, abertura === hora && styles.horaTextoAtivo]}>
+                    <Text style={[
+                      styles.horaTexto,
+                      { color: theme.textoSecundario },
+                      abertura === hora && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+                    ]}>
                       {hora}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <View style={styles.infoBox}>
-                <Clock size={16} color={Colors.ouro} />
-                <Text style={styles.infoTexto}>
+              <View style={[styles.infoBox, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
+                <Clock size={16} color={theme.ouroTexto} />
+                <Text style={[styles.infoTexto, { color: theme.ouroTexto }]}>
                   A notificação de abertura será enviada aos clientes na segunda-feira pontualmente às {abertura}.
                 </Text>
               </View>
@@ -423,7 +445,7 @@ export default function PrepararAgenda() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0A0A0A' },
+  safe: { flex: 1, backgroundColor: Colors.fundo },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -432,7 +454,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
     paddingBottom: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#1F1F22',
+    borderBottomColor: Colors.borda,
   },
   botaoVoltar: {
     padding: 4,
@@ -440,7 +462,7 @@ const styles = StyleSheet.create({
   titulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.headingSm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   placeholder: {
     width: 32,
@@ -460,17 +482,17 @@ const styles = StyleSheet.create({
   loadingTexto: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodySm,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   resumoCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: Spacing.sm,
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     borderRadius: Radii.lg,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: '#262629',
+    borderColor: Colors.borda,
     ...Shadows.card,
   },
   resumoIconeWrapper: {
@@ -488,22 +510,22 @@ const styles = StyleSheet.create({
   resumoTitulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   resumoDescricao: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     lineHeight: 16,
   },
   boxAberturaImediata: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     borderRadius: Radii.md,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: '#262629',
+    borderColor: Colors.borda,
     gap: Spacing.sm,
   },
   boxAberturaImediataAtiva: {
@@ -513,18 +535,18 @@ const styles = StyleSheet.create({
   boxAberturaImediataTitulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   boxAberturaImediataSub: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     lineHeight: 16,
   },
   secaoTitulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     letterSpacing: 0.5,
     marginTop: Spacing.xs,
   },
@@ -532,11 +554,11 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   diaContainer: {
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     borderRadius: Radii.md,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: '#262629',
+    borderColor: Colors.borda,
     gap: Spacing.sm,
   },
   diaCabecalho: {
@@ -550,12 +572,12 @@ const styles = StyleSheet.create({
   diaNome: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   diaData: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   horariosGranularesGrid: {
     flexDirection: 'row',
@@ -563,7 +585,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingTop: Spacing.xs,
     borderTopWidth: 1,
-    borderTopColor: '#262629',
+    borderTopColor: Colors.borda,
   },
   chipHorario: {
     flexDirection: 'row',
@@ -572,9 +594,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: Radii.sm,
-    backgroundColor: '#222226',
+    backgroundColor: Colors.superficie2,
     borderWidth: 1,
-    borderColor: '#2E2E33',
+    borderColor: Colors.bordaDestaque,
   },
   chipHorarioAtivo: {
     backgroundColor: Colors.vermelho,
@@ -583,11 +605,11 @@ const styles = StyleSheet.create({
   chipHorarioTexto: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   chipHorarioTextoAtivo: {
     fontFamily: FontFamily.bold,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   horariosContainer: {
     flexDirection: 'row',
@@ -598,9 +620,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: Radii.sm,
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     borderWidth: 1,
-    borderColor: '#262629',
+    borderColor: Colors.borda,
   },
   horaBotaoAtivo: {
     backgroundColor: Colors.vermelho,
@@ -609,11 +631,11 @@ const styles = StyleSheet.create({
   horaTexto: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.bodySm,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   horaTextoAtivo: {
     fontFamily: FontFamily.bold,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   infoBox: {
     flexDirection: 'row',

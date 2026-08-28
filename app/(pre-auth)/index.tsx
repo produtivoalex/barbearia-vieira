@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,13 +11,15 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, Store, ChevronRight } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
-import { Botao, LogoBarbearia } from '@/components';
+import { Botao } from '@/components';
 import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import { iniciarLoginGoogle } from '@/lib/socialAuth';
 import { useLocalizacao } from '@/hooks/useLocalizacao';
@@ -59,9 +61,10 @@ function IconeApple({ tamanho = 20 }: { tamanho?: number }) {
 
 interface SocialAuthProps {
   onCarregando: (v: boolean) => void;
+  altura?: number;
 }
 
-function BotaoGoogleAuth({ onCarregando }: SocialAuthProps) {
+function BotaoGoogleAuth({ onCarregando, altura = 48 }: SocialAuthProps) {
   const [carregando, setCarregando] = useState(false);
   const router = useRouter();
 
@@ -83,7 +86,7 @@ function BotaoGoogleAuth({ onCarregando }: SocialAuthProps) {
 
   return (
     <TouchableOpacity
-      style={[styles.botaoSocial, styles.botaoGoogle, carregando && styles.botaoDesabilitado]}
+      style={[styles.botaoSocial, styles.botaoGoogle, { height: altura }, carregando && styles.botaoDesabilitado]}
       onPress={handleGoogleLogin}
       activeOpacity={0.8}
       disabled={carregando}
@@ -91,16 +94,16 @@ function BotaoGoogleAuth({ onCarregando }: SocialAuthProps) {
       {carregando ? (
         <ActivityIndicator size="small" color={Colors.textoPrimario} />
       ) : (
-        <IconeGoogle tamanho={20} />
+        <IconeGoogle tamanho={18} />
       )}
       <Text style={styles.botaoSocialTexto}>
-        {carregando ? 'Conectando...' : 'Entrar com o Google'}
+        {carregando ? '...' : 'Google'}
       </Text>
     </TouchableOpacity>
   );
 }
 
-function BotaoAppleAuth({ onCarregando }: SocialAuthProps) {
+function BotaoAppleAuth({ onCarregando, altura = 48 }: SocialAuthProps) {
   function handleAppleLogin() {
     Alert.alert(
       'Em Breve no iOS 🍏',
@@ -111,13 +114,13 @@ function BotaoAppleAuth({ onCarregando }: SocialAuthProps) {
 
   return (
     <TouchableOpacity
-      style={[styles.botaoSocial, styles.botaoApple]}
+      style={[styles.botaoSocial, styles.botaoApple, { height: altura }]}
       onPress={handleAppleLogin}
       activeOpacity={0.8}
     >
-      <IconeApple tamanho={20} />
+      <IconeApple tamanho={18} />
       <Text style={styles.botaoAppleTexto}>
-        Iniciar sessão com a Apple
+        Apple
       </Text>
     </TouchableOpacity>
   );
@@ -125,6 +128,13 @@ function BotaoAppleAuth({ onCarregando }: SocialAuthProps) {
 
 export default function TelaLogin() {
   const router = useRouter();
+  const { theme, isEscuro } = useTheme();
+  const { height, width } = useWindowDimensions();
+
+  // Breakpoints responsivos para telas pequenas, médias e grandes
+  const isPequeno = height < 720;
+  const isMuitoAlto = height >= 840;
+
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
@@ -150,115 +160,170 @@ export default function TelaLogin() {
     }
   }
 
+  // Dimensões responsivas proporcionais
+  const logoWidth = isPequeno ? 190 : isMuitoAlto ? 260 : 230;
+  const logoHeight = isPequeno ? 50 : isMuitoAlto ? 74 : 64;
+  const cardPadding = isPequeno ? 16 : isMuitoAlto ? 24 : 20;
+  const cardGap = isPequeno ? 10 : isMuitoAlto ? 16 : 14;
+  const inputHeight = isPequeno ? 46 : isMuitoAlto ? 54 : 50;
+  const btnHeight = isPequeno ? 46 : isMuitoAlto ? 52 : 48;
+  const socialBtnHeight = isPequeno ? 42 : isMuitoAlto ? 48 : 46;
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[
+            styles.scroll,
+            {
+              paddingVertical: isPequeno ? Spacing.sm : Spacing.lg,
+              gap: isPequeno ? 10 : isMuitoAlto ? 20 : 14,
+            },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          bounces={false}
         >
-          {/* Header da Plataforma Na Régua */}
-          <View style={styles.logoContainer}>
-            <Image
-              source={require('@/assets/banner-na-regua.png')}
-              style={styles.bannerLogo}
-              resizeMode="contain"
-            />
-            <Text style={styles.plataformaSlogan}>Sua barbearia favorita a um toque</Text>
-          </View>
+          <View style={styles.conteudoCentral}>
+            {/* Header da Plataforma Na Régua */}
+            <View style={[styles.logoContainer, { marginBottom: isPequeno ? 4 : 8 }]}>
+              <Image
+                source={require('@/assets/banner-na-regua.png')}
+                style={{ width: logoWidth, height: logoHeight, alignSelf: 'center' }}
+                resizeMode="contain"
+              />
+              <Text style={[styles.plataformaSlogan, { color: theme.textoSecundario, fontSize: isPequeno ? 12 : 13 }]}>
+                Sua barbearia favorita a um toque
+              </Text>
+            </View>
 
-          {/* Card de login */}
-          <View style={styles.card}>
-            <Text style={styles.titulo}>Bem-vindo!</Text>
-            <Text style={styles.subtitulo}>Acesse sua conta para agendar</Text>
+            {/* Card de login */}
+            <View style={[styles.card, { backgroundColor: theme.superficie, borderColor: theme.borda, padding: cardPadding, gap: cardGap }]}>
+              <View style={styles.cardTopo}>
+                <Text style={[styles.titulo, { color: theme.textoPrimario, fontSize: isPequeno ? 22 : 26 }]}>
+                  Bem-vindo!
+                </Text>
+                <Text style={[styles.subtitulo, { color: theme.textoSecundario, fontSize: isPequeno ? 12 : 14 }]}>
+                  Acesse sua conta para agendar
+                </Text>
+              </View>
 
-            {/* E-mail */}
-            <View style={styles.campoContainer}>
-              <Text style={styles.campoLabel}>E-mail</Text>
-              <View style={styles.inputWrapper}>
-                <Mail size={18} color={Colors.textoSecundario} style={styles.inputIcone} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="seu@email.com"
-                  placeholderTextColor={Colors.textoDesabilitado}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  value={email}
-                  onChangeText={setEmail}
-                  selectionColor={Colors.vermelho}
-                />
+              {/* E-mail */}
+              <View style={[styles.campoContainer, { gap: isPequeno ? 3 : 5 }]}>
+                <Text style={[styles.campoLabel, { color: theme.textoSecundario }]}>E-mail</Text>
+                <View style={[styles.inputWrapper, { backgroundColor: theme.superficie2, borderColor: theme.borda, height: inputHeight }]}>
+                  <Mail size={17} color={theme.textoSecundario} style={styles.inputIcone} />
+                  <TextInput
+                    style={[styles.input, { color: theme.textoPrimario }]}
+                    placeholder="seu@email.com"
+                    placeholderTextColor={theme.textoDesabilitado}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    value={email}
+                    onChangeText={setEmail}
+                    selectionColor={theme.ouro}
+                  />
+                </View>
+              </View>
+
+              {/* Senha */}
+              <View style={[styles.campoContainer, { gap: isPequeno ? 3 : 5 }]}>
+                <Text style={[styles.campoLabel, { color: theme.textoSecundario }]}>Senha</Text>
+                <View style={[styles.inputWrapper, { backgroundColor: theme.superficie2, borderColor: theme.borda, height: inputHeight }]}>
+                  <Lock size={17} color={theme.textoSecundario} style={styles.inputIcone} />
+                  <TextInput
+                    style={[styles.input, { color: theme.textoPrimario }]}
+                    placeholder="••••••••"
+                    placeholderTextColor={theme.textoDesabilitado}
+                    secureTextEntry={!mostrarSenha}
+                    value={senha}
+                    onChangeText={setSenha}
+                    selectionColor={theme.ouro}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setMostrarSenha((v) => !v)}
+                    style={styles.btnOlho}
+                    activeOpacity={0.7}
+                  >
+                    {mostrarSenha ? (
+                      <EyeOff size={18} color={theme.textoSecundario} />
+                    ) : (
+                      <Eye size={18} color={theme.textoSecundario} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <Botao
+                label={carregando ? '' : 'Entrar'}
+                onPress={handleLogin}
+                desabilitado={carregando || carregandoSocial}
+                estiloContainer={styles.botaoPrincipal}
+              />
+
+              {carregando && (
+                <ActivityIndicator color={theme.ouro} style={styles.loader} />
+              )}
+
+              {/* Divisor */}
+              <View style={styles.divisorRow}>
+                <View style={[styles.divisorLinha, { backgroundColor: theme.borda }]} />
+                <Text style={[styles.divisorTexto, { color: theme.textoDesabilitado }]}>ou entre com</Text>
+                <View style={[styles.divisorLinha, { backgroundColor: theme.borda }]} />
+              </View>
+
+              {/* Botões de Login Social Lado a Lado */}
+              <View style={styles.sociaisContainer}>
+                <BotaoGoogleAuth onCarregando={setCarregandoSocial} altura={socialBtnHeight} />
+                <BotaoAppleAuth onCarregando={setCarregandoSocial} altura={socialBtnHeight} />
               </View>
             </View>
 
-            {/* Senha */}
-            <View style={styles.campoContainer}>
-              <Text style={styles.campoLabel}>Senha</Text>
-              <View style={styles.inputWrapper}>
-                <Lock size={18} color={Colors.textoSecundario} style={styles.inputIcone} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="••••••••"
-                  placeholderTextColor={Colors.textoDesabilitado}
-                  secureTextEntry={!mostrarSenha}
-                  value={senha}
-                  onChangeText={setSenha}
-                  selectionColor={Colors.vermelho}
-                />
-                <TouchableOpacity
-                  onPress={() => setMostrarSenha((v) => !v)}
-                  style={styles.btnOlho}
-                  activeOpacity={0.7}
-                >
-                  {mostrarSenha ? (
-                    <EyeOff size={18} color={Colors.textoSecundario} />
-                  ) : (
-                    <Eye size={18} color={Colors.textoSecundario} />
-                  )}
-                </TouchableOpacity>
+            {/* Banner para Donos de Estabelecimentos */}
+            <TouchableOpacity
+              style={[
+                styles.bannerBarbeiro,
+                {
+                  backgroundColor: theme.superficie,
+                  borderColor: theme.borda,
+                  paddingVertical: isPequeno ? 10 : 14,
+                  paddingHorizontal: isPequeno ? 14 : 16,
+                  marginTop: isPequeno ? 10 : 14,
+                },
+              ]}
+              activeOpacity={0.8}
+              onPress={() => router.push({ pathname: '/(pre-auth)/cadastro', params: { tipo: 'barbeiro' } })}
+            >
+              <View style={[styles.bannerBarbeiroIcone, { backgroundColor: theme.ouroTranslucido, width: isPequeno ? 36 : 42, height: isPequeno ? 36 : 42 }]}>
+                <Store size={isPequeno ? 18 : 22} color={theme.ouroTexto} />
               </View>
-            </View>
+              <View style={styles.bannerBarbeiroTextos}>
+                <Text style={[styles.bannerBarbeiroTitulo, { color: theme.textoPrimario, fontSize: isPequeno ? 13 : 14.5 }]}>
+                  É Dono de Barbearia?
+                </Text>
+                <Text style={[styles.bannerBarbeiroDesc, { color: theme.textoSecundario, fontSize: isPequeno ? 10.5 : 11.5, lineHeight: isPequeno ? 14 : 16 }]}>
+                  Cadastre seu estabelecimento e gerencie sua agenda
+                </Text>
+              </View>
+              <ChevronRight size={18} color={theme.ouroTexto} />
+            </TouchableOpacity>
 
-            <Botao
-              label={carregando ? '' : 'Entrar'}
-              onPress={handleLogin}
-              desabilitado={carregando || carregandoSocial}
-              estiloContainer={styles.botaoPrincipal}
-            />
-
-            {carregando && (
-              <ActivityIndicator color={Colors.vermelho} style={styles.loader} />
-            )}
-
-            {/* Divisor */}
-            <View style={styles.divisorRow}>
-              <View style={styles.divisorLinha} />
-              <Text style={styles.divisorTexto}>ou continue com</Text>
-              <View style={styles.divisorLinha} />
-            </View>
-
-            {/* Botões de Login Social */}
-            <View style={styles.sociaisContainer}>
-              <BotaoGoogleAuth onCarregando={setCarregandoSocial} />
-              <BotaoAppleAuth onCarregando={setCarregandoSocial} />
-            </View>
+            {/* Rodapé */}
+            <TouchableOpacity
+              onPress={() => router.push('/(pre-auth)/cadastro')}
+              style={[styles.rodape, { marginTop: isPequeno ? 8 : 14 }]}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.rodapeTexto, { color: theme.textoSecundario, fontSize: isPequeno ? 13 : 14 }]}>
+                Não tem conta?{' '}
+                <Text style={[styles.rodapeLink, { color: theme.ouroTexto }]}>Cadastre-se</Text>
+              </Text>
+            </TouchableOpacity>
           </View>
-
-          {/* Rodapé */}
-          <TouchableOpacity
-            onPress={() => router.push('/(pre-auth)/cadastro')}
-            style={styles.rodape}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.rodapeTexto}>
-              Não tem conta?{' '}
-              <Text style={styles.rodapeLink}>Cadastre-se</Text>
-            </Text>
-          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -271,71 +336,66 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     paddingHorizontal: Spacing.telaH,
-    paddingBottom: Spacing.xxl,
-    alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.lg,
+    alignItems: 'center',
+  },
+  conteudoCentral: {
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
   },
   logoContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: Spacing.xl,
-    marginBottom: Spacing.xs,
     gap: 4,
-  },
-  bannerLogo: {
-    width: 250,
-    height: 84,
-    alignSelf: 'center',
   },
   plataformaSlogan: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
     color: Colors.textoSecundario,
+    letterSpacing: 0.2,
   },
   card: {
     width: '100%',
     backgroundColor: Colors.superficie,
-    borderRadius: Radii.lg,
-    padding: Spacing.xl,
-    gap: Spacing.md,
+    borderRadius: Radii.xl,
     ...Shadows.card,
     borderWidth: 1,
     borderColor: Colors.borda,
   },
+  cardTopo: {
+    marginBottom: 2,
+  },
   titulo: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.displayMd,
     color: Colors.textoPrimario,
+    letterSpacing: 0.3,
   },
   subtitulo: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodyMd,
     color: Colors.textoSecundario,
-    marginTop: -Spacing.xs,
+    marginTop: 2,
   },
-  campoContainer: { gap: Spacing.xs },
+  campoContainer: {},
   campoLabel: {
     fontFamily: FontFamily.medium,
-    fontSize: FontSize.bodySm,
+    fontSize: 12,
     color: Colors.textoSecundario,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.superficie2,
-    borderRadius: Radii.sm,
+    borderRadius: Radii.md,
     borderWidth: 1,
     borderColor: Colors.borda,
-    paddingHorizontal: Spacing.sm,
-    height: 52,
+    paddingHorizontal: Spacing.md,
     gap: Spacing.xs,
   },
   inputIcone: { marginRight: 2 },
   input: {
     flex: 1,
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodyLg,
+    fontSize: FontSize.bodyMd,
     color: Colors.textoPrimario,
     height: '100%',
   },
@@ -344,35 +404,36 @@ const styles = StyleSheet.create({
   },
   botaoPrincipal: {
     width: '100%',
-    marginTop: Spacing.xs,
+    marginTop: 4,
   },
   loader: { alignSelf: 'center' },
   divisorRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    marginVertical: Spacing.xs,
+    marginVertical: 4,
   },
   divisorLinha: { flex: 1, height: 1, backgroundColor: Colors.borda },
   divisorTexto: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.labelXs,
+    fontSize: 11,
     color: Colors.textoSecundario,
   },
   sociaisContainer: {
+    flexDirection: 'row',
     gap: Spacing.sm,
   },
   botaoSocial: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.sm,
-    height: 50,
-    borderRadius: Radii.full,
-    paddingHorizontal: Spacing.md,
+    gap: 8,
+    borderRadius: Radii.md,
+    paddingHorizontal: Spacing.sm,
   },
   botaoGoogle: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: Colors.superficie2,
     borderWidth: 1,
     borderColor: Colors.borda,
   },
@@ -386,23 +447,54 @@ const styles = StyleSheet.create({
   },
   botaoSocialTexto: {
     fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.bodyMd,
+    fontSize: FontSize.bodySm,
     color: Colors.textoPrimario,
   },
   botaoAppleTexto: {
     fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.bodyMd,
+    fontSize: FontSize.bodySm,
     color: '#FFFFFF',
   },
-  rodape: { paddingBottom: Spacing.md },
+  bannerBarbeiro: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    backgroundColor: Colors.superficie,
+    borderRadius: Radii.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(203, 161, 74, 0.3)',
+    ...Shadows.card,
+  },
+  bannerBarbeiroIcone: {
+    borderRadius: Radii.md,
+    backgroundColor: Colors.ouroTranslucido,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bannerBarbeiroTextos: {
+    flex: 1,
+    gap: 2,
+  },
+  bannerBarbeiroTitulo: {
+    fontFamily: FontFamily.bold,
+    color: Colors.ouro,
+  },
+  bannerBarbeiroDesc: {
+    fontFamily: FontFamily.regular,
+    color: Colors.textoSecundario,
+  },
+  rodape: {
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
   rodapeTexto: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodyMd,
     color: Colors.textoSecundario,
     textAlign: 'center',
   },
   rodapeLink: {
-    fontFamily: FontFamily.semiBold,
-    color: Colors.vermelho,
+    fontFamily: FontFamily.bold,
+    color: Colors.ouro,
   },
 });

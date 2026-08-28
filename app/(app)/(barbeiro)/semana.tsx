@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+﻿import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Scissors, User, Phone, MessageCircle, X, Calendar, Zap, CalendarPlus } from 'lucide-react-native';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { usePainelBarbeiro, type AgendamentoBarbeiro } from '@/hooks/usePainelBarbeiro';
 import { useAgendaSemanal } from '@/hooks/useAgendaSemanal';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
@@ -37,6 +38,7 @@ function formatarHora(iso: string) {
 
 export default function TelaBarbeiroSemana() {
   const router = useRouter();
+  const { theme, isEscuro } = useTheme();
   const { session } = useAuth();
   const { barbearia } = useBarbearia();
   const { agendamentosSemana, carregando, recarregar } = usePainelBarbeiro(barbearia?.id);
@@ -120,7 +122,8 @@ export default function TelaBarbeiroSemana() {
     }
     const limpo = telefone.replace(/\D/g, '');
     const numFinal = limpo.startsWith('55') ? limpo : `55${limpo}`;
-    const msg = encodeURIComponent(`Olá ${nomeCliente || ''}, aqui é da Barbearia Vieira sobre o seu agendamento.`);
+    const nomeBarbearia = barbearia?.nome || 'Na Régua';
+    const msg = encodeURIComponent(`Olá ${nomeCliente || ''}, aqui é da ${nomeBarbearia} sobre o seu agendamento.`);
     Linking.openURL(`https://wa.me/${numFinal}?text=${msg}`).catch(() => {
       Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.');
     });
@@ -138,11 +141,11 @@ export default function TelaBarbeiroSemana() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]} edges={['top']}>
+      <View style={[styles.header, { borderBottomColor: theme.borda }]}>
         <View>
-          <Text style={styles.titulo}>Agenda Semanal</Text>
-          <Text style={styles.subtitulo}>{labelSemana}</Text>
+          <Text style={[styles.titulo, { color: theme.textoPrimario }]}>Agenda Semanal</Text>
+          <Text style={[styles.subtitulo, { color: theme.textoSecundario }]}>{labelSemana}</Text>
         </View>
         <View style={styles.metricasTopo}>
           <Text style={styles.metricasTopoAgendamentos}>{agendamentosSemana.length} cortes</Text>
@@ -160,70 +163,70 @@ export default function TelaBarbeiroSemana() {
               recarregar();
               carregarStatusAgenda();
             }}
-            tintColor={Colors.vermelho}
-            colors={[Colors.vermelho]}
+            tintColor={theme.ouro}
+            colors={[theme.ouro]}
           />
         }
       >
         {/* Banner de Gerenciamento / Liberação Rápida da Próxima Semana */}
-        <View style={styles.cardAberturaRapida}>
+        <View style={[styles.cardAberturaRapida, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
           {agendaProxima?.status === 'programada' ? (
             <View style={styles.linhaAberturaProgramada}>
               <View style={{ flex: 1, gap: 2 }}>
-                <Text style={styles.aberturaRapidaTitulo}>Próxima Semana Programada</Text>
-                <Text style={styles.aberturaRapidaSub}>Abertura agendada para segunda-feira</Text>
+                <Text style={[styles.aberturaRapidaTitulo, { color: theme.textoPrimario }]}>Próxima Semana Programada</Text>
+                <Text style={[styles.aberturaRapidaSub, { color: theme.textoSecundario }]}>Abertura agendada para segunda-feira</Text>
               </View>
               <TouchableOpacity
-                style={styles.botaoLiberarAgora}
+                style={[styles.botaoLiberarAgora, { backgroundColor: theme.ouro }]}
                 onPress={handleLiberarAgendaAgora}
                 disabled={liberando}
                 activeOpacity={0.8}
               >
                 {liberando ? (
-                  <ActivityIndicator size="small" color="#0E0E0E" />
+                  <ActivityIndicator size="small" color={theme.textoEscuroSobreOuro} />
                 ) : (
                   <>
-                    <Zap size={14} color="#0E0E0E" />
-                    <Text style={styles.botaoLiberarAgoraTexto}>Liberar Agora</Text>
+                    <Zap size={14} color={theme.textoEscuroSobreOuro} />
+                    <Text style={[styles.botaoLiberarAgoraTexto, { color: theme.textoEscuroSobreOuro }]}>Liberar Agora</Text>
                   </>
                 )}
               </TouchableOpacity>
             </View>
           ) : agendaProxima?.status === 'aberta' ? (
             <View style={styles.linhaAberturaAberta}>
-              <View style={styles.badgeAberta}>
-                <Zap size={14} color={Colors.verde} />
-                <Text style={styles.badgeAbertaTexto}>AGENDA DA PRÓXIMA SEMANA ABERTA 🟢</Text>
+              <View style={[styles.badgeAberta, { backgroundColor: theme.verdeClaro }]}>
+                <Zap size={14} color={theme.verde} />
+                <Text style={[styles.badgeAbertaTexto, { color: theme.verde }]}>AGENDA DA PRÓXIMA SEMANA ABERTA 🟢</Text>
               </View>
               <TouchableOpacity
-                style={styles.btnEditarAgenda}
+                style={[styles.btnEditarAgenda, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
                 onPress={() => router.push('/(app)/(barbeiro)/preparar-agenda')}
                 activeOpacity={0.7}
               >
-                <Text style={styles.btnEditarAgendaTexto}>Ajustar Vagas</Text>
+                <Text style={[styles.btnEditarAgendaTexto, { color: theme.textoPrimario }]}>Ajustar Vagas</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <TouchableOpacity
-              style={styles.btnCriarAgenda}
+              style={[styles.btnCriarAgenda, { backgroundColor: theme.ouro }]}
               onPress={() => router.push('/(app)/(barbeiro)/preparar-agenda')}
               activeOpacity={0.8}
             >
-              <CalendarPlus size={16} color="#FFFFFF" />
-              <Text style={styles.btnCriarAgendaTexto}>Preparar Agenda da Próxima Semana</Text>
+              <CalendarPlus size={16} color={theme.textoEscuroSobreOuro} />
+              <Text style={[styles.btnCriarAgendaTexto, { color: theme.textoEscuroSobreOuro }]}>Preparar Agenda da Próxima Semana</Text>
             </TouchableOpacity>
           )}
         </View>
 
         {carregando && agendamentosSemana.length === 0 ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.vermelho} />
+            <ActivityIndicator size="large" color={theme.ouro} />
           </View>
         ) : porDia.length === 0 ? (
           <View style={styles.vazio}>
-            <Calendar size={36} color={Colors.textoDesabilitado} />
-            <Text style={styles.vazioTitulo}>Sem agendamentos nesta semana</Text>
-            <Text style={styles.vazioTexto}>
+            <Calendar size={36} color={theme.textoDesabilitado} />
+            <Text style={[styles.vazioTitulo, { color: theme.textoPrimario }]}>Sem agendamentos nesta semana</Text>
+            <Text style={[styles.vazioTexto, { color: theme.textoSecundario }]}>
               Assim que os clientes realizarem agendamentos, eles serão organizados aqui por dia.
             </Text>
           </View>
@@ -234,13 +237,13 @@ export default function TelaBarbeiroSemana() {
               <View key={chave} style={styles.grupodia}>
                 {/* Cabeçalho do dia */}
                 <View style={styles.diaCabecalho}>
-                  <Text style={styles.diaNome}>{formatarDataCurta(itens[0].data_hora)}</Text>
+                  <Text style={[styles.diaNome, { color: theme.textoPrimario }]}>{formatarDataCurta(itens[0].data_hora)}</Text>
                   <View style={styles.diaBadges}>
-                    <Text style={styles.diaFaturamento}>
+                    <Text style={[styles.diaFaturamento, { color: theme.ouroTexto }]}>
                       {faturamentoDia.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </Text>
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeTexto}>{itens.length} {itens.length === 1 ? 'ag.' : 'ag.'}</Text>
+                    <View style={[styles.badge, { backgroundColor: theme.ouroTranslucido }]}>
+                      <Text style={[styles.badgeTexto, { color: theme.ouroTexto }]}>{itens.length} {itens.length === 1 ? 'ag.' : 'ag.'}</Text>
                     </View>
                   </View>
                 </View>
@@ -249,28 +252,28 @@ export default function TelaBarbeiroSemana() {
                 {itens.map((item) => (
                   <TouchableOpacity
                     key={item.id}
-                    style={styles.cardItem}
+                    style={[styles.cardItem, { backgroundColor: theme.superficie, borderColor: theme.borda, borderWidth: 1 }]}
                     activeOpacity={0.75}
                     onPress={() => setAgendamentoSelecionado(item)}
                   >
                     <View style={styles.cardHorario}>
-                      <Text style={styles.cardHora}>{formatarHora(item.data_hora)}</Text>
-                      <Text style={styles.cardDuracao}>{item.servico.duracao_minutos}min</Text>
+                      <Text style={[styles.cardHora, { color: theme.ouroTexto }]}>{formatarHora(item.data_hora)}</Text>
+                      <Text style={[styles.cardDuracao, { color: theme.textoSecundario }]}>{item.servico.duracao_minutos}min</Text>
                     </View>
 
-                    <View style={styles.divisorVertical} />
+                    <View style={[styles.divisorVertical, { backgroundColor: theme.borda }]} />
 
                     <View style={styles.cardInfo}>
-                      <Text style={styles.clienteNome} numberOfLines={1}>
+                      <Text style={[styles.clienteNome, { color: theme.textoPrimario }]} numberOfLines={1}>
                         {item.cliente.nome_completo || 'Cliente'}
                       </Text>
-                      <Text style={styles.servicoNome} numberOfLines={1}>
+                      <Text style={[styles.servicoNome, { color: theme.textoSecundario }]} numberOfLines={1}>
                         {item.servico.nome}
                       </Text>
                     </View>
 
                     <View style={styles.cardFim}>
-                      <Text style={styles.preco}>
+                      <Text style={[styles.preco, { color: theme.ouroTexto }]}>
                         {Number(item.servico.preco).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </Text>
                     </View>
@@ -290,15 +293,15 @@ export default function TelaBarbeiroSemana() {
         onRequestClose={() => setAgendamentoSelecionado(null)}
       >
         <Pressable style={styles.modalOverlay} onPress={() => setAgendamentoSelecionado(null)}>
-          <Pressable style={styles.modalConteudo} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalTraco} />
+          <Pressable style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
+            <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
 
             {agendamentoSelecionado && (
               <>
                 <View style={styles.modalHeader}>
                   <View style={{ gap: 2 }}>
-                    <Text style={styles.modalTitulo}>Detalhes do Agendamento</Text>
-                    <Text style={styles.modalSubtitulo}>
+                    <Text style={[styles.modalTitulo, { color: theme.textoPrimario }]}>Detalhes do Agendamento</Text>
+                    <Text style={[styles.modalSubtitulo, { color: theme.textoSecundario }]}>
                       {formatarDataCurta(agendamentoSelecionado.data_hora)} às {formatarHora(agendamentoSelecionado.data_hora)}
                     </Text>
                   </View>
@@ -306,20 +309,20 @@ export default function TelaBarbeiroSemana() {
                     onPress={() => setAgendamentoSelecionado(null)}
                     style={styles.modalBtnFechar}
                   >
-                    <X size={20} color={Colors.textoSecundario} />
+                    <X size={20} color={theme.textoSecundario} />
                   </TouchableOpacity>
                 </View>
 
                 {/* Card do Cliente */}
-                <View style={styles.modalCardCliente}>
-                  <View style={styles.avatar}>
-                    <User size={20} color={Colors.ouro} />
+                <View style={[styles.modalCardCliente, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                  <View style={[styles.avatar, { backgroundColor: theme.ouroTranslucido }]}>
+                    <User size={20} color={theme.ouroTexto} />
                   </View>
                   <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={styles.modalClienteNome}>
+                    <Text style={[styles.modalClienteNome, { color: theme.textoPrimario }]}>
                       {agendamentoSelecionado.cliente.nome_completo || 'Cliente'}
                     </Text>
-                    <Text style={styles.modalClienteTelefone}>
+                    <Text style={[styles.modalClienteTelefone, { color: theme.textoSecundario }]}>
                       {agendamentoSelecionado.cliente.telefone || 'Sem telefone'}
                     </Text>
                   </View>
@@ -379,7 +382,7 @@ export default function TelaBarbeiroSemana() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#0E0E0E',
+    backgroundColor: '#F7F6F2',
   },
   header: {
     flexDirection: 'row',
@@ -389,12 +392,12 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#1C1C1E',
+    borderBottomColor: Colors.borda,
   },
   titulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.headingSm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   subtitulo: {
     fontFamily: FontFamily.regular,
@@ -422,11 +425,11 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.giant,
   },
   cardAberturaRapida: {
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     borderRadius: Radii.lg,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: '#262629',
+    borderColor: Colors.borda,
     ...Shadows.card,
   },
   linhaAberturaProgramada: {
@@ -438,12 +441,12 @@ const styles = StyleSheet.create({
   aberturaRapidaTitulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   aberturaRapidaSub: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   botaoLiberarAgora: {
     flexDirection: 'row',
@@ -457,7 +460,7 @@ const styles = StyleSheet.create({
   botaoLiberarAgoraTexto: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.labelXs,
-    color: '#0E0E0E',
+    color: Colors.textoEscuroSobreOuro,
   },
   linhaAberturaAberta: {
     flexDirection: 'row',
@@ -488,14 +491,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: Colors.vermelho,
+    backgroundColor: Colors.ouro,
     paddingVertical: 12,
     borderRadius: Radii.md,
   },
   btnCriarAgendaTexto: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoEscuroSobreOuro,
   },
   loadingContainer: {
     paddingTop: 80,
@@ -511,7 +514,7 @@ const styles = StyleSheet.create({
   vazioTitulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyLg,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
     marginTop: Spacing.xs,
   },
   vazioTexto: {
@@ -530,7 +533,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingBottom: Spacing.xs,
     borderBottomWidth: 1,
-    borderBottomColor: '#1F1F22',
+    borderBottomColor: Colors.borda,
   },
   diaNome: {
     fontFamily: FontFamily.bold,
@@ -562,11 +565,11 @@ const styles = StyleSheet.create({
   cardItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     borderRadius: Radii.md,
     padding: Spacing.sm,
     borderWidth: 1,
-    borderColor: '#262629',
+    borderColor: Colors.borda,
     gap: Spacing.sm,
   },
   cardHorario: {
@@ -576,7 +579,7 @@ const styles = StyleSheet.create({
   cardHora: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   cardDuracao: {
     fontFamily: FontFamily.regular,
@@ -586,7 +589,7 @@ const styles = StyleSheet.create({
   divisorVertical: {
     width: 1,
     height: 32,
-    backgroundColor: '#262629',
+    backgroundColor: Colors.borda,
   },
   cardInfo: {
     flex: 1,
@@ -595,7 +598,7 @@ const styles = StyleSheet.create({
   clienteNome: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   servicoNome: {
     fontFamily: FontFamily.regular,
@@ -616,21 +619,21 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalConteudo: {
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     borderTopLeftRadius: Radii.xl,
     borderTopRightRadius: Radii.xl,
     paddingHorizontal: Spacing.telaH,
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.giant,
     borderWidth: 1,
-    borderColor: '#262629',
+    borderColor: Colors.borda,
     gap: Spacing.md,
   },
   modalTraco: {
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#3F3F46',
+    backgroundColor: Colors.bordaDestaque,
     alignSelf: 'center',
     marginBottom: Spacing.xs,
   },
@@ -642,7 +645,7 @@ const styles = StyleSheet.create({
   modalTitulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyLg,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   modalSubtitulo: {
     fontFamily: FontFamily.regular,
@@ -657,11 +660,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    backgroundColor: '#1E1E22',
+    backgroundColor: Colors.superficie2,
     borderRadius: Radii.md,
     padding: Spacing.sm,
     borderWidth: 1,
-    borderColor: '#262629',
+    borderColor: Colors.borda,
   },
   avatar: {
     width: 40,
@@ -674,7 +677,7 @@ const styles = StyleSheet.create({
   modalClienteNome: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   modalClienteTelefone: {
     fontFamily: FontFamily.regular,
@@ -682,11 +685,11 @@ const styles = StyleSheet.create({
     color: Colors.textoSecundario,
   },
   modalCardServico: {
-    backgroundColor: '#1E1E22',
+    backgroundColor: Colors.superficie2,
     borderRadius: Radii.md,
     padding: Spacing.sm,
     borderWidth: 1,
-    borderColor: '#262629',
+    borderColor: Colors.borda,
     gap: Spacing.xs,
   },
   modalLinhaInfo: {
@@ -697,7 +700,7 @@ const styles = StyleSheet.create({
   modalServicoNome: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   modalLinhaValores: {
     flexDirection: 'row',
@@ -735,11 +738,11 @@ const styles = StyleSheet.create({
   btnLigar: {
     backgroundColor: '#2C2C2E',
     borderWidth: 1,
-    borderColor: '#3F3F46',
+    borderColor: Colors.bordaDestaque,
   },
   modalBtnAcaoTexto: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
 });

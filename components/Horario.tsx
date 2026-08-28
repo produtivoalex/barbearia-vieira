@@ -6,7 +6,8 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { Colors, FontFamily, FontSize, Radii, Spacing } from '@/theme';
+import { FontFamily, FontSize, Radii, Spacing } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type EstadoHorario = 'disponivel' | 'selecionado' | 'indisponivel';
 
@@ -18,7 +19,12 @@ interface HorarioProps {
 }
 
 export function Horario({ horario, estado, onPress, estilo }: HorarioProps) {
-  const config = configPorEstado[estado];
+  const { theme } = useTheme();
+  const config = {
+    disponivel: { container: { backgroundColor: theme.superficie2, borderColor: theme.borda }, texto: { color: theme.textoPrimario } },
+    selecionado: { container: { backgroundColor: theme.ouro, borderColor: theme.ouro }, texto: { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold } },
+    indisponivel: { container: { backgroundColor: theme.transparente, borderColor: theme.transparente, opacity: 0.3 }, texto: { color: theme.textoDesabilitado } },
+  }[estado];
 
   return (
     <TouchableOpacity
@@ -47,33 +53,5 @@ const styles = StyleSheet.create({
     fontSize: FontSize.bodyMd,
   } as TextStyle,
 });
-
-const configPorEstado: Record<
-  EstadoHorario,
-  { container: ViewStyle; texto: TextStyle }
-> = {
-  disponivel: {
-    container: {
-      backgroundColor: Colors.superficie2,
-      borderColor: Colors.borda,
-    },
-    texto: { color: Colors.textoPrimario },
-  },
-  selecionado: {
-    container: {
-      backgroundColor: Colors.vermelho,
-      borderColor: Colors.vermelho,
-    },
-    texto: { color: Colors.textoPrimario },
-  },
-  indisponivel: {
-    container: {
-      backgroundColor: Colors.transparente,
-      borderColor: Colors.transparente,
-      opacity: 0.3,
-    },
-    texto: { color: Colors.textoDesabilitado },
-  },
-};
 
 export type { EstadoHorario };

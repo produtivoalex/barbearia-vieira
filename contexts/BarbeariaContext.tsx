@@ -114,6 +114,8 @@ interface BarbeariaContextValue {
 
 const BarbeariaContext = createContext<BarbeariaContextValue | undefined>(undefined);
 
+const getStorageKey = (uid?: string) => uid ? `@barbearia/tenant-selecionado:${uid}` : '@barbearia/tenant-selecionado';
+
 export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
   const [barbearia, setBarbearia] = useState<BarbeariaPublica | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -122,20 +124,10 @@ export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
     try {
       setCarregando(true);
 
-      // 1. Tenta AsyncStorage local
-      const valor = await AsyncStorage.getItem(STORAGE_KEY);
-      if (valor) {
-        try {
-          const parsed = JSON.parse(valor) as BarbeariaPublica;
-          if (parsed && parsed.id) {
-            setBarbearia(parsed);
-            setCarregando(false);
-            return;
-          }
-        } catch {}
-      }
+      // Limpa qualquer chave legado não escopada que possa ter ficado em cache
+      await AsyncStorage.removeItem('@barbearia/tenant-selecionado').catch(() => {});
 
-      // 2. Se não estiver no AsyncStorage, busca no banco para o usuário logado
+      // 1. Obtém usuário autenticado
       const { data: usuario } = await supabase.auth.getUser();
       if (!usuario.user?.id) {
         setBarbearia(null);
@@ -144,8 +136,9 @@ export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
       }
 
       const uid = usuario.user.id;
+      const storageKeyUsuario = getStorageKey(uid);
 
-      // 2a. Verifica se é membro da equipe (barbeiro / gestor / proprietário)
+      // 2. Verifica se é membro da equipe (barbeiro / gestor / proprietário)
       const { data: membro } = await supabase
         .from('barbearia_membros')
         .select(
@@ -160,12 +153,12 @@ export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
       const estabMembro = Array.isArray(relacaoMembro) ? relacaoMembro[0] : relacaoMembro;
       if (estabMembro && estabMembro.id) {
         setBarbearia(estabMembro);
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(estabMembro));
+        await AsyncStorage.setItem(storageKeyUsuario, JSON.stringify(estabMembro));
         setCarregando(false);
         return;
       }
 
-      // 2b. Verifica a última barbearia registrada no perfil do cliente
+      // 3. Verifica a última barbearia registrada no perfil do cliente
       const { data: perfil } = await supabase
         .from('perfis')
         .select('ultima_barbearia_id')
@@ -174,7 +167,22 @@ export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
 
       let barbeariaIdDesejada = perfil?.ultima_barbearia_id;
 
-      // 2c. Se não estiver no perfil, busca no histórico de agendamentos do cliente
+      // 4. Se não estiver no perfil, tenta o cache local exclusivo deste usuário
+      if (!barbeariaIdDesejada) {
+        const valorLocal = await AsyncStorage.getItem(storageKeyUsuario);
+        if (valorLocal) {
+          try {
+            const parsed = JSON.parse(valorLocal) as BarbeariaPublica;
+            if (parsed && parsed.id) {
+              setBarbearia(parsed);
+              setCarregando(false);
+              return;
+            }
+          } catch {}
+        }
+      }
+
+      // 5. Se não estiver no perfil nem no cache, busca no histórico de agendamentos do cliente
       if (!barbeariaIdDesejada) {
         const { data: ultimoAgendamento } = await supabase
           .from('agendamentos')
@@ -190,7 +198,7 @@ export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // 2d. Se encontrou uma barbearia vinculada ao cliente, carrega os dados completos
+      // 6. Se encontrou uma barbearia vinculada ao cliente, carrega os dados completos
       if (barbeariaIdDesejada) {
         const { data: estabCliente } = await supabase
           .from('barbearias')
@@ -200,7 +208,7 @@ export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
 
         if (estabCliente && estabCliente.id) {
           setBarbearia(estabCliente as BarbeariaPublica);
-          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(estabCliente));
+          await AsyncStorage.setItem(storageKeyUsuario, JSON.stringify(estabCliente));
           // Atualiza perfil na nuvem se ainda não estava gravado
           if (!perfil?.ultima_barbearia_id) {
             await supabase.from('perfis').update({ ultima_barbearia_id: estabCliente.id }).eq('id', uid);
@@ -210,10 +218,11 @@ export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Cliente novo que realmente nunca escolheu barbearia
+      // Cliente novo que realmente nunca escolheu barbearia -> Nenhuma barbearia fixa
       setBarbearia(null);
     } catch (err) {
       console.warn('[BarbeariaContext] Erro ao carregar barbearia selecionada:', err);
+      setBarbearia(null);
     } finally {
       setCarregando(false);
     }
@@ -228,7 +237,7 @@ export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
         carregarSelecionada();
       } else if (event === 'SIGNED_OUT') {
         setBarbearia(null);
-        AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+        AsyncStorage.removeItem('@barbearia/tenant-selecionado').catch(() => {});
       }
     });
 
@@ -239,19 +248,21 @@ export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
 
   const selecionarBarbearia = useCallback(async (novaBarbearia: BarbeariaPublica) => {
     setBarbearia(novaBarbearia);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(novaBarbearia));
-
-    // Persiste no perfil do usuário no Supabase para sincronizar em outros dispositivos
     try {
       const { data: usuario } = await supabase.auth.getUser();
-      if (usuario.user?.id && novaBarbearia?.id) {
-        await supabase
-          .from('perfis')
-          .update({ ultima_barbearia_id: novaBarbearia.id })
-          .eq('id', usuario.user.id);
+      if (usuario.user?.id) {
+        const storageKeyUsuario = getStorageKey(usuario.user.id);
+        await AsyncStorage.setItem(storageKeyUsuario, JSON.stringify(novaBarbearia));
+
+        if (novaBarbearia?.id) {
+          await supabase
+            .from('perfis')
+            .update({ ultima_barbearia_id: novaBarbearia.id })
+            .eq('id', usuario.user.id);
+        }
       }
     } catch (err) {
-      console.warn('[BarbeariaContext] Falha ao persistir ultima_barbearia_id no perfil:', err);
+      console.warn('[BarbeariaContext] Falha ao persistir ultima_barbearia_id:', err);
     }
   }, []);
 
@@ -262,14 +273,23 @@ export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
         ...prev,
         tema: { ...(prev.tema ?? {}), ...(novoTema as Record<string, string>) },
       };
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(atualizado)).catch(() => {});
+      supabase.auth.getUser().then(({ data: usuario }) => {
+        if (usuario.user?.id) {
+          AsyncStorage.setItem(getStorageKey(usuario.user.id), JSON.stringify(atualizado)).catch(() => {});
+        }
+      }).catch(() => {});
       return atualizado;
     });
   }, []);
 
   const limparBarbearia = useCallback(async () => {
     setBarbearia(null);
-    await AsyncStorage.removeItem(STORAGE_KEY);
+    try {
+      const { data: usuario } = await supabase.auth.getUser();
+      if (usuario.user?.id) {
+        await AsyncStorage.removeItem(getStorageKey(usuario.user.id));
+      }
+    } catch {}
   }, []);
 
   const tema: TemaTenant = useMemo(() => {

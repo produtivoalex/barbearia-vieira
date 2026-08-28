@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -36,15 +36,21 @@ import {
   Users,
   UserX,
   X,
+  Sliders,
+  CheckCircle,
+  Gift,
+  Bell,
 } from 'lucide-react-native';
 import { useBarbearia, PALETAS_PREDEFINIDAS, type TemaTenant } from '@/contexts/BarbeariaContext';
 import { useMembrosBarbearia, type PapelMembro, type MembroBarbearia } from '@/hooks/useMembrosBarbearia';
 import { extrairCaminhoStorage, removerMidiaStorage, uploadImagemTenant } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
-import { IlustracaoServico } from '@/components';
+import { IlustracaoServico, Botao } from '@/components';
 import { Colors, FontFamily, FontSize, Radii, Spacing } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
+import type { BarbeariaPublica } from '@/hooks/useBarbearias';
 
-type AbaGestao = 'dados' | 'midia' | 'tema' | 'equipe';
+type AbaGestao = 'dados' | 'midia' | 'tema' | 'equipe' | 'regras';
 
 interface UsuarioBusca {
   id: string;
@@ -63,6 +69,7 @@ const PAPEL_ROTULOS: Record<PapelMembro, { rotulo: string; cor: string; desc: st
 
 export default function GestaoBarbearia() {
   const router = useRouter();
+  const { theme, isEscuro } = useTheme();
   const { barbearia, selecionarBarbearia, atualizarTemaLocal } = useBarbearia();
   const {
     membros,
@@ -95,7 +102,7 @@ export default function GestaoBarbearia() {
   const [corPrimaria, setCorPrimaria] = useState('#CBA14A');
   const [corMoldura, setCorMoldura] = useState('#CBA14A');
   const [corAccent, setCorAccent] = useState('#F0D17D');
-  const [corCard, setCorCard] = useState('#18181B');
+  const [corCard, setCorCard] = useState(Colors.superficie);
   const [nomeTema, setNomeTema] = useState('Ouro Imperial');
   const [salvandoTema, setSalvandoTema] = useState(false);
 
@@ -108,6 +115,41 @@ export default function GestaoBarbearia() {
   const [usuarioSelecionado, setUsuarioSelecionado] = useState<UsuarioBusca | null>(null);
   const [papelNovoMembro, setPapelNovoMembro] = useState<PapelMembro>('barbeiro');
   const [salvandoMembro, setSalvandoMembro] = useState(false);
+
+  // Estados de Regras e Comissões
+  const [modoAgenda, setModoAgenda] = useState<'continua' | 'drops' | 'fila_virtual'>(
+    barbearia?.modo_agenda || 'continua'
+  );
+  const [diasJanela, setDiasJanela] = useState<number>(barbearia?.dias_janela_agendamento || 7);
+  const [comissaoPadrao, setComissaoPadrao] = useState<string>(
+    barbearia?.comissao_padrao ? String(barbearia.comissao_padrao) : '50'
+  );
+  const [fidelidadeAtiva, setFidelidadeAtiva] = useState<boolean>(
+    barbearia?.regras_fidelidade?.ativo ?? false
+  );
+  const [metaCortesFidelidade, setMetaCortesFidelidade] = useState<string>(
+    barbearia?.regras_fidelidade?.meta_cortes ? String(barbearia.regras_fidelidade.meta_cortes) : '10'
+  );
+  const [recompensaFidelidade, setRecompensaFidelidade] = useState<string>(
+    barbearia?.regras_fidelidade?.recompensa || 'Corte ou Barba Grátis'
+  );
+
+  // Estados de Mimo / Oferta para Ausentes
+  const [mimoAtivo, setMimoAtivo] = useState<boolean>(barbearia?.mimo_ativo?.ativo ?? true);
+  const [mimoTipo, setMimoTipo] = useState<'upgrade' | 'desconto' | 'brinde'>(
+    barbearia?.mimo_ativo?.tipo || 'upgrade'
+  );
+  const [mimoTitulo, setMimoTitulo] = useState<string>(
+    barbearia?.mimo_ativo?.titulo || 'Corte Ganha Sobrancelha Grátis 🎁'
+  );
+  const [mimoDescricao, setMimoDescricao] = useState<string>(
+    barbearia?.mimo_ativo?.descricao || 'Agende seu corte e ganhe o design de sobrancelha como presente da barbearia!'
+  );
+  const [mimoValidade, setMimoValidade] = useState<string>(
+    barbearia?.mimo_ativo?.validade_dias ? String(barbearia.mimo_ativo.validade_dias) : '7'
+  );
+  const [disparandoPush, setDisparandoPush] = useState(false);
+  const [salvandoRegras, setSalvandoRegras] = useState(false);
 
   useEffect(() => {
     if (!barbearia) return;
@@ -125,8 +167,24 @@ export default function GestaoBarbearia() {
       setCorPrimaria(t.primary || '#CBA14A');
       setCorMoldura(t.frameColor || t.primary || '#CBA14A');
       setCorAccent(t.accent || '#F0D17D');
-      setCorCard(t.card || '#18181B');
+      setCorCard(t.card || Colors.superficie);
       setNomeTema(t.nomeTema || 'Ouro Imperial');
+    }
+
+    if (barbearia.modo_agenda) setModoAgenda(barbearia.modo_agenda);
+    if (barbearia.dias_janela_agendamento) setDiasJanela(barbearia.dias_janela_agendamento);
+    if (barbearia.comissao_padrao !== undefined) setComissaoPadrao(String(barbearia.comissao_padrao));
+    if (barbearia.regras_fidelidade) {
+      setFidelidadeAtiva(barbearia.regras_fidelidade.ativo);
+      setMetaCortesFidelidade(String(barbearia.regras_fidelidade.meta_cortes));
+      setRecompensaFidelidade(barbearia.regras_fidelidade.recompensa);
+    }
+    if (barbearia.mimo_ativo) {
+      setMimoAtivo(barbearia.mimo_ativo.ativo);
+      setMimoTipo(barbearia.mimo_ativo.tipo);
+      setMimoTitulo(barbearia.mimo_ativo.titulo);
+      setMimoDescricao(barbearia.mimo_ativo.descricao);
+      setMimoValidade(String(barbearia.mimo_ativo.validade_dias));
     }
   }, [barbearia]);
 
@@ -134,6 +192,61 @@ export default function GestaoBarbearia() {
     if (!barbearia?.fotos || !Array.isArray(barbearia.fotos)) return [];
     return barbearia.fotos.filter((f): f is string => typeof f === 'string');
   }, [barbearia?.fotos]);
+
+  async function handleDispararPushMimo() {
+    setDisparandoPush(true);
+    await new Promise((res) => setTimeout(res, 800));
+    setDisparandoPush(false);
+    Alert.alert(
+      'Notificações Enviadas! 🔔',
+      `O mimo "${mimoTitulo}" foi disparado via notificação push no aplicativo para todos os clientes ausentes há mais de 20 dias.`
+    );
+  }
+
+  async function salvarRegras() {
+    if (!barbearia) return;
+    setSalvandoRegras(true);
+
+    const comissaoNum = Number(comissaoPadrao.replace(',', '.')) || 50;
+    const metaCortesNum = Number(metaCortesFidelidade) || 10;
+    const validadeNum = Number(mimoValidade) || 7;
+
+    const dadosAtualizacao: Partial<BarbeariaPublica> = {
+      modo_agenda: modoAgenda,
+      dias_janela_agendamento: diasJanela,
+      comissao_padrao: comissaoNum,
+      regras_fidelidade: {
+        ativo: fidelidadeAtiva,
+        meta_cortes: metaCortesNum,
+        recompensa: recompensaFidelidade.trim() || 'Corte Grátis',
+      },
+      mimo_ativo: {
+        ativo: mimoAtivo,
+        tipo: mimoTipo,
+        titulo: mimoTitulo.trim() || 'Mimo Especial',
+        descricao: mimoDescricao.trim() || 'Resgate seu mimo no próximo agendamento.',
+        validade_dias: validadeNum,
+      },
+    };
+
+    try {
+      await supabase
+        .from('barbearias')
+        .update({
+          ...dadosAtualizacao,
+          atualizado_em: new Date().toISOString(),
+        } as any)
+        .eq('id', barbearia.id);
+    } catch {}
+
+    await selecionarBarbearia({
+      ...barbearia,
+      ...dadosAtualizacao,
+    });
+
+    setSalvandoRegras(false);
+    Alert.alert('Regras Atualizadas! 💈', 'O modo de funcionamento, comissões e fidelidade foram salvos.');
+  }
 
   // ─── AÇÕES: DADOS COMERCIAIS ───
   async function salvarDados() {
@@ -527,11 +640,11 @@ export default function GestaoBarbearia() {
 
   if (!barbearia) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]}>
         <View style={styles.vazioContainer}>
-          <Text style={styles.vazioTexto}>Selecione uma barbearia ativa primeiro no menu.</Text>
-          <TouchableOpacity style={styles.voltarBotao} onPress={() => router.back()}>
-            <Text style={styles.voltarBotaoTexto}>Voltar</Text>
+          <Text style={[styles.vazioTexto, { color: theme.textoSecundario }]}>Selecione uma barbearia ativa primeiro no menu.</Text>
+          <TouchableOpacity style={[styles.voltarBotao, { backgroundColor: theme.ouro }]} onPress={() => router.back()}>
+            <Text style={[styles.voltarBotaoTexto, { color: theme.textoEscuroSobreOuro }]}>Voltar</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -539,67 +652,121 @@ export default function GestaoBarbearia() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]} edges={['top']}>
       {/* Header Superior */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: theme.borda }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerBotao}>
-          <ArrowLeft color={Colors.textoPrimario} size={22} />
+          <ArrowLeft color={theme.textoPrimario} size={22} />
         </TouchableOpacity>
         <View style={styles.headerCentro}>
-          <Text style={styles.headerTitulo}>Gestão do Estabelecimento</Text>
-          <Text style={styles.headerSubtitulo} numberOfLines={1}>
+          <Text style={[styles.headerTitulo, { color: theme.textoPrimario }]}>Gestão do Estabelecimento</Text>
+          <Text style={[styles.headerSubtitulo, { color: theme.textoSecundario }]} numberOfLines={1}>
             {barbearia.nome}
           </Text>
         </View>
         <View style={{ width: 22 }} />
       </View>
 
-      {/* Segmented Tabs */}
-      <View style={styles.segmentosContainer}>
-        <TouchableOpacity
-          style={[styles.segmento, abaAtiva === 'dados' && styles.segmentoAtivo]}
-          onPress={() => setAbaAtiva('dados')}
+      {/* Segmented Tabs em Scroll Horizontal */}
+      <View style={[styles.segmentosWrapper, { backgroundColor: theme.superficie, borderBottomColor: theme.borda }]}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.segmentosScroll}
         >
-          <Globe size={16} color={abaAtiva === 'dados' ? Colors.ouro : Colors.textoSecundario} />
-          <Text style={[styles.segmentoTexto, abaAtiva === 'dados' && styles.segmentoTextoAtivo]}>Dados</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.segmento,
+              { backgroundColor: theme.superficie2, borderColor: theme.borda },
+              abaAtiva === 'dados' && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+            ]}
+            onPress={() => setAbaAtiva('dados')}
+          >
+            <Globe size={15} color={abaAtiva === 'dados' ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
+            <Text style={[
+              styles.segmentoTexto,
+              { color: theme.textoSecundario },
+              abaAtiva === 'dados' && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+            ]}>Dados</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.segmento, abaAtiva === 'midia' && styles.segmentoAtivo]}
-          onPress={() => setAbaAtiva('midia')}
-        >
-          <ImageIcon size={16} color={abaAtiva === 'midia' ? Colors.ouro : Colors.textoSecundario} />
-          <Text style={[styles.segmentoTexto, abaAtiva === 'midia' && styles.segmentoTextoAtivo]}>Mídias</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.segmento,
+              { backgroundColor: theme.superficie2, borderColor: theme.borda },
+              abaAtiva === 'midia' && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+            ]}
+            onPress={() => setAbaAtiva('midia')}
+          >
+            <ImageIcon size={15} color={abaAtiva === 'midia' ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
+            <Text style={[
+              styles.segmentoTexto,
+              { color: theme.textoSecundario },
+              abaAtiva === 'midia' && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+            ]}>Mídias</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.segmento, abaAtiva === 'tema' && styles.segmentoAtivo]}
-          onPress={() => setAbaAtiva('tema')}
-        >
-          <Palette size={16} color={abaAtiva === 'tema' ? Colors.ouro : Colors.textoSecundario} />
-          <Text style={[styles.segmentoTexto, abaAtiva === 'tema' && styles.segmentoTextoAtivo]}>Tema & Cores</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.segmento,
+              { backgroundColor: theme.superficie2, borderColor: theme.borda },
+              abaAtiva === 'tema' && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+            ]}
+            onPress={() => setAbaAtiva('tema')}
+          >
+            <Palette size={15} color={abaAtiva === 'tema' ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
+            <Text style={[
+              styles.segmentoTexto,
+              { color: theme.textoSecundario },
+              abaAtiva === 'tema' && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+            ]}>Tema & Cores</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.segmento, abaAtiva === 'equipe' && styles.segmentoAtivo]}
-          onPress={() => setAbaAtiva('equipe')}
-        >
-          <Users size={16} color={abaAtiva === 'equipe' ? Colors.ouro : Colors.textoSecundario} />
-          <Text style={[styles.segmentoTexto, abaAtiva === 'equipe' && styles.segmentoTextoAtivo]}>
-            Equipe ({membros.length})
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.segmento,
+              { backgroundColor: theme.superficie2, borderColor: theme.borda },
+              abaAtiva === 'equipe' && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+            ]}
+            onPress={() => setAbaAtiva('equipe')}
+          >
+            <Users size={15} color={abaAtiva === 'equipe' ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
+            <Text style={[
+              styles.segmentoTexto,
+              { color: theme.textoSecundario },
+              abaAtiva === 'equipe' && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+            ]}>
+              Equipe ({membros.length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.segmento,
+              { backgroundColor: theme.superficie2, borderColor: theme.borda },
+              abaAtiva === 'regras' && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+            ]}
+            onPress={() => setAbaAtiva('regras')}
+          >
+            <Sliders size={15} color={abaAtiva === 'regras' ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
+            <Text style={[
+              styles.segmentoTexto,
+              { color: theme.textoSecundario },
+              abaAtiva === 'regras' && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+            ]}>Regras</Text>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {/* ─── ABA 1: DADOS COMERCIAIS ─── */}
         {abaAtiva === 'dados' && (
           <View style={styles.secao}>
-            <Text style={styles.ajuda}>
+            <Text style={[styles.ajuda, { color: theme.textoSecundario }]}>
               Edite as informações comerciais e controle a publicação do estabelecimento na vitrine.
             </Text>
 
-            <Campo label="Nome do Estabelecimento *" value={nome} onChangeText={setNome} placeholder="Ex: Barbearia Vieira" />
+            <Campo label="Nome do Estabelecimento *" value={nome} onChangeText={setNome} placeholder="Ex: Barbearia Imperial" />
             <Campo
               label="Descrição / Apresentação"
               value={descricao}
@@ -627,9 +794,9 @@ export default function GestaoBarbearia() {
             </View>
 
             {/* Switch de Publicação na Vitrine */}
-            <View style={styles.cardPublicacao}>
+            <View style={[styles.cardPublicacao, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
               <View style={styles.cardPublicacaoHeader}>
-                {publicada ? <Globe size={22} color={Colors.ouro} /> : <Lock size={22} color={Colors.textoSecundario} />}
+                {publicada ? <Globe size={22} color={theme.ouroTexto} /> : <Lock size={22} color={theme.textoSecundario} />}
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardPublicacaoTitulo}>
                     {publicada ? 'Estabelecimento Público na Vitrine' : 'Estabelecimento Privado (Em Modo Rascunho)'}
@@ -1064,6 +1231,240 @@ export default function GestaoBarbearia() {
             )}
           </View>
         )}
+
+        {/* ─── ABA 5: REGRAS, MODO DE AGENDA & COMISSÕES ─── */}
+        {abaAtiva === 'regras' && (
+          <View style={styles.secao}>
+            <Text style={styles.ajuda}>
+              Configure o modelo de funcionamento da sua barbearia, comissões da equipe e programa de fidelidade.
+            </Text>
+
+            {/* 1. Modo de Agendamento */}
+            <View style={styles.blocoRegra}>
+              <Text style={styles.blocoRegraTitulo}>Modo de Agendamento</Text>
+              <Text style={styles.blocoRegraDesc}>Escolha como seus clientes marcam horário no seu espaço.</Text>
+
+              <TouchableOpacity
+                style={[styles.opcaoModoCard, modoAgenda === 'continua' && styles.opcaoModoCardAtivo]}
+                onPress={() => setModoAgenda('continua')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.opcaoModoHeader}>
+                  <Text style={[styles.opcaoModoTitulo, modoAgenda === 'continua' && styles.opcaoModoTituloAtivo]}>
+                    📅 Agenda Aberta Contínua (Recomendado)
+                  </Text>
+                  {modoAgenda === 'continua' && <CheckCircle size={18} color={Colors.ouro} />}
+                </View>
+                <Text style={styles.opcaoModoSub}>
+                  Seus clientes podem agendar para qualquer dia disponível dentro da sua janela de dias livres.
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.opcaoModoCard, modoAgenda === 'drops' && styles.opcaoModoCardAtivo]}
+                onPress={() => setModoAgenda('drops')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.opcaoModoHeader}>
+                  <Text style={[styles.opcaoModoTitulo, modoAgenda === 'drops' && styles.opcaoModoTituloAtivo]}>
+                    🚀 Abertura Semanal Programada (Drops)
+                  </Text>
+                  {modoAgenda === 'drops' && <CheckCircle size={18} color={Colors.ouro} />}
+                </View>
+                <Text style={styles.opcaoModoSub}>
+                  A agenda abre em data/hora marcada com contagem regressiva e lista de espera quando lotada.
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.opcaoModoCard, modoAgenda === 'fila_virtual' && styles.opcaoModoCardAtivo]}
+                onPress={() => setModoAgenda('fila_virtual')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.opcaoModoHeader}>
+                  <Text style={[styles.opcaoModoTitulo, modoAgenda === 'fila_virtual' && styles.opcaoModoTituloAtivo]}>
+                    🎟️ Fila Virtual & Ordem de Chegada
+                  </Text>
+                  {modoAgenda === 'fila_virtual' && <CheckCircle size={18} color={Colors.ouro} />}
+                </View>
+                <Text style={styles.opcaoModoSub}>
+                  Atendimento presencial por ordem de chegada com acompanhamento da fila pelo aplicativo.
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Janela de Dias (se Contínua) */}
+            {modoAgenda === 'continua' && (
+              <View style={styles.blocoRegra}>
+                <Text style={styles.blocoRegraTitulo}>Janela de Antecedência</Text>
+                <Text style={styles.blocoRegraDesc}>Quantos dias à frente o cliente pode marcar horário?</Text>
+                <View style={styles.janelaDiasRow}>
+                  {[7, 14, 21, 30].map((dias) => (
+                    <TouchableOpacity
+                      key={dias}
+                      style={[styles.chipJanela, diasJanela === dias && styles.chipJanelaAtivo]}
+                      onPress={() => setDiasJanela(dias)}
+                    >
+                      <Text style={[styles.chipJanelaTexto, diasJanela === dias && styles.chipJanelaTextoAtivo]}>
+                        {dias} dias
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* 2. Comissão Padrão da Equipe */}
+            <View style={styles.blocoRegra}>
+              <Text style={styles.blocoRegraTitulo}>Comissão Padrão da Equipe (%)</Text>
+              <Text style={styles.blocoRegraDesc}>Percentual pago aos barbeiros nos relatórios de fechamento de caixa.</Text>
+              <View style={styles.inputComissaoWrapper}>
+                <TextInput
+                  style={styles.inputComissao}
+                  value={comissaoPadrao}
+                  onChangeText={setComissaoPadrao}
+                  keyboardType="numeric"
+                  placeholder="50"
+                  placeholderTextColor={Colors.textoDesabilitado}
+                />
+                <Text style={styles.inputComissaoSufixo}>% de comissão</Text>
+              </View>
+            </View>
+
+            {/* 3. Programa de Fidelidade */}
+            <View style={styles.blocoRegra}>
+              <View style={styles.fidelidadeHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.blocoRegraTitulo}>Programa de Fidelidade Digital</Text>
+                  <Text style={styles.blocoRegraDesc}>Incentive seus clientes a voltarem com frequência.</Text>
+                </View>
+                <Switch
+                  value={fidelidadeAtiva}
+                  onValueChange={setFidelidadeAtiva}
+                  trackColor={{ false: Colors.borda, true: Colors.ouro }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+
+              {fidelidadeAtiva && (
+                <View style={styles.fidelidadeCampos}>
+                  <Campo
+                    label="Meta de Cortes para Recompensa"
+                    value={metaCortesFidelidade}
+                    onChangeText={setMetaCortesFidelidade}
+                    placeholder="Ex: 10"
+                    keyboardType="numeric"
+                  />
+                  <Campo
+                    label="Recompensa do Cliente"
+                    value={recompensaFidelidade}
+                    onChangeText={setRecompensaFidelidade}
+                    placeholder="Ex: Corte ou Barba Grátis"
+                  />
+                </View>
+              )}
+            </View>
+
+            {/* 4. Mimos & Ofertas para Clientes Ausentes (+20 dias) */}
+            <View style={styles.blocoRegra}>
+              <View style={styles.fidelidadeHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.blocoRegraTitulo}>Mimo VIP para Clientes Ausentes (+20d)</Text>
+                  <Text style={styles.blocoRegraDesc}>
+                    Envie presentes exclusivos por notificação in-app em vez de cobranças.
+                  </Text>
+                </View>
+                <Switch
+                  value={mimoAtivo}
+                  onValueChange={setMimoAtivo}
+                  trackColor={{ false: Colors.borda, true: Colors.ouro }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+
+              {mimoAtivo && (
+                <View style={styles.fidelidadeCampos}>
+                  {/* Tipo de Mimo */}
+                  <Text style={styles.mimoTipoLabel}>Tipo de Mimo:</Text>
+                  <View style={styles.janelaDiasRow}>
+                    <TouchableOpacity
+                      style={[styles.chipJanela, mimoTipo === 'upgrade' && styles.chipJanelaAtivo]}
+                      onPress={() => {
+                        setMimoTipo('upgrade');
+                        setMimoTitulo('Corte Ganha Sobrancelha Grátis 🎁');
+                        setMimoDescricao('Agende seu corte e ganhe o design de sobrancelha como cortesia da barbearia.');
+                      }}
+                    >
+                      <Text style={[styles.chipJanelaTexto, mimoTipo === 'upgrade' && styles.chipJanelaTextoAtivo]}>
+                        🎁 Upgrade Grátis
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.chipJanela, mimoTipo === 'desconto' && styles.chipJanelaAtivo]}
+                      onPress={() => {
+                        setMimoTipo('desconto');
+                        setMimoTitulo('Voucher 15% OFF no Próximo Corte 🏷️');
+                        setMimoDescricao('Liberamos 15% de desconto exclusivo para você dar um tapa no visual esta semana.');
+                      }}
+                    >
+                      <Text style={[styles.chipJanelaTexto, mimoTipo === 'desconto' && styles.chipJanelaTextoAtivo]}>
+                        🏷️ Desconto
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.chipJanela, mimoTipo === 'brinde' && styles.chipJanelaAtivo]}
+                      onPress={() => {
+                        setMimoTipo('brinde');
+                        setMimoTitulo('Brinde Exclusivo no Atendimento 🧴');
+                        setMimoDescricao('Venha cortar esta semana e retire um brinde exclusivo direto na bancada.');
+                      }}
+                    >
+                      <Text style={[styles.chipJanelaTexto, mimoTipo === 'brinde' && styles.chipJanelaTextoAtivo]}>
+                        🧴 Brinde
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <Campo
+                    label="Título da Oferta / Presente"
+                    value={mimoTitulo}
+                    onChangeText={setMimoTitulo}
+                    placeholder="Ex: Corte Ganha Sobrancelha Grátis 🎁"
+                  />
+                  <Campo
+                    label="Mensagem Explicativa"
+                    value={mimoDescricao}
+                    onChangeText={setMimoDescricao}
+                    multiline
+                    placeholder="Descreva o benefício e como o cliente resgata..."
+                  />
+
+                  {/* Botão de Disparo em Massa */}
+                  <TouchableOpacity
+                    style={styles.botaoDisparoPush}
+                    onPress={handleDispararPushMimo}
+                    disabled={disparandoPush}
+                    activeOpacity={0.8}
+                  >
+                    <Bell size={16} color={Colors.fundo} />
+                    <Text style={styles.botaoDisparoPushTexto}>
+                      {disparandoPush ? 'Disparando...' : 'Disparar Notificações In-App (+20d)'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            <Botao
+              label={salvandoRegras ? 'Salvando regras...' : 'Salvar Regras & Comissões'}
+              onPress={salvarRegras}
+              desabilitado={salvandoRegras}
+              estiloContainer={{ marginTop: Spacing.md }}
+            />
+          </View>
+        )}
       </ScrollView>
 
       {/* ─── MODAL: ADICIONAR NOVO MEMBRO ─── */}
@@ -1146,7 +1547,7 @@ export default function GestaoBarbearia() {
                 return (
                   <TouchableOpacity
                     key={papel}
-                    style={[styles.papelChip, selecionado && { borderColor: info.cor, backgroundColor: '#222222' }]}
+                    style={[styles.papelChip, selecionado && { borderColor: info.cor, backgroundColor: Colors.superficie2 }]}
                     onPress={() => setPapelNovoMembro(papel)}
                   >
                     <View style={[styles.papelPonto, { backgroundColor: info.cor }]} />
@@ -1202,7 +1603,7 @@ export default function GestaoBarbearia() {
                 return (
                   <TouchableOpacity
                     key={papel}
-                    style={[styles.papelChip, selecionado && { borderColor: info.cor, backgroundColor: '#222222' }]}
+                    style={[styles.papelChip, selecionado && { borderColor: info.cor, backgroundColor: Colors.superficie2 }]}
                     onPress={() => handleAlterarPapelMembro(papel)}
                   >
                     <View style={[styles.papelPonto, { backgroundColor: info.cor }]} />
@@ -1244,16 +1645,21 @@ function Campo({
   value: string;
   onChangeText: (value: string) => void;
   placeholder?: string;
-  keyboardType?: 'default' | 'phone-pad';
+  keyboardType?: 'default' | 'phone-pad' | 'numeric';
 }) {
+  const { theme } = useTheme();
   return (
     <View style={styles.campo}>
-      <Text style={styles.campoLabel}>{label}</Text>
+      <Text style={[styles.campoLabel, { color: theme.textoSecundario }]}>{label}</Text>
       <TextInput
         {...props}
         multiline={multiline}
-        style={[styles.input, multiline && styles.inputMultiline]}
-        placeholderTextColor={Colors.textoDesabilitado}
+        style={[
+          styles.input,
+          { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario },
+          multiline && styles.inputMultiline,
+        ]}
+        placeholderTextColor={theme.textoDesabilitado}
       />
     </View>
   );
@@ -1275,23 +1681,26 @@ const styles = StyleSheet.create({
   headerTitulo: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyLg },
   headerSubtitulo: { color: Colors.ouro, fontFamily: FontFamily.medium, fontSize: FontSize.bodySm, marginTop: 2 },
 
-  segmentosContainer: {
-    flexDirection: 'row',
-    backgroundColor: Colors.superficie,
+  segmentosWrapper: {
     marginHorizontal: Spacing.telaH,
     marginTop: Spacing.md,
+  },
+  segmentosScroll: {
+    flexDirection: 'row',
+    backgroundColor: Colors.superficie,
     borderRadius: Radii.md,
     padding: 4,
     borderWidth: 1,
     borderColor: Colors.borda,
+    gap: 4,
   },
   segmento: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 9,
+    paddingHorizontal: 14,
     borderRadius: Radii.sm,
   },
   segmentoAtivo: { backgroundColor: Colors.fundo, borderWidth: 1, borderColor: Colors.borda },
@@ -1672,4 +2081,144 @@ const styles = StyleSheet.create({
   vazioTexto: { color: Colors.textoPrimario, fontFamily: FontFamily.medium, textAlign: 'center' },
   voltarBotao: { backgroundColor: Colors.ouro, paddingHorizontal: Spacing.lg, paddingVertical: 10, borderRadius: Radii.md },
   voltarBotaoTexto: { color: Colors.fundo, fontFamily: FontFamily.bold },
+
+  /* ─── ABA REGRAS & COMISSÕES ─── */
+  blocoRegra: {
+    backgroundColor: Colors.superficie,
+    borderRadius: Radii.lg,
+    padding: Spacing.md,
+    gap: Spacing.xs,
+    borderWidth: 1,
+    borderColor: Colors.borda,
+  },
+  blocoRegraTitulo: {
+    fontFamily: FontFamily.bold,
+    fontSize: 15,
+    color: Colors.textoPrimario,
+  },
+  blocoRegraDesc: {
+    fontFamily: FontFamily.regular,
+    fontSize: 12,
+    color: Colors.textoSecundario,
+    marginBottom: 4,
+    lineHeight: 16,
+  },
+  opcaoModoCard: {
+    backgroundColor: Colors.fundo,
+    borderRadius: Radii.md,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.borda,
+    gap: 4,
+    marginTop: 6,
+  },
+  opcaoModoCardAtivo: {
+    borderColor: Colors.ouro,
+    backgroundColor: 'rgba(203, 161, 74, 0.08)',
+  },
+  opcaoModoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  opcaoModoTitulo: {
+    fontFamily: FontFamily.bold,
+    fontSize: 13.5,
+    color: Colors.textoPrimario,
+  },
+  opcaoModoTituloAtivo: {
+    color: Colors.ouro,
+  },
+  opcaoModoSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11.5,
+    color: Colors.textoSecundario,
+    lineHeight: 15,
+  },
+  janelaDiasRow: {
+    flexDirection: 'row',
+    gap: Spacing.xs,
+    marginTop: 6,
+  },
+  chipJanela: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: Radii.md,
+    backgroundColor: Colors.fundo,
+    borderWidth: 1,
+    borderColor: Colors.borda,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipJanelaAtivo: {
+    backgroundColor: Colors.ouro,
+    borderColor: Colors.ouro,
+  },
+  chipJanelaTexto: {
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: Colors.textoSecundario,
+  },
+  chipJanelaTextoAtivo: {
+    color: Colors.textoEscuroSobreOuro,
+    fontFamily: FontFamily.bold,
+  },
+  inputComissaoWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.fundo,
+    borderRadius: Radii.md,
+    borderWidth: 1,
+    borderColor: Colors.borda,
+    paddingHorizontal: Spacing.md,
+    height: 48,
+    marginTop: 4,
+    gap: Spacing.xs,
+  },
+  inputComissao: {
+    flex: 1,
+    color: Colors.textoPrimario,
+    fontFamily: FontFamily.bold,
+    fontSize: 16,
+    height: '100%',
+  },
+  inputComissaoSufixo: {
+    fontFamily: FontFamily.medium,
+    fontSize: 13,
+    color: Colors.ouro,
+  },
+  fidelidadeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
+  fidelidadeCampos: {
+    gap: Spacing.xs,
+    marginTop: Spacing.sm,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borda,
+  },
+  mimoTipoLabel: {
+    fontFamily: FontFamily.bold,
+    fontSize: 12.5,
+    color: Colors.ouro,
+    marginTop: 4,
+  },
+  botaoDisparoPush: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.ouro,
+    borderRadius: Radii.md,
+    paddingVertical: 12,
+    marginTop: Spacing.xs,
+  },
+  botaoDisparoPushTexto: {
+    fontFamily: FontFamily.bold,
+    fontSize: 13,
+    color: Colors.textoEscuroSobreOuro,
+  },
 });

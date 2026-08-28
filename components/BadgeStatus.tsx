@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { Colors, FontFamily, FontSize, Radii } from '@/theme';
+import { FontFamily, FontSize, Radii } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type StatusAgendamento = 'confirmado' | 'concluido' | 'cancelado' | 'pendente';
 
@@ -9,31 +10,33 @@ interface BadgeStatusProps {
   estilo?: ViewStyle;
 }
 
-const configStatus: Record<StatusAgendamento, { label: string; cor: string; corFundo: string }> = {
-  confirmado: {
-    label: 'Confirmado',
-    cor: Colors.verde,
-    corFundo: Colors.verdeClaro,
-  },
-  concluido: {
-    label: 'Concluído',
-    cor: Colors.textoSecundario,
-    corFundo: Colors.superficie2,
-  },
-  cancelado: {
-    label: 'Cancelado',
-    cor: Colors.erro,
-    corFundo: Colors.erroClaro,
-  },
-  pendente: {
-    label: 'Pendente',
-    cor: Colors.amarelo,
-    corFundo: Colors.amareloClaro,
-  },
-};
-
 export function BadgeStatus({ status, estilo }: BadgeStatusProps) {
-  const config = configStatus[status];
+  const { theme } = useTheme();
+
+  const configStatus: Record<StatusAgendamento, { label: string; cor: string; corFundo: string }> = {
+    confirmado: {
+      label: 'Confirmado',
+      cor: theme.verde,
+      corFundo: theme.verdeClaro,
+    },
+    concluido: {
+      label: 'Concluído',
+      cor: theme.textoSecundario,
+      corFundo: theme.superficie2,
+    },
+    cancelado: {
+      label: 'Cancelado',
+      cor: theme.erro,
+      corFundo: theme.erroClaro,
+    },
+    pendente: {
+      label: 'Pendente',
+      cor: theme.amarelo,
+      corFundo: theme.amareloClaro,
+    },
+  };
+
+  const config = configStatus[status] || configStatus.confirmado;
   return (
     <View
       style={[

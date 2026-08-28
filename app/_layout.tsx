@@ -5,12 +5,12 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet } from 'react-native';
 import { FontAssets } from '@/theme';
-import { Colors } from '@/theme/colors';
 import { useAuth } from '@/hooks/useAuth';
 import { usePerfil } from '@/hooks/usePerfil';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import * as Notifications from 'expo-notifications';
 import { BarbeariaProvider, useBarbearia } from '@/contexts/BarbeariaContext';
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -69,7 +69,11 @@ function ControleRotas() {
       // Se autenticado e ainda não entrou na área (app) ou está na raiz / pre-auth / callback
       if (!naAreaApp) {
         if (perfil?.role === 'barbeiro') {
-          router.replace('/(app)/(barbeiro)/hoje');
+          if (barbearia?.id) {
+            router.replace('/(app)/(barbeiro)/hoje');
+          } else {
+            router.replace('/(app)/(barbeiro)/cadastrar-barbearia');
+          }
         } else {
           // Cliente: se já escolheu uma barbearia antes, entra direto nela.
           // Se nunca escolheu barbearia, vai para a vitrine do marketplace.
@@ -86,6 +90,23 @@ function ControleRotas() {
   return null;
 }
 
+function ConteudoApp() {
+  const { isEscuro, theme } = useTheme();
+
+  return (
+    <View style={[styles.root, { backgroundColor: theme.fundo }]}>
+      <StatusBar style={isEscuro ? 'light' : 'dark'} backgroundColor={theme.fundo} />
+      <ControleRotas />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.fundo } }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(pre-auth)" />
+        <Stack.Screen name="(app)" />
+        <Stack.Screen name="auth/callback" />
+      </Stack>
+    </View>
+  );
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts(FontAssets);
 
@@ -100,24 +121,16 @@ export default function RootLayout() {
   }
 
   return (
-    <BarbeariaProvider>
-      <View style={styles.root}>
-        <StatusBar style="light" backgroundColor={Colors.fundo} />
-        <ControleRotas />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(pre-auth)" />
-          <Stack.Screen name="(app)" />
-          <Stack.Screen name="auth/callback" />
-        </Stack>
-      </View>
-    </BarbeariaProvider>
+    <ThemeProvider>
+      <BarbeariaProvider>
+        <ConteudoApp />
+      </BarbeariaProvider>
+    </ThemeProvider>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Colors.fundo,
   },
 });

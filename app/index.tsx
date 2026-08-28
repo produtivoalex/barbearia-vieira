@@ -10,7 +10,7 @@ import { Colors } from '@/theme/colors';
 export default function Index() {
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color={Colors.vermelho} />
+      <ActivityIndicator size="large" color={Colors.ouro} />
     </View>
   );
 }

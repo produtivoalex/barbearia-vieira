@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { Calendar, Clock, Scissors, ChevronRight } from 'lucide-react-native';
 import { ControleSegmentado, IlustracaoServico } from '@/components';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useMeusAgendamentos, type AgendamentoCompleto } from '@/hooks/useMeusAgendamentos';
 
 import { supabase } from '@/lib/supabase';
@@ -28,11 +29,19 @@ const LABELS_STATUS: Record<AgendamentoCompleto['status'], { texto: string; cor:
 };
 
 export default function TelaAgenda() {
+  const { theme, isEscuro } = useTheme();
   const router = useRouter();
   const [aba, setAba] = useState<'proximos' | 'historico'>('proximos');
   const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
   const { barbearia } = useBarbearia();
   const { proximos, historico, carregando, recarregar } = useMeusAgendamentos(barbearia?.id);
+
+  const labelsStatus: Record<AgendamentoCompleto['status'], { texto: string; cor: string }> = {
+    pendente:   { texto: 'Agendado',   cor: theme.amarelo },
+    confirmado: { texto: 'Confirmado', cor: theme.verde },
+    cancelado:  { texto: 'Cancelado',  cor: theme.erro },
+    concluido:  { texto: 'Concluído',  cor: theme.textoSecundario },
+  };
 
   const dados = aba === 'proximos' ? proximos : historico;
 
@@ -74,7 +83,7 @@ export default function TelaAgenda() {
 
   function renderItem({ item }: { item: AgendamentoCompleto }) {
     const { data, hora } = formatarDataHora(item.data_hora);
-    const statusConfig = LABELS_STATUS[item.status] || { texto: item.status, cor: Colors.amarelo };
+    const statusConfig = labelsStatus[item.status] || { texto: item.status, cor: theme.amarelo };
     const precoFormatado = Number(item.servico.preco).toLocaleString('pt-BR', {
       style: 'currency',
       currency: 'BRL',
@@ -83,14 +92,14 @@ export default function TelaAgenda() {
     const podeConfirmar = (item.status === 'pendente' || (item.status as string) === 'agendado') && aba === 'proximos';
 
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: theme.superficie, borderColor: theme.borda, borderWidth: 1 }]}>
         {/* Linha superior: data + badge de status */}
         <View style={styles.cardTopo}>
           <View style={styles.dataLinha}>
-            <Calendar size={14} color={Colors.textoSecundario} />
-            <Text style={styles.dataTexto}>{data}</Text>
-            <Clock size={14} color={Colors.textoSecundario} />
-            <Text style={styles.dataTexto}>{hora}</Text>
+            <Calendar size={14} color={theme.textoSecundario} />
+            <Text style={[styles.dataTexto, { color: theme.textoSecundario }]}>{data}</Text>
+            <Clock size={14} color={theme.textoSecundario} />
+            <Text style={[styles.dataTexto, { color: theme.textoSecundario }]}>{hora}</Text>
           </View>
           <View style={[styles.badge, { backgroundColor: `${statusConfig.cor}22` }]}>
             <Text style={[styles.badgeTexto, { color: statusConfig.cor }]}>
@@ -99,37 +108,37 @@ export default function TelaAgenda() {
           </View>
         </View>
 
-        <View style={styles.divisor} />
+        <View style={[styles.divisor, { backgroundColor: theme.borda }]} />
 
         {/* Linha inferior: serviço + barbeiro + preço */}
         <View style={styles.cardCorpo}>
           <IlustracaoServico
-            nome={item.servico.nome}
+          nome={item.servico.nome}
             tamanho={46}
           />
           <View style={styles.infoServico}>
-            <Text style={styles.nomeServico}>{item.servico.nome}</Text>
-            <Text style={styles.nomeBarbeiro}>
+            <Text style={[styles.nomeServico, { color: theme.textoPrimario }]}>{item.servico.nome}</Text>
+            <Text style={[styles.nomeBarbeiro, { color: theme.textoSecundario }]}>
               {item.barbeiro.nome_completo || 'Barbeiro'}
             </Text>
           </View>
-          <Text style={styles.preco}>{precoFormatado}</Text>
+          <Text style={[styles.preco, { color: theme.ouroTexto }]}>{precoFormatado}</Text>
         </View>
 
         {/* Botão de confirmação de presença */}
         {podeConfirmar && (
           <TouchableOpacity
-            style={styles.botaoConfirmar}
+            style={[styles.botaoConfirmar, { backgroundColor: theme.verde }]}
             onPress={() => handleConfirmarPresenca(item.id)}
             disabled={confirmandoId === item.id}
             activeOpacity={0.8}
           >
             {confirmandoId === item.id ? (
-              <ActivityIndicator size="small" color={Colors.fundo} />
+              <ActivityIndicator size="small" color={theme.textoEscuroSobreOuro} />
             ) : (
               <>
-                <CheckCircle2 size={16} color={Colors.fundo} />
-                <Text style={styles.botaoConfirmarTexto}>Confirmar presença</Text>
+                <CheckCircle2 size={16} color={theme.textoEscuroSobreOuro} />
+                <Text style={[styles.botaoConfirmarTexto, { color: theme.textoEscuroSobreOuro }]}>Confirmar presença</Text>
               </>
             )}
           </TouchableOpacity>
@@ -139,10 +148,10 @@ export default function TelaAgenda() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.titulo}>Meus agendamentos</Text>
+        <Text style={[styles.titulo, { color: theme.textoPrimario }]}>Meus Cortes</Text>
       </View>
 
       {/* Controle segmentado */}
@@ -159,7 +168,7 @@ export default function TelaAgenda() {
 
       {carregando && dados.length === 0 ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.vermelho} />
+          <ActivityIndicator size="large" color={theme.ouro} />
         </View>
       ) : (
         <FlatList
@@ -170,20 +179,20 @@ export default function TelaAgenda() {
             <RefreshControl
               refreshing={carregando}
               onRefresh={recarregar}
-              tintColor={Colors.vermelho}
-              colors={[Colors.vermelho]}
+              tintColor={theme.ouro}
+              colors={[theme.ouro]}
             />
           }
           ListEmptyComponent={
             <View style={styles.vazio}>
-              <Calendar size={48} color={Colors.textoDesabilitado} />
-              <Text style={styles.vazioTitulo}>
-                {aba === 'proximos' ? 'Nenhum agendamento próximo' : 'Nenhum histórico'}
+              <Calendar size={48} color={theme.textoDesabilitado} />
+              <Text style={[styles.vazioTitulo, { color: theme.textoPrimario }]}>
+                {aba === 'proximos' ? 'Nenhum corte agendado' : 'Nenhum corte no histórico'}
               </Text>
-              <Text style={styles.vazioSubtitulo}>
+              <Text style={[styles.vazioSubtitulo, { color: theme.textoSecundario }]}>
                 {aba === 'proximos'
-                  ? 'Seus próximos agendamentos aparecerão aqui.'
-                  : 'Seus agendamentos anteriores aparecerão aqui.'}
+                  ? 'Escolha um serviço e agende seu horário com antecedência.'
+                  : 'Seus atendimentos anteriores aparecerão aqui.'}
               </Text>
               {aba === 'proximos' && (
                 <TouchableOpacity
@@ -191,8 +200,8 @@ export default function TelaAgenda() {
                   onPress={() => router.push('/(app)/(tabs)/servicos')}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.botaoAgendarTexto}>Agendar agora</Text>
-                  <ChevronRight size={16} color={Colors.vermelho} />
+                  <Text style={[styles.botaoAgendarTexto, { color: theme.ouroTexto }]}>Agendar agora</Text>
+                  <ChevronRight size={16} color={theme.ouroTexto} />
                 </TouchableOpacity>
               )}
             </View>
@@ -326,9 +335,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   botaoAgendarTexto: {
-    fontFamily: FontFamily.semiBold,
+    fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
-    color: Colors.vermelho,
+    color: Colors.ouro,
   },
   botaoConfirmar: {
     flexDirection: 'row',

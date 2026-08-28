@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import {
   Alert,
   ScrollView,
@@ -36,7 +36,7 @@ const DIAS_CONFIG = [
   { id: 0, nomeCurto: 'Dom', nomeCompleto: 'Domingo' },
 ];
 
-const HORARIOS_CONFIG = ['08:00', '09:00', '10:00', '11:00'];
+const HORARIOS_CONFIG = ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
 
 export default function TelaListaEspera() {
   const router = useRouter();
@@ -169,7 +169,7 @@ export default function TelaListaEspera() {
           </View>
 
           {carregandoServicos ? (
-            <ActivityIndicator size="small" color={Colors.vermelho} style={{ marginVertical: 12 }} />
+            <ActivityIndicator size="small" color={Colors.ouro} style={{ marginVertical: 12 }} />
           ) : (
             <View style={{ gap: Spacing.sm }}>
               {/* Carrossel Horizontal */}
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: Spacing.md,
-    backgroundColor: '#1C1914',
+    backgroundColor: Colors.superficie,
     borderRadius: Radii.lg,
     padding: Spacing.md,
     borderWidth: 1,
@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
   heroSubtitulo: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodySm,
-    color: '#A1A1AA',
+    color: Colors.textoDesabilitado,
     lineHeight: 18,
   },
   secao: {
@@ -492,8 +492,8 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: Colors.vermelho,
-    color: '#FFFFFF',
+    backgroundColor: Colors.ouro,
+    color: Colors.textoEscuroSobreOuro,
     fontFamily: FontFamily.bold,
     fontSize: 11,
     textAlign: 'center',
@@ -523,7 +523,7 @@ const styles = StyleSheet.create({
   },
   cardServicoMiniAtivo: {
     borderColor: Colors.ouro,
-    backgroundColor: '#1E1A14',
+    backgroundColor: Colors.superficie2,
   },
   cardServicoMiniCabecalho: {
     alignItems: 'center',
@@ -591,7 +591,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardPrevia: {
-    backgroundColor: '#1C1914',
+    backgroundColor: Colors.superficie,
     borderRadius: Radii.lg,
     padding: Spacing.md,
     borderWidth: 1,
@@ -712,7 +712,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   diaCardAtivo: {
-    backgroundColor: '#1E1A14',
+    backgroundColor: Colors.superficie2,
     borderColor: Colors.ouro,
   },
   diaCheck: {
@@ -755,7 +755,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   horarioCardAtivo: {
-    backgroundColor: '#1E1A14',
+    backgroundColor: Colors.superficie2,
     borderColor: Colors.ouro,
   },
   horarioTexto: {

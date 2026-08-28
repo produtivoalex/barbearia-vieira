@@ -181,6 +181,18 @@ export const SERVICOS_REAIS_CATALOGO: Servico[] = [
   },
 ];
 
+const ORDEM_SERVICOS = new Map(
+  SERVICOS_REAIS_CATALOGO.map((servico, indice) => [servico.nome.toLowerCase().trim(), indice]),
+);
+
+function ordenarServicos(servicos: Servico[]): Servico[] {
+  return [...servicos].sort((a, b) => {
+    const ordemA = ORDEM_SERVICOS.get(a.nome.toLowerCase().trim()) ?? Number.MAX_SAFE_INTEGER;
+    const ordemB = ORDEM_SERVICOS.get(b.nome.toLowerCase().trim()) ?? Number.MAX_SAFE_INTEGER;
+    return ordemA - ordemB || a.nome.localeCompare(b.nome, 'pt-BR');
+  });
+}
+
 export function useServicos(categoriaFiltro: CategoriaServico = 'todos', barbeariaId?: string) {
   const [servicos, setServicos] = useState<Servico[]>(SERVICOS_REAIS_CATALOGO);
   const [carregando, setCarregando] = useState(true);
@@ -223,13 +235,13 @@ export function useServicos(categoriaFiltro: CategoriaServico = 'todos', barbear
         });
 
         if (barbeariaId) {
-          setServicos((data as any[]).map((dbItem) => ({
+          setServicos(ordenarServicos((data as any[]).map((dbItem) => ({
             ...dbItem,
             preco: Number(dbItem.preco),
             categoria: dbItem.categoria || deduzirCategoria(dbItem.nome),
-          })) as Servico[]);
+          })) as Servico[]));
         } else {
-          setServicos(Array.from(mapa.values()));
+          setServicos(ordenarServicos(Array.from(mapa.values())));
         }
       }
     } catch {

@@ -1,14 +1,16 @@
-import React, { useEffect } from 'react';
+﻿import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { Home, CalendarDays, Scissors, User, Wrench, RefreshCw, LogOut } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, FontFamily, FontSize, Radii, Spacing } from '@/theme';
 import { usePerfil } from '@/hooks/usePerfil';
+import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 
 export default function TabsClienteLayout() {
   const { perfil, isBloqueado, carregandoPerfil } = usePerfil();
+  const { theme } = useTheme();
   const router = useRouter();
 
   useEffect(() => {
@@ -20,22 +22,22 @@ export default function TabsClienteLayout() {
   // Se o cliente foi colocado na Lista Negra pelo barbeiro:
   if (!carregandoPerfil && isBloqueado) {
     return (
-      <SafeAreaView style={styles.manutencaoSafe}>
+      <SafeAreaView style={[styles.manutencaoSafe, { backgroundColor: theme.fundo }]}>
         <View style={styles.manutencaoConteudo}>
-          <View style={styles.manutencaoIconeWrapper}>
-            <Wrench size={44} color={Colors.ouro} />
+          <View style={[styles.manutencaoIconeWrapper, { backgroundColor: theme.ouroTranslucido }]}>
+            <Wrench size={44} color={theme.ouro} />
           </View>
-          <Text style={styles.manutencaoTitulo}>Aplicativo em Manutenção 🔧</Text>
-          <Text style={styles.manutencaoTexto}>
+          <Text style={[styles.manutencaoTitulo, { color: theme.textoPrimario }]}>Aplicativo em Manutenção 🔧</Text>
+          <Text style={[styles.manutencaoTexto, { color: theme.textoSecundario }]}>
             Estamos realizando atualizações técnicas nos servidores da barbearia. Por favor, tente novamente mais tarde.
           </Text>
 
           <TouchableOpacity
-            style={styles.btnTentarNovamente}
+            style={[styles.btnTentarNovamente, { backgroundColor: theme.ouro }]}
             onPress={() => router.replace('/(app)/(tabs)')}
             activeOpacity={0.8}
           >
-            <RefreshCw size={16} color="#0E0E0E" />
+            <RefreshCw size={16} color={theme.textoEscuroSobreOuro} />
             <Text style={styles.btnTentarNovamenteTexto}>Tentar Novamente</Text>
           </TouchableOpacity>
 
@@ -44,8 +46,8 @@ export default function TabsClienteLayout() {
             onPress={() => supabase.auth.signOut()}
             activeOpacity={0.7}
           >
-            <LogOut size={16} color={Colors.textoSecundario} />
-            <Text style={styles.btnSairManutencaoTexto}>Desconectar Conta</Text>
+            <LogOut size={16} color={theme.textoSecundario} />
+            <Text style={[styles.btnSairManutencaoTexto, { color: theme.textoSecundario }]}>Desconectar Conta</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -57,18 +59,18 @@ export default function TabsClienteLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.superficie,
-          borderTopColor: Colors.borda,
+          backgroundColor: theme.superficie,
+          borderTopColor: theme.borda,
           borderTopWidth: 1,
           height: 64,
           paddingBottom: 10,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: Colors.vermelho,
-        tabBarInactiveTintColor: Colors.textoSecundario,
+        tabBarActiveTintColor: theme.ouroTexto,
+        tabBarInactiveTintColor: theme.textoSecundario,
         tabBarLabelStyle: {
           fontFamily: FontFamily.medium,
-          fontSize: FontSize.labelXs,
+          fontSize: 10.5,
           marginTop: 2,
         },
       }}
@@ -78,34 +80,34 @@ export default function TabsClienteLayout() {
         options={{
           title: 'Início',
           tabBarIcon: ({ color, size }) => (
-            <Home size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="agenda"
-        options={{
-          title: 'Agenda',
-          tabBarIcon: ({ color, size }) => (
-            <CalendarDays size={size} color={color} />
+            <Home size={size - 2} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="servicos/index"
         options={{
-          title: 'Serviços',
+          title: 'Cortes & Barba',
           tabBarIcon: ({ color, size }) => (
-            <Scissors size={size} color={color} />
+            <Scissors size={size - 2} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="agenda"
+        options={{
+          title: 'Meus Cortes',
+          tabBarIcon: ({ color, size }) => (
+            <CalendarDays size={size - 2} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="perfil"
         options={{
-          title: 'Perfil',
+          title: 'Conta',
           tabBarIcon: ({ color, size }) => (
-            <User size={size} color={color} />
+            <User size={size - 2} color={color} />
           ),
         }}
       />
@@ -116,7 +118,7 @@ export default function TabsClienteLayout() {
 const styles = StyleSheet.create({
   manutencaoSafe: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: Colors.fundo,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -144,7 +146,7 @@ const styles = StyleSheet.create({
   manutencaoTexto: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodyMd,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -163,7 +165,7 @@ const styles = StyleSheet.create({
   btnTentarNovamenteTexto: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
-    color: '#0E0E0E',
+    color: Colors.textoEscuroSobreOuro,
   },
   btnSairManutencao: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Linking,
   Switch,
   Share,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -26,12 +27,17 @@ import {
   X,
   Sparkles,
   Share2,
+  Plus,
+  Send,
+  Zap,
 } from 'lucide-react-native';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
 import { usePainelBarbeiro, type AgendamentoBarbeiro } from '@/hooks/usePainelBarbeiro';
 import { usePerfil } from '@/hooks/usePerfil';
+import { useServicos } from '@/hooks/useServicos';
 import { BadgeStatus } from '@/components/BadgeStatus';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const DIAS_SEMANA_EXT = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 const MESES_EXT = [
@@ -52,8 +58,10 @@ function isHorarioDecorrido(dataHoraIso: string, duracaoMinutos: number): boolea
 }
 
 export default function TelaBarbeiroHoje() {
+  const { theme, isEscuro } = useTheme();
   const { perfil } = usePerfil();
   const { barbearia } = useBarbearia();
+  const { servicos } = useServicos('todos', barbearia?.id);
   const {
     agendamentosHoje,
     totalNaFila,
@@ -65,15 +73,25 @@ export default function TelaBarbeiroHoje() {
     cancelarAgendamento,
     definirAtraso,
     alternarTardeFechada,
+    criarReservaManual,
   } = usePainelBarbeiro(barbearia?.id);
 
   const [filtro, setFiltro] = useState<'ativos' | 'concluidos' | 'todos'>('ativos');
   const [agendamentoSelecionado, setAgendamentoSelecionado] = useState<AgendamentoBarbeiro | null>(null);
   const [processandoAcao, setProcessandoAcao] = useState(false);
 
+  // Estados de Encaixe Rápido
+  const [modalEncaixe, setModalEncaixe] = useState(false);
+  const [nomeEncaixe, setNomeEncaixe] = useState('');
+  const [telefoneEncaixe, setTelefoneEncaixe] = useState('');
+  const [servicoEncaixeId, setServicoEncaixeId] = useState<string>('');
+  const [horaEncaixe, setHoraEncaixe] = useState<string>('');
+  const [salvandoEncaixe, setSalvandoEncaixe] = useState(false);
+
   const agora = new Date();
   const dataFormatada = `${DIAS_SEMANA_EXT[agora.getDay()]}, ${agora.getDate()} de ${MESES_EXT[agora.getMonth()]}`;
   const primeiroNome = perfil?.nome_completo?.split(' ')[0] || 'Barbeiro';
+  const nomeBarbearia = barbearia?.nome || 'Na Régua';
 
   // ─── MODELO HÍBRIDO INTELIGENTE ───
   const agendamentosValidos = agendamentosHoje.filter((a) => a.status !== 'cancelado');
@@ -86,6 +104,10 @@ export default function TelaBarbeiroHoje() {
 
   const faturamentoDia = agendamentosValidos.reduce((acc, a) => acc + Number(a.servico.preco), 0);
   const faturamentoFormatado = faturamentoDia.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  const taxaComissao = barbearia?.comissao_padrao !== undefined ? barbearia.comissao_padrao : 50;
+  const comissaoDia = (faturamentoDia * taxaComissao) / 100;
+  const comissaoFormatada = comissaoDia.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   // Lista filtrada
   const listaExibida = useMemo(() => {
@@ -135,7 +157,7 @@ export default function TelaBarbeiroHoje() {
   }
 
   function handlePostarStatusWhatsapp() {
-    const mensagemFechamento = 'Informamos que a Barbearia Vieira estará fechada hoje na parte da tarde. Agradecemos a compreensão de todos!';
+    const mensagemFechamento = `Informamos que ${nomeBarbearia} estará fechada hoje na parte da tarde. Agradecemos a compreensão de todos!`;
 
     Share.share({
       message: mensagemFechamento,
@@ -145,6 +167,70 @@ export default function TelaBarbeiroHoje() {
         Alert.alert('Aviso', 'Não foi possível abrir o WhatsApp automaticamente.');
       });
     });
+  }
+
+  function handleEnviarWhatsappConfirmacao(item: AgendamentoBarbeiro) {
+    const tel = item.cliente.telefone?.replace(/\D/g, '') || '';
+    if (!tel) {
+      Alert.alert('Sem telefone', 'Este cliente não possui número de WhatsApp cadastrado.');
+      return;
+    }
+    const numFinal = tel.startsWith('55') ? tel : `55${tel}`;
+    const horaStr = formatarHora(item.data_hora);
+    const nomeCli = item.cliente.nome_completo?.split(' ')[0] || 'Cliente';
+    const msg = encodeURIComponent(
+      `Olá, ${nomeCli}! 💈\nPassando para confirmar seu horário para ${item.servico.nome} hoje às ${horaStr} na ${nomeBarbearia}.\nTe aguardamos!`
+    );
+    Linking.openURL(`https://wa.me/${numFinal}?text=${msg}`).catch(() => {
+      Alert.alert('Aviso', 'Não foi possível abrir o WhatsApp.');
+    });
+  }
+
+  function abrirModalEncaixe() {
+    const d = new Date();
+    const horaAtual = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    setNomeEncaixe('');
+    setTelefoneEncaixe('');
+    setServicoEncaixeId(servicos[0]?.id || '');
+    setHoraEncaixe(horaAtual);
+    setModalEncaixe(true);
+  }
+
+  async function handleSalvarEncaixe() {
+    if (!nomeEncaixe.trim()) {
+      Alert.alert('Atenção', 'Informe o nome do cliente.');
+      return;
+    }
+    if (!servicoEncaixeId) {
+      Alert.alert('Atenção', 'Selecione um serviço.');
+      return;
+    }
+    setSalvandoEncaixe(true);
+    try {
+      const agoraD = new Date();
+      const [hStr, mStr] = horaEncaixe.split(':');
+      const dataHoraEncaixe = new Date(
+        agoraD.getFullYear(),
+        agoraD.getMonth(),
+        agoraD.getDate(),
+        Number(hStr || agoraD.getHours()),
+        Number(mStr || agoraD.getMinutes())
+      );
+
+      await criarReservaManual({
+        nomeCliente: nomeEncaixe.trim(),
+        telefone: telefoneEncaixe.trim() || undefined,
+        servicoId: servicoEncaixeId,
+        dataHora: dataHoraEncaixe.toISOString(),
+      });
+
+      setModalEncaixe(false);
+      Alert.alert('Encaixe Realizado! 💈', `${nomeEncaixe.trim()} foi adicionado aos atendimentos de hoje.`);
+    } catch (err: any) {
+      Alert.alert('Erro ao criar encaixe', err.message || 'Tente novamente.');
+    } finally {
+      setSalvandoEncaixe(false);
+    }
   }
 
   async function handleConcluir(agendamento: AgendamentoBarbeiro) {
@@ -193,7 +279,7 @@ export default function TelaBarbeiroHoje() {
     }
     const limpo = telefone.replace(/\D/g, '');
     const numFinal = limpo.startsWith('55') ? limpo : `55${limpo}`;
-    const msg = encodeURIComponent(`Olá ${nomeCliente || ''}, aqui é da Barbearia Vieira sobre o seu atendimento.`);
+    const msg = encodeURIComponent(`Olá ${nomeCliente || ''}, aqui é da ${nomeBarbearia} sobre o seu atendimento.`);
     Linking.openURL(`https://wa.me/${numFinal}?text=${msg}`).catch(() => {
       Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.');
     });
@@ -211,16 +297,16 @@ export default function TelaBarbeiroHoje() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: theme.borda }]}>
         <View>
-          <Text style={styles.titulo}>Olá, {primeiroNome}!</Text>
-          <Text style={styles.subtitulo}>{dataFormatada.charAt(0).toUpperCase() + dataFormatada.slice(1)}</Text>
+          <Text style={[styles.titulo, { color: theme.textoPrimario }]}>Cockpit de Hoje</Text>
+          <Text style={[styles.subtitulo, { color: theme.textoSecundario }]}>{dataFormatada.charAt(0).toUpperCase() + dataFormatada.slice(1)} • {primeiroNome}</Text>
         </View>
-        <View style={styles.badgeBarbeiro}>
-          <Sparkles size={12} color={Colors.ouro} />
-          <Text style={styles.badgeBarbeiroTexto}>{barbearia?.nome || 'Barbearia Vieira'}</Text>
+        <View style={[styles.badgeBarbeiro, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
+          <Sparkles size={12} color={theme.ouroTexto} />
+          <Text style={[styles.badgeBarbeiroTexto, { color: theme.ouroTexto }]}>{nomeBarbearia}</Text>
         </View>
       </View>
 
@@ -231,11 +317,79 @@ export default function TelaBarbeiroHoje() {
           <RefreshControl
             refreshing={carregando}
             onRefresh={recarregar}
-            tintColor={Colors.vermelho}
-            colors={[Colors.vermelho]}
+            tintColor={theme.ouro}
+            colors={[theme.ouro]}
           />
         }
       >
+        {/* ─── LIVE COCKPIT: NA CADEIRA AGORA ─── */}
+        {ativosInteligentes.length > 0 && (
+          <View style={[styles.cardNaCadeira, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
+            <View style={styles.naCadeiraHeader}>
+              <View style={[styles.naCadeiraLivePill, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
+                <View style={[styles.naCadeiraLiveDot, { backgroundColor: theme.ouro }]} />
+                <Text style={[styles.naCadeiraLiveTexto, { color: theme.ouroTexto }]}>NA CADEIRA AGORA</Text>
+              </View>
+              <Text style={[styles.naCadeiraHora, { color: theme.ouroTexto }]}>
+                {formatarHora(ativosInteligentes[0].data_hora)}
+              </Text>
+            </View>
+
+            <View style={styles.naCadeiraInfo}>
+              <Text style={[styles.naCadeiraClienteNome, { color: theme.textoPrimario }]} numberOfLines={1}>
+                {ativosInteligentes[0].cliente.nome_completo || 'Cliente'}
+              </Text>
+              <Text style={[styles.naCadeiraServico, { color: theme.textoSecundario }]}>
+                {ativosInteligentes[0].servico.nome} • {Number(ativosInteligentes[0].servico.preco).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} • {ativosInteligentes[0].servico.duracao_minutos} min
+              </Text>
+            </View>
+
+            <View style={styles.naCadeiraAcoes}>
+              <TouchableOpacity
+                style={styles.btnNaCadeiraConcluir}
+                onPress={() => handleConcluir(ativosInteligentes[0])}
+                disabled={processandoAcao}
+                activeOpacity={0.85}
+              >
+                <Scissors size={17} color="#FFFFFF" />
+                <Text style={styles.btnNaCadeiraConcluirTexto}>Finalizar Corte</Text>
+              </TouchableOpacity>
+
+              {ativosInteligentes[0].cliente.telefone && (
+                <TouchableOpacity
+                  style={styles.btnNaCadeiraWhats}
+                  onPress={() => handleEnviarWhatsappConfirmacao(ativosInteligentes[0])}
+                  activeOpacity={0.7}
+                >
+                  <MessageCircle size={18} color={Colors.verde} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* ─── Progresso da Meta Diária ─── */}
+        {agendamentosValidos.length > 0 && (
+          <View style={styles.metaCard}>
+            <View style={styles.metaHeader}>
+              <Text style={styles.metaTitulo}>Meta do Dia</Text>
+              <Text style={styles.metaContador}>
+                {concluidosInteligentes.length} de {agendamentosValidos.length} cortes realizados
+              </Text>
+            </View>
+            <View style={styles.metaTrilho}>
+              <View
+                style={[
+                  styles.metaPreenchimento,
+                  {
+                    width: `${Math.min(100, Math.round((concluidosInteligentes.length / agendamentosValidos.length) * 100))}%`,
+                  },
+                ]}
+              />
+            </View>
+          </View>
+        )}
+
         {/* ─── Métricas (Modelo Híbrido Inteligente) ─── */}
         <View style={styles.metricasRow}>
           <View style={styles.metricaCard}>
@@ -245,13 +399,40 @@ export default function TelaBarbeiroHoje() {
             <Text style={styles.metricaLabel}>Concluídos</Text>
           </View>
           <View style={styles.metricaCard}>
-            <Text style={[styles.metricaValor, styles.metricaValorDestaque]}>{totalNaFila}</Text>
-            <Text style={styles.metricaLabel}>Na lista de espera</Text>
+            <Text style={[styles.metricaValor, styles.metricaValorDestaque]}>{faturamentoFormatado}</Text>
+            <Text style={styles.metricaLabel}>Total do Dia</Text>
           </View>
           <View style={styles.metricaCard}>
-            <Text style={[styles.metricaValor, styles.metricaValorPequeno]}>{faturamentoFormatado}</Text>
-            <Text style={styles.metricaLabel}>Faturamento</Text>
+            <Text style={[styles.metricaValor, styles.metricaValorPequeno, { color: Colors.verde }]}>{comissaoFormatada}</Text>
+            <Text style={styles.metricaLabel}>Comissão ({taxaComissao}%)</Text>
           </View>
+        </View>
+
+        {/* ─── Barra de Ações Rápidas de Produtividade ─── */}
+        <View style={styles.barraAcoesRapidas}>
+          <TouchableOpacity
+            style={styles.botaoAcaoRapidaDestaque}
+            onPress={abrirModalEncaixe}
+            activeOpacity={0.8}
+          >
+            <Plus size={16} color={Colors.textoEscuroSobreOuro} />
+            <Text style={styles.botaoAcaoRapidaDestaqueTexto}>Encaixe de Balcão</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.botaoAcaoRapida}
+            onPress={() => {
+              if (ativosInteligentes.length > 0) {
+                handleEnviarWhatsappConfirmacao(ativosInteligentes[0]);
+              } else {
+                Alert.alert('Nenhum agendamento', 'Não há agendamentos ativos pendentes para hoje.');
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <Send size={15} color={Colors.ouro} />
+            <Text style={styles.botaoAcaoRapidaTexto}>Avisar Próximo</Text>
+          </TouchableOpacity>
         </View>
 
         {/* ─── Controle de Fechamento da Tarde ─── */}
@@ -259,18 +440,18 @@ export default function TelaBarbeiroHoje() {
           <View style={styles.tardeHeader}>
             <View style={styles.tardeTextoWrapper}>
               <Text style={styles.tardeTitulo}>
-                {tardeFechadaHoje ? 'Fechada à Tarde' : 'Fechar à Tarde'}
+                {tardeFechadaHoje ? 'Pausa da Tarde Ativa' : 'Pausa da Tarde'}
               </Text>
               <Text style={styles.tardeSubtitulo}>
                 {tardeFechadaHoje
-                  ? 'Enviando aviso para clientes'
-                  : 'Ao fechar, os clientes serão avisados que a barbearia não abrirá à tarde.'}
+                  ? 'Aviso ativo no app dos clientes'
+                  : 'Avisar clientes que não haverá expediente à tarde hoje.'}
               </Text>
             </View>
             <Switch
               value={tardeFechadaHoje}
               onValueChange={handleAlternarTarde}
-              trackColor={{ false: '#262629', true: Colors.vermelho }}
+              trackColor={{ false: Colors.borda, true: Colors.ouro }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -279,7 +460,7 @@ export default function TelaBarbeiroHoje() {
             <View style={styles.tardeAvisoContainer}>
               <View style={styles.tardeMensagemCard}>
                 <Text style={styles.tardeMensagemTexto}>
-                  "Informamos que a Barbearia Vieira estará fechada hoje na parte da tarde. Agradecemos a compreensão de todos!"
+                  "Informamos que {nomeBarbearia} estará fechada hoje na parte da tarde. Agradecemos a compreensão de todos!"
                 </Text>
               </View>
               <TouchableOpacity
@@ -381,7 +562,7 @@ export default function TelaBarbeiroHoje() {
         {/* ─── Lista de Cards ─── */}
         {carregando && agendamentosHoje.length === 0 ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={Colors.vermelho} />
+            <ActivityIndicator size="large" color={Colors.ouro} />
           </View>
         ) : listaExibida.length === 0 ? (
           <View style={styles.vazio}>
@@ -437,7 +618,18 @@ export default function TelaBarbeiroHoje() {
                   <Text style={styles.cardPreco}>
                     {Number(item.servico.preco).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </Text>
-                  <BadgeStatus status={item.status === 'confirmado' && decorrido ? 'concluido' : item.status} />
+                  <View style={styles.cardStatusRow}>
+                    <BadgeStatus status={item.status === 'confirmado' && decorrido ? 'concluido' : item.status} />
+                    {item.cliente.telefone ? (
+                      <TouchableOpacity
+                        style={styles.btnCardWhats}
+                        onPress={() => handleEnviarWhatsappConfirmacao(item)}
+                        activeOpacity={0.7}
+                      >
+                        <MessageCircle size={14} color={Colors.verde} />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
                 </View>
               </TouchableOpacity>
             );
@@ -567,18 +759,133 @@ export default function TelaBarbeiroHoje() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* ─── Modal de Encaixe Rápido ─── */}
+      <Modal
+        visible={modalEncaixe}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalEncaixe(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setModalEncaixe(false)}>
+          <Pressable style={styles.modalConteudo} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalTraco} />
+
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitulo}>Novo Encaixe de Balcão</Text>
+                <Text style={styles.modalSub}>Adicione um cliente presencial à agenda de hoje</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setModalEncaixe(false)}
+                style={styles.modalBtnFechar}
+                activeOpacity={0.7}
+              >
+                <X size={20} color={Colors.textoSecundario} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalCorpo}>
+              {/* Nome */}
+              <View style={styles.campoEncaixe}>
+                <Text style={styles.campoEncaixeLabel}>Nome do Cliente *</Text>
+                <TextInput
+                  style={styles.inputEncaixe}
+                  placeholder="Ex: Carlos Eduardo"
+                  placeholderTextColor={Colors.textoDesabilitado}
+                  value={nomeEncaixe}
+                  onChangeText={setNomeEncaixe}
+                  autoCapitalize="words"
+                />
+              </View>
+
+              {/* Telefone / WhatsApp */}
+              <View style={styles.campoEncaixe}>
+                <Text style={styles.campoEncaixeLabel}>WhatsApp (Opcional)</Text>
+                <TextInput
+                  style={styles.inputEncaixe}
+                  placeholder="(86) 99999-9999"
+                  placeholderTextColor={Colors.textoDesabilitado}
+                  value={telefoneEncaixe}
+                  onChangeText={setTelefoneEncaixe}
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              {/* Serviço */}
+              <View style={styles.campoEncaixe}>
+                <Text style={styles.campoEncaixeLabel}>Serviço *</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.servicosEncaixeScroll}
+                >
+                  {servicos.map((s) => {
+                    const selecionado = servicoEncaixeId === s.id;
+                    return (
+                      <TouchableOpacity
+                        key={s.id}
+                        style={[styles.chipServicoEncaixe, selecionado && styles.chipServicoEncaixeAtivo]}
+                        onPress={() => setServicoEncaixeId(s.id)}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            styles.chipServicoEncaixeTexto,
+                            selecionado && styles.chipServicoEncaixeTextoAtivo,
+                          ]}
+                        >
+                          {s.nome} • R$ {Number(s.preco).toFixed(0)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* Horário */}
+              <View style={styles.campoEncaixe}>
+                <Text style={styles.campoEncaixeLabel}>Horário do Atendimento (HH:MM)</Text>
+                <TextInput
+                  style={styles.inputEncaixe}
+                  placeholder="14:30"
+                  placeholderTextColor={Colors.textoDesabilitado}
+                  value={horaEncaixe}
+                  onChangeText={setHoraEncaixe}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={styles.botaoSalvarEncaixe}
+                onPress={handleSalvarEncaixe}
+                disabled={salvandoEncaixe}
+                activeOpacity={0.8}
+              >
+                {salvandoEncaixe ? (
+                  <ActivityIndicator color={Colors.textoEscuroSobreOuro} size="small" />
+                ) : (
+                  <>
+                    <CheckCircle2 size={18} color={Colors.textoEscuroSobreOuro} />
+                    <Text style={styles.botaoSalvarEncaixeTexto}>Confirmar Encaixe</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0A0A0A' },
+  safe: { flex: 1, backgroundColor: Colors.fundo },
   header: {
     paddingHorizontal: Spacing.telaH,
     paddingTop: Spacing.md,
     paddingBottom: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#1F1F22',
+    borderBottomColor: Colors.borda,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -586,12 +893,12 @@ const styles = StyleSheet.create({
   titulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.displayMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   subtitulo: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodyMd,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     marginTop: 2,
   },
   badgeBarbeiro: {
@@ -621,19 +928,19 @@ const styles = StyleSheet.create({
   },
   metricaCard: {
     flex: 1,
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     borderRadius: Radii.md,
     padding: Spacing.md,
     alignItems: 'center',
     gap: 4,
     borderWidth: 1,
-    borderColor: '#262629',
+    borderColor: Colors.borda,
     ...Shadows.card,
   },
   metricaValor: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.displayMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   metricaValorDestaque: {
     color: Colors.ouro,
@@ -645,20 +952,20 @@ const styles = StyleSheet.create({
   metricaLabel: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     textAlign: 'center',
   },
   tardeBox: {
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     borderRadius: Radii.md,
     padding: Spacing.md,
     gap: Spacing.sm,
     borderWidth: 1,
-    borderColor: '#262629',
+    borderColor: Colors.borda,
   },
   tardeBoxFechada: {
     borderColor: 'rgba(229, 57, 53, 0.4)',
-    backgroundColor: '#1F1414',
+    backgroundColor: Colors.erroClaro,
   },
   tardeHeader: {
     flexDirection: 'row',
@@ -673,19 +980,19 @@ const styles = StyleSheet.create({
   tardeTitulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   tardeSubtitulo: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   tardeAvisoContainer: {
     gap: Spacing.sm,
     marginTop: 4,
   },
   tardeMensagemCard: {
-    backgroundColor: '#261818',
+    backgroundColor: Colors.erroClaro,
     borderRadius: Radii.sm,
     padding: Spacing.sm,
     borderWidth: 1,
@@ -710,15 +1017,15 @@ const styles = StyleSheet.create({
   botaoPostarStatusTexto: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   atrasoBox: {
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     borderRadius: Radii.md,
     padding: Spacing.md,
     gap: Spacing.sm,
     borderWidth: 1,
-    borderColor: '#262629',
+    borderColor: Colors.borda,
   },
   atrasoHeader: {
     flexDirection: 'row',
@@ -733,7 +1040,7 @@ const styles = StyleSheet.create({
   atrasoTitulo: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   badgeNormalizar: {
     backgroundColor: 'rgba(61, 191, 106, 0.15)',
@@ -757,9 +1064,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
     borderRadius: Radii.sm,
-    backgroundColor: '#26262A',
+    backgroundColor: Colors.superficie2,
     borderWidth: 1,
-    borderColor: '#3F3F46',
+    borderColor: Colors.bordaDestaque,
   },
   atrasoBotaoAtivo: {
     backgroundColor: Colors.amarelo,
@@ -768,7 +1075,7 @@ const styles = StyleSheet.create({
   atrasoTexto: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   atrasoTextoAtivo: {
     color: Colors.fundo,
@@ -796,7 +1103,7 @@ const styles = StyleSheet.create({
   secaoTitulo: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.headingSm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   filtrosRow: {
     flexDirection: 'row',
@@ -806,7 +1113,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: Radii.sm,
-    backgroundColor: '#1E1E22',
+    backgroundColor: Colors.superficie2,
   },
   filtroChipAtivo: {
     backgroundColor: Colors.vermelho,
@@ -814,10 +1121,10 @@ const styles = StyleSheet.create({
   filtroChipTexto: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   filtroChipTextoAtivo: {
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
     fontFamily: FontFamily.semiBold,
   },
   loadingContainer: {
@@ -825,45 +1132,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   vazio: {
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     borderRadius: Radii.md,
     padding: Spacing.xl,
     alignItems: 'center',
     gap: Spacing.xs,
     borderWidth: 1,
-    borderColor: '#262629',
+    borderColor: Colors.borda,
   },
   vazioTitulo: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodyLg,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
     textAlign: 'center',
     marginTop: 4,
   },
   vazioTexto: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodyMd,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     textAlign: 'center',
   },
   cardAgendamento: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     borderRadius: Radii.md,
     padding: Spacing.md,
     gap: Spacing.sm,
     borderWidth: 1,
-    borderColor: '#262629',
+    borderColor: Colors.borda,
     ...Shadows.card,
   },
   cardConcluido: {
     opacity: 0.65,
-    borderColor: '#1E1E22',
+    borderColor: Colors.superficie2,
   },
   cardCancelado: {
     opacity: 0.5,
-    borderColor: '#2D1B1B',
+    borderColor: Colors.bordaDestaque,
   },
   cardHoraColuna: {
     alignItems: 'center',
@@ -873,17 +1180,17 @@ const styles = StyleSheet.create({
   cardHora: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyLg,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   cardDuracao: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   cardDivisorVertical: {
     width: 1,
     height: '100%',
-    backgroundColor: '#262629',
+    backgroundColor: Colors.borda,
     alignSelf: 'stretch',
   },
   cardInfo: {
@@ -898,13 +1205,13 @@ const styles = StyleSheet.create({
   cardClienteNome: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
     flex: 1,
   },
   cardServico: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodySm,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     flex: 1,
   },
   cardPrecoStatus: {
@@ -924,21 +1231,21 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalConteudo: {
-    backgroundColor: '#18181B',
+    backgroundColor: Colors.superficie,
     borderTopLeftRadius: Radii.xl,
     borderTopRightRadius: Radii.xl,
     paddingHorizontal: Spacing.telaH,
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.giant,
     borderWidth: 1,
-    borderColor: '#2E2E33',
+    borderColor: Colors.bordaDestaque,
     gap: Spacing.md,
   },
   modalTraco: {
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#3F3F46',
+    backgroundColor: Colors.bordaDestaque,
     alignSelf: 'center',
     marginBottom: Spacing.xs,
   },
@@ -947,27 +1254,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  modalTitulo: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.headingSm,
+    color: Colors.textoPrimario,
+  },
+  modalCorpo: {
+    gap: Spacing.xs,
+    marginTop: Spacing.xs,
+  },
   modalClienteNome: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.headingSm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   modalSub: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodySm,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     marginTop: 2,
   },
   modalBtnFechar: {
     padding: 6,
   },
   modalDetalhesCard: {
-    backgroundColor: '#222226',
+    backgroundColor: Colors.superficie2,
     borderRadius: Radii.md,
     padding: Spacing.md,
     gap: Spacing.xs,
     borderWidth: 1,
-    borderColor: '#2E2E33',
+    borderColor: Colors.bordaDestaque,
   },
   modalDetalhesLinha: {
     flexDirection: 'row',
@@ -977,12 +1293,12 @@ const styles = StyleSheet.create({
   modalDetalhesRotulo: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.bodySm,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   modalDetalhesValor: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   modalDetalhesOuro: {
     color: Colors.ouro,
@@ -1015,7 +1331,7 @@ const styles = StyleSheet.create({
   botaoContatoTexto: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   acoesStatusContainer: {
     gap: Spacing.xs,
@@ -1032,7 +1348,7 @@ const styles = StyleSheet.create({
   botaoConcluirTexto: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   botaoCancelar: {
     flexDirection: 'row',
@@ -1049,5 +1365,241 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodySm,
     color: Colors.erro,
+  },
+  barraAcoesRapidas: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  botaoAcaoRapidaDestaque: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Colors.ouro,
+    paddingVertical: 12,
+    borderRadius: Radii.md,
+    ...Shadows.card,
+  },
+  botaoAcaoRapidaDestaqueTexto: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodySm,
+    color: Colors.textoEscuroSobreOuro,
+  },
+  botaoAcaoRapida: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Colors.superficie,
+    borderWidth: 1,
+    borderColor: 'rgba(203, 161, 74, 0.4)',
+    paddingVertical: 12,
+    borderRadius: Radii.md,
+    ...Shadows.card,
+  },
+  botaoAcaoRapidaTexto: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: FontSize.bodySm,
+    color: Colors.ouro,
+  },
+  cardStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  btnCardWhats: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(37, 211, 102, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(37, 211, 102, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  campoEncaixe: {
+    gap: 4,
+    marginBottom: Spacing.sm,
+  },
+  campoEncaixeLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: '#CCCCCC',
+  },
+  inputEncaixe: {
+    backgroundColor: Colors.superficie2,
+    borderWidth: 1,
+    borderColor: '#333338',
+    borderRadius: Radii.sm,
+    paddingHorizontal: Spacing.sm,
+    height: 44,
+    color: Colors.textoPrimario,
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.bodyMd,
+  },
+  servicosEncaixeScroll: {
+    gap: Spacing.xs,
+    paddingVertical: 4,
+  },
+  chipServicoEncaixe: {
+    backgroundColor: Colors.superficie2,
+    borderWidth: 1,
+    borderColor: '#333338',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: Radii.full,
+  },
+  chipServicoEncaixeAtivo: {
+    backgroundColor: 'rgba(203, 161, 74, 0.2)',
+    borderColor: Colors.ouro,
+  },
+  chipServicoEncaixeTexto: {
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+    color: '#AAAAAA',
+  },
+  chipServicoEncaixeTextoAtivo: {
+    color: Colors.ouro,
+    fontFamily: FontFamily.bold,
+  },
+  botaoSalvarEncaixe: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Colors.ouro,
+    paddingVertical: 14,
+    borderRadius: Radii.md,
+    marginTop: Spacing.xs,
+  },
+  botaoSalvarEncaixeTexto: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodyMd,
+    color: Colors.textoEscuroSobreOuro,
+  },
+
+  /* ─── LIVE COCKPIT: NA CADEIRA AGORA ─── */
+  cardNaCadeira: {
+    backgroundColor: Colors.superficie,
+    borderRadius: Radii.xl,
+    padding: Spacing.lg,
+    borderWidth: 1.5,
+    borderColor: Colors.ouro,
+    gap: Spacing.sm,
+    ...Shadows.cardElevado,
+  },
+  naCadeiraHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  naCadeiraLivePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(48, 209, 88, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radii.full,
+    borderWidth: 1,
+    borderColor: 'rgba(48, 209, 88, 0.3)',
+  },
+  naCadeiraLiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.verde,
+  },
+  naCadeiraLiveTexto: {
+    fontFamily: FontFamily.bold,
+    fontSize: 10.5,
+    color: Colors.verde,
+    letterSpacing: 0.5,
+  },
+  naCadeiraHora: {
+    fontFamily: FontFamily.bold,
+    fontSize: 16,
+    color: Colors.ouro,
+  },
+  naCadeiraInfo: {
+    gap: 2,
+  },
+  naCadeiraClienteNome: {
+    fontFamily: FontFamily.bold,
+    fontSize: 22,
+    color: Colors.textoPrimario,
+  },
+  naCadeiraServico: {
+    fontFamily: FontFamily.medium,
+    fontSize: 13,
+    color: '#A0A0AA',
+  },
+  naCadeiraAcoes: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginTop: 4,
+  },
+  btnNaCadeiraConcluir: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.verde,
+    paddingVertical: 14,
+    borderRadius: Radii.lg,
+  },
+  btnNaCadeiraConcluirTexto: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+    color: Colors.textoPrimario,
+  },
+  btnNaCadeiraWhats: {
+    width: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(48, 209, 88, 0.12)',
+    borderRadius: Radii.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(48, 209, 88, 0.3)',
+  },
+
+  /* ─── META DIÁRIA ─── */
+  metaCard: {
+    backgroundColor: Colors.superficie,
+    borderRadius: Radii.lg,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.borda,
+    gap: Spacing.xs,
+  },
+  metaHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  metaTitulo: {
+    fontFamily: FontFamily.bold,
+    fontSize: 12,
+    color: Colors.textoPrimario,
+  },
+  metaContador: {
+    fontFamily: FontFamily.medium,
+    fontSize: 11.5,
+    color: Colors.ouro,
+  },
+  metaTrilho: {
+    width: '100%',
+    height: 6,
+    backgroundColor: Colors.superficie2,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  metaPreenchimento: {
+    height: '100%',
+    backgroundColor: Colors.ouro,
+    borderRadius: 3,
   },
 });

@@ -152,7 +152,7 @@ export default function DetalheBarbearia() {
           {estaSelecionada ? (
             <>
               <Check size={18} color={Colors.branco} />
-              <Text style={styles.selecionarTexto}>Barbearia Selecionada</Text>
+              <Text style={styles.selecionarTextoAtivo}>Barbearia Selecionada</Text>
             </>
           ) : (
             <Text style={styles.selecionarTexto}>Escolher esta Barbearia</Text>
@@ -279,11 +279,12 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
     borderRadius: Radii.md,
-    backgroundColor: Colors.vermelho,
+    backgroundColor: Colors.ouro,
     marginBottom: Spacing.lg,
   },
   selecionadoAtivo: { backgroundColor: '#2E7D32' },
-  selecionarTexto: { color: Colors.branco, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
+  selecionarTexto: { color: Colors.textoEscuroSobreOuro, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
+  selecionarTextoAtivo: { color: Colors.branco, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
 
   secaoGaleria: { marginBottom: Spacing.lg },
   secaoHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: Spacing.sm },

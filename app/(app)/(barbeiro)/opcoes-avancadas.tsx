@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+﻿import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -36,6 +36,7 @@ import {
   Calendar,
 } from 'lucide-react-native';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useServicos } from '@/hooks/useServicos';
@@ -105,6 +106,7 @@ const HORARIOS_TARDE = ['14:00', '15:00', '16:00', '17:00'];
 
 export default function TelaOpcoesAvancadas() {
   const router = useRouter();
+  const { theme, isEscuro } = useTheme();
   const { session } = useAuth();
   const barbeiroId = session?.user?.id;
   const { barbearia } = useBarbearia();
@@ -497,7 +499,7 @@ export default function TelaOpcoesAvancadas() {
       setFuncNome('');
       setFuncEmail('');
       setFuncTelefone('');
-      Alert.alert('Funcionário Adicionado! 💈', 'O novo profissional foi registrado na equipe da Barbearia Vieira.');
+      Alert.alert('Funcionário Adicionado! 💈', `O novo profissional foi registrado na equipe da ${barbearia?.nome || 'sua barbearia'}.`);
     } catch (err: any) {
       Alert.alert('Erro ao adicionar funcionário', err.message || 'Tente novamente.');
     } finally {
@@ -548,26 +550,26 @@ export default function TelaOpcoesAvancadas() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: theme.borda }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.botaoVoltar} activeOpacity={0.7}>
-          <ChevronLeft size={24} color="#FFFFFF" />
+          <ChevronLeft size={24} color={theme.textoPrimario} />
         </TouchableOpacity>
-        <Text style={styles.titulo}>Opções Avançadas</Text>
+        <Text style={[styles.titulo, { color: theme.textoPrimario }]}>Opções Avançadas</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* ─── CARD 1: MENSAGEM EM GRUPO ─── */}
-        <View style={styles.secaoCard}>
+        <View style={[styles.secaoCard, { backgroundColor: theme.superficie, borderColor: theme.borda, borderWidth: 1 }]}>
           <View style={styles.secaoHeaderLinha}>
             <View style={[styles.secaoIconeBadge, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
               <MessageSquare size={20} color="#3B82F6" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.secaoCardTitulo}>Mensagem em Grupo</Text>
-              <Text style={styles.secaoCardSubtitulo}>
+              <Text style={[styles.secaoCardTitulo, { color: theme.textoPrimario }]}>Mensagem em Grupo</Text>
+              <Text style={[styles.secaoCardSubtitulo, { color: theme.textoSecundario }]}>
                 Envie notificações diretas para grupos: hoje, semana, fila de espera ou todos os clientes, com opção de desmarcar pessoas específicas.
               </Text>
             </View>
@@ -579,39 +581,39 @@ export default function TelaOpcoesAvancadas() {
             activeOpacity={0.8}
           >
             <Send size={16} color="#FFFFFF" />
-            <Text style={styles.botaoAcaoPrincipalTexto}>Disparar Mensagem em Grupo</Text>
+            <Text style={[styles.botaoAcaoPrincipalTexto, { color: '#FFFFFF' }]}>Disparar Mensagem em Grupo</Text>
           </TouchableOpacity>
         </View>
 
         {/* ─── CARD 2: RESERVA & ENCAIXE MANUAL ─── */}
-        <View style={styles.secaoCard}>
+        <View style={[styles.secaoCard, { backgroundColor: theme.superficie, borderColor: theme.borda, borderWidth: 1 }]}>
           <View style={styles.secaoHeaderLinha}>
-            <View style={styles.secaoIconeBadge}>
-              <CalendarPlus size={20} color={Colors.ouro} />
+            <View style={[styles.secaoIconeBadge, { backgroundColor: theme.ouroTranslucido }]}>
+              <CalendarPlus size={20} color={theme.ouroTexto} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.secaoCardTitulo}>Reserva / Encaixe de Clientes</Text>
-              <Text style={styles.secaoCardSubtitulo}>
+              <Text style={[styles.secaoCardTitulo, { color: theme.textoPrimario }]}>Reserva / Encaixe de Clientes</Text>
+              <Text style={[styles.secaoCardSubtitulo, { color: theme.textoSecundario }]}>
                 Pesquise clientes cadastrados por nome, e-mail ou telefone, ou preencha manualmente com colinha discreta dos combos.
               </Text>
             </View>
           </View>
 
           <TouchableOpacity
-            style={styles.botaoAcaoPrincipal}
+            style={[styles.botaoAcaoPrincipal, { backgroundColor: theme.ouro }]}
             onPress={() => {
               setEncaixeServicoId(servicos[0]?.id || '');
               setModalEncaixeAberto(true);
             }}
             activeOpacity={0.8}
           >
-            <Plus size={16} color="#FFFFFF" />
-            <Text style={styles.botaoAcaoPrincipalTexto}>Fazer Reserva / Encaixe de Cliente</Text>
+            <Plus size={16} color={theme.textoEscuroSobreOuro} />
+            <Text style={[styles.botaoAcaoPrincipalTexto, { color: theme.textoEscuroSobreOuro }]}>Fazer Reserva / Encaixe de Cliente</Text>
           </TouchableOpacity>
         </View>
 
         {/* ─── CARD 3: LISTA NEGRA (BLOQUEIO) ─── */}
-        <View style={styles.secaoCard}>
+        <View style={[styles.secaoCard, { backgroundColor: theme.superficie, borderColor: theme.borda, borderWidth: 1 }]}>
           <View style={styles.secaoHeaderLinha}>
             <View style={[styles.secaoIconeBadge, styles.iconeBadgeVermelho]}>
               <Ban size={20} color={Colors.erro} />
@@ -674,7 +676,7 @@ export default function TelaOpcoesAvancadas() {
             <View style={{ flex: 1 }}>
               <Text style={styles.secaoCardTitulo}>Equipe da Barbearia</Text>
               <Text style={styles.secaoCardSubtitulo}>
-                Cadastre outros barbeiros ou funcionários para a Barbearia Vieira.
+                Cadastre outros barbeiros ou funcionários para a {barbearia?.nome || 'sua barbearia'}.
               </Text>
             </View>
           </View>
@@ -1342,7 +1344,7 @@ export default function TelaOpcoesAvancadas() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0A0A0A' },
+  safe: { flex: 1, backgroundColor: Colors.fundo },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1351,7 +1353,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
     paddingBottom: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#1F1F22',
+    borderBottomColor: Colors.borda,
   },
   botaoVoltar: { padding: 4 },
   titulo: { fontFamily: FontFamily.bold, fontSize: FontSize.headingSm, color: '#FFFFFF' },
@@ -1362,11 +1364,11 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.giant,
   },
   secaoCard: {
-    backgroundColor: '#161618',
+    backgroundColor: Colors.superficie,
     borderRadius: Radii.lg,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: '#262629',
+    borderColor: Colors.borda,
     gap: Spacing.sm,
     ...Shadows.card,
   },
@@ -1389,12 +1391,12 @@ const styles = StyleSheet.create({
   secaoCardTitulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   secaoCardSubtitulo: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     lineHeight: 16,
     marginTop: 2,
   },
@@ -1411,7 +1413,7 @@ const styles = StyleSheet.create({
   botaoAcaoPrincipalTexto: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   botaoAcaoSecundario: {
     flexDirection: 'row',
@@ -1429,7 +1431,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.bodySm,
   },
   listaBloqueados: {
-    backgroundColor: '#1E1E22',
+    backgroundColor: Colors.superficie2,
     borderRadius: Radii.md,
     padding: Spacing.xs,
     gap: 4,
@@ -1440,17 +1442,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: Spacing.xs,
     borderBottomWidth: 1,
-    borderBottomColor: '#262629',
+    borderBottomColor: Colors.borda,
   },
   itemBloqueadoIdent: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   itemBloqueadoMotivo: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   botaoDesbloquear: {
     paddingHorizontal: 8,
@@ -1484,7 +1486,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   listaDestinatarios: {
-    backgroundColor: '#1E1E22',
+    backgroundColor: Colors.superficie2,
     borderRadius: Radii.md,
     padding: Spacing.xs,
     gap: 4,
@@ -1496,7 +1498,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: Spacing.xs,
     borderBottomWidth: 1,
-    borderBottomColor: '#262629',
+    borderBottomColor: Colors.borda,
   },
   itemDestinatarioDesmarcado: {
     opacity: 0.45,
@@ -1504,21 +1506,21 @@ const styles = StyleSheet.create({
   destinatarioNome: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   destinatarioNomeDesmarcado: {
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     textDecorationLine: 'line-through',
   },
   destinatarioSub: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   instrucaoTexto: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     marginBottom: 4,
   },
 
@@ -1529,14 +1531,14 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalConteudoGrande: {
-    backgroundColor: '#18181B',
+    backgroundColor: Colors.superficie,
     borderTopLeftRadius: Radii.xl,
     borderTopRightRadius: Radii.xl,
     paddingHorizontal: Spacing.telaH,
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.giant,
     borderWidth: 1,
-    borderColor: '#2E2E33',
+    borderColor: Colors.bordaDestaque,
     gap: Spacing.xs,
     maxHeight: '90%',
   },
@@ -1544,7 +1546,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#3F3F46',
+    backgroundColor: Colors.bordaDestaque,
     alignSelf: 'center',
     marginBottom: Spacing.xs,
   },
@@ -1557,20 +1559,20 @@ const styles = StyleSheet.create({
   modalTitulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.headingSm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   modalBtnFechar: { padding: 4 },
   modalDescricaoTexto: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodySm,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     lineHeight: 18,
     marginBottom: Spacing.xs,
   },
   labelCampo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
     letterSpacing: 0.5,
     marginTop: Spacing.sm,
     marginBottom: 4,
@@ -1587,9 +1589,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: Radii.sm,
-    backgroundColor: '#222226',
+    backgroundColor: Colors.superficie2,
     borderWidth: 1,
-    borderColor: '#2E2E33',
+    borderColor: Colors.bordaDestaque,
   },
   chipAtivo: {
     backgroundColor: Colors.vermelho,
@@ -1606,19 +1608,19 @@ const styles = StyleSheet.create({
   chipTexto: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.bodySm,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   chipTextoAtivo: {
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
     fontFamily: FontFamily.bold,
   },
   chipServico: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: Radii.sm,
-    backgroundColor: '#222226',
+    backgroundColor: Colors.superficie2,
     borderWidth: 1,
-    borderColor: '#2E2E33',
+    borderColor: Colors.bordaDestaque,
     gap: 2,
   },
   chipServicoAtivo: {
@@ -1628,7 +1630,7 @@ const styles = StyleSheet.create({
   chipServicoNome: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   chipServicoNomeAtivo: {
     color: Colors.ouro,
@@ -1636,7 +1638,7 @@ const styles = StyleSheet.create({
   chipServicoPreco: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   chipServicoPrecoAtivo: {
     color: Colors.ouro,
@@ -1666,18 +1668,18 @@ const styles = StyleSheet.create({
   colinhaDescricao: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
     lineHeight: 16,
   },
 
   input: {
-    backgroundColor: '#222226',
+    backgroundColor: Colors.superficie2,
     borderRadius: Radii.sm,
     borderWidth: 1,
-    borderColor: '#2E2E33',
+    borderColor: Colors.bordaDestaque,
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodyMd,
   },
@@ -1685,25 +1687,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#222226',
+    backgroundColor: Colors.superficie2,
     borderRadius: Radii.sm,
     borderWidth: 1,
-    borderColor: '#2E2E33',
+    borderColor: Colors.bordaDestaque,
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,
   },
   buscaInput: {
     flex: 1,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
     fontFamily: FontFamily.regular,
     fontSize: FontSize.bodyMd,
     padding: 0,
   },
   resultadosBusca: {
-    backgroundColor: '#1E1E22',
+    backgroundColor: Colors.superficie2,
     borderRadius: Radii.sm,
     borderWidth: 1,
-    borderColor: '#2E2E33',
+    borderColor: Colors.bordaDestaque,
     marginTop: 4,
     overflow: 'hidden',
   },
@@ -1713,17 +1715,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: Spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#262629',
+    borderBottomColor: Colors.borda,
   },
   resultadoNome: {
     fontFamily: FontFamily.semiBold,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   resultadoTel: {
     fontFamily: FontFamily.regular,
     fontSize: FontSize.labelXs,
-    color: '#8E8E93',
+    color: Colors.textoSecundario,
   },
   badgeSelecionar: {
     backgroundColor: 'rgba(203, 161, 74, 0.15)',
@@ -1742,7 +1744,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    backgroundColor: '#222226',
+    backgroundColor: Colors.superficie2,
     borderRadius: Radii.sm,
     padding: Spacing.sm,
     borderWidth: 1,
@@ -1759,7 +1761,7 @@ const styles = StyleSheet.create({
   nomeClienteSelecionado: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
   telClienteSelecionado: {
     fontFamily: FontFamily.regular,
@@ -1780,6 +1782,6 @@ const styles = StyleSheet.create({
   botaoConfirmarTexto: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
+    color: Colors.textoPrimario,
   },
 });
