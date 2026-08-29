@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Alert,
   View,
@@ -39,7 +39,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 export default function TelaHome() {
   const router = useRouter();
   const { theme, isEscuro } = useTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { perfil, carregandoPerfil } = usePerfil();
   const { barbearia, carregando: carregandoBarbearia } = useBarbearia();
   const { proximos, historico } = useMeusAgendamentos(barbearia?.id);
@@ -882,7 +882,7 @@ const createStyles = (theme: ThemePalette) => StyleSheet.create({
   bannerTardeFechada: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#FFF1F0',
+    backgroundColor: theme.erroClaro,
     borderRadius: Radii.lg,
     padding: Spacing.md,
     borderWidth: 1,
@@ -897,18 +897,18 @@ const createStyles = (theme: ThemePalette) => StyleSheet.create({
   bannerTardeTitulo: {
     fontFamily: FontFamily.bold,
     fontSize: 13,
-    color: '#FF6961',
+    color: theme.erro,
   },
   bannerTardeTexto: {
     fontFamily: FontFamily.regular,
     fontSize: 11,
-    color: '#E8B4B4',
+    color: theme.textoSecundario,
     lineHeight: 15,
   },
   cardMimoCliente: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFDF8',
+    backgroundColor: theme.superficie,
     borderRadius: Radii.xl,
     padding: Spacing.md,
     gap: Spacing.md,

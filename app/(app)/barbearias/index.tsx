@@ -30,11 +30,12 @@ import { useLocalizacao } from '@/hooks/useLocalizacao';
 import { usePerfil } from '@/hooks/usePerfil';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Colors, FontFamily, FontSize, Radii, Shadows, Spacing } from '@/theme';
+import { Colors, FontFamily, FontSize, Radii, Shadows, Spacing, type ThemePalette } from '@/theme';
 
 export default function ListaBarbearias() {
   const router = useRouter();
   const { theme, isEscuro } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { modo } = useLocalSearchParams<{ modo?: string }>();
   const [busca, setBusca] = useState('');
   const [cidadeSelecionada, setCidadeSelecionada] = useState<string>('Todas');
@@ -77,24 +78,46 @@ export default function ListaBarbearias() {
 
   function renderCardBarbearia({ item }: { item: BarbeariaPublica }) {
     const isAtiva = barbeariaAtiva?.id === item.id;
-    const localizacao = [item.bairro, item.cidade].filter(Boolean).join(', ') || 'Localização a confirmar';
-    const corDestaque = item.tema?.primary || Colors.ouro;
+    const isTeste = item.slug.includes('teste') || item.nome?.toLowerCase().includes('teste');
+    const isVieira = item.slug === 'barbearia-vieira' || item.nome?.toLowerCase().includes('vieira');
+
+    const localizacao = isVieira
+      ? 'Brancas, São José do Divino - PI'
+      : [item.bairro, item.cidade].filter(Boolean).join(', ') || 'Localização a confirmar';
+
+    const descricaoExibida = isTeste
+      ? 'Teste'
+      : isVieira
+      ? 'Tradição, estilo e o melhor atendimento para o seu visual. Cortes modernos, barba na navalha e cuidados masculinos de alto nível.'
+      : item.descricao;
+
+    const corDestaque = item.tema?.primary || theme.ouro;
 
     return (
-      <View style={[styles.card, isAtiva && styles.cardAtiva, { borderColor: isAtiva ? corDestaque : Colors.borda }]}>
+      <View style={[styles.card, isAtiva && styles.cardAtiva, { borderColor: isAtiva ? corDestaque : theme.borda }]}>
         {/* Banner de Capa */}
         <View style={styles.bannerContainer}>
-          <Image
-            source={
-              item.banner_url
-                ? { uri: item.banner_url }
-                : item.slug === 'barbearia-vieira'
-                ? require('@/assets/barbearia-vieira-banner.png')
-                : require('@/assets/banner-na-regua.png')
-            }
-            style={styles.bannerImagem}
-            resizeMode="cover"
-          />
+          {isTeste ? (
+            <View style={[styles.bannerImagem, { backgroundColor: theme.superficie2, alignItems: 'center', justifyContent: 'center' }]}>
+              <Store size={38} color={theme.textoDesabilitado} />
+            </View>
+          ) : item.banner_url ? (
+            <Image
+              source={{ uri: item.banner_url }}
+              style={styles.bannerImagem}
+              resizeMode="cover"
+            />
+          ) : isVieira ? (
+            <Image
+              source={require('@/assets/barbearia-vieira-banner.png')}
+              style={styles.bannerImagem}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.bannerImagem, { backgroundColor: theme.superficie2, alignItems: 'center', justifyContent: 'center' }]}>
+              <Store size={38} color={theme.textoDesabilitado} />
+            </View>
+          )}
           <View style={styles.bannerGradiente} />
 
           {/* Badges do Topo */}
@@ -125,17 +148,27 @@ export default function ListaBarbearias() {
           <View style={styles.topoCard}>
             {/* Logo / Avatar do Estabelecimento */}
             <View style={[styles.logoWrapper, { backgroundColor: theme.superficie2, borderColor: corDestaque }]}>
-              <Image
-                source={
-                  item.logo_url
-                    ? { uri: item.logo_url }
-                    : item.slug === 'barbearia-vieira'
-                    ? require('@/assets/barbearia-vieira-logo.png')
-                    : require('@/assets/avatar-na-regua.png')
-                }
-                style={styles.logoImg}
-                resizeMode="cover"
-              />
+              {isTeste ? (
+                <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                  <Building2 size={24} color={corDestaque} />
+                </View>
+              ) : item.logo_url ? (
+                <Image
+                  source={{ uri: item.logo_url }}
+                  style={styles.logoImg}
+                  resizeMode="cover"
+                />
+              ) : isVieira ? (
+                <Image
+                  source={require('@/assets/barbearia-vieira-logo.png')}
+                  style={styles.logoImg}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                  <Building2 size={24} color={corDestaque} />
+                </View>
+              )}
             </View>
 
             <View style={styles.titulosContainer}>
@@ -151,9 +184,9 @@ export default function ListaBarbearias() {
             </View>
           </View>
 
-          {item.descricao ? (
+          {descricaoExibida ? (
             <Text style={[styles.descricaoBarbearia, { color: theme.textoSecundario }]} numberOfLines={2}>
-              {item.descricao}
+              {descricaoExibida}
             </Text>
           ) : null}
 
@@ -308,348 +341,349 @@ export default function ListaBarbearias() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.fundo },
-  header: {
-    paddingHorizontal: Spacing.telaH,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.xs,
-  },
-  headerTexto: { gap: 3 },
-  eyebrow: {
-    color: Colors.ouro,
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.labelXs,
-    letterSpacing: 2,
-  },
-  titulo: {
-    color: Colors.textoPrimario,
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.displayMd,
-    marginTop: 2,
-  },
-  subtitulo: {
-    color: Colors.textoSecundario,
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-  },
+const createStyles = (theme: ThemePalette) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: theme.fundo },
+    header: {
+      paddingHorizontal: Spacing.telaH,
+      paddingTop: Spacing.sm,
+      paddingBottom: Spacing.xs,
+    },
+    headerTexto: { gap: 3 },
+    eyebrow: {
+      color: theme.ouro,
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.labelXs,
+      letterSpacing: 2,
+    },
+    titulo: {
+      color: theme.textoPrimario,
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.displayMd,
+      marginTop: 2,
+    },
+    subtitulo: {
+      color: theme.textoSecundario,
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+    },
 
-  buscaContainer: {
-    paddingHorizontal: Spacing.telaH,
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.xs,
-  },
-  buscaWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: Spacing.md,
-    height: 46,
-    borderRadius: Radii.md,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    backgroundColor: Colors.superficie,
-  },
-  inputBusca: {
-    flex: 1,
-    color: Colors.textoPrimario,
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodyMd,
-  },
+    buscaContainer: {
+      paddingHorizontal: Spacing.telaH,
+      marginTop: Spacing.sm,
+      marginBottom: Spacing.xs,
+    },
+    buscaWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: Spacing.md,
+      height: 46,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      backgroundColor: theme.superficie2,
+    },
+    inputBusca: {
+      flex: 1,
+      color: theme.textoPrimario,
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodyMd,
+    },
 
-  cidadesContainer: {
-    paddingHorizontal: Spacing.telaH,
-    paddingVertical: Spacing.xs,
-    gap: 8,
-  },
-  chipCidade: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: Radii.full,
-    backgroundColor: Colors.superficie,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-  },
-  chipCidadeAtivo: {
-    backgroundColor: 'rgba(203, 161, 74, 0.15)',
-    borderColor: Colors.ouro,
-  },
-  chipCidadeTexto: {
-    color: Colors.textoSecundario,
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.bodySm,
-  },
-  chipCidadeTextoAtivo: {
-    color: Colors.ouro,
-    fontFamily: FontFamily.bold,
-  },
+    cidadesContainer: {
+      paddingHorizontal: Spacing.telaH,
+      paddingVertical: Spacing.xs,
+      gap: 8,
+    },
+    chipCidade: {
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      borderRadius: Radii.full,
+      backgroundColor: theme.superficie,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    chipCidadeAtivo: {
+      backgroundColor: theme.ouroTranslucido,
+      borderColor: theme.ouro,
+    },
+    chipCidadeTexto: {
+      color: theme.textoSecundario,
+      fontFamily: FontFamily.medium,
+      fontSize: FontSize.bodySm,
+    },
+    chipCidadeTextoAtivo: {
+      color: theme.ouroTexto,
+      fontFamily: FontFamily.bold,
+    },
 
-  lista: {
-    padding: Spacing.telaH,
-    paddingBottom: Spacing.giant,
-    gap: Spacing.lg,
-  },
+    lista: {
+      padding: Spacing.telaH,
+      paddingBottom: Spacing.giant,
+      gap: Spacing.lg,
+    },
 
-  card: {
-    borderRadius: Radii.lg,
-    backgroundColor: Colors.superficie,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    overflow: 'hidden',
-    ...Shadows.card,
-  },
-  cardAtiva: {
-    borderColor: 'rgba(203, 161, 74, 0.5)',
-    shadowColor: Colors.ouro,
-    shadowOpacity: 0.15,
-  },
+    card: {
+      borderRadius: Radii.lg,
+      backgroundColor: theme.superficie,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      overflow: 'hidden',
+      ...Shadows.card,
+    },
+    cardAtiva: {
+      borderColor: theme.bordaOuro,
+      shadowColor: theme.ouro,
+      shadowOpacity: 0.15,
+    },
 
-  bannerContainer: {
-    width: '100%',
-    height: 120,
-    backgroundColor: Colors.superficie,
-    position: 'relative',
-  },
-  bannerImagem: {
-    width: '100%',
-    height: '100%',
-  },
-  bannerPlaceholder: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.superficie,
-    gap: 4,
-  },
-  bannerPlaceholderTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodySm,
-    color: 'rgba(203, 161, 74, 0.7)',
-    letterSpacing: 0.5,
-  },
-  bannerGradiente: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 15, 16, 0.35)',
-  },
+    bannerContainer: {
+      width: '100%',
+      height: 120,
+      backgroundColor: theme.superficie,
+      position: 'relative',
+    },
+    bannerImagem: {
+      width: '100%',
+      height: '100%',
+    },
+    bannerPlaceholder: {
+      width: '100%',
+      height: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.superficie,
+      gap: 4,
+    },
+    bannerPlaceholderTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodySm,
+      color: theme.ouroTexto,
+      letterSpacing: 0.5,
+    },
+    bannerGradiente: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(15, 15, 16, 0.35)',
+    },
 
-  badgesTopoLinha: {
-    position: 'absolute',
-    top: 10,
-    left: 12,
-    right: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  badgeDistancia: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: Radii.full,
-    borderWidth: 1,
-    borderColor: 'rgba(203, 161, 74, 0.4)',
-  },
-  badgeDistanciaTexto: {
-    color: Colors.ouro,
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.labelXs,
-  },
-  badgeAtiva: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: Colors.ouro,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: Radii.full,
-    marginLeft: 'auto',
-  },
-  badgeAtivaTexto: {
-    color: Colors.fundo,
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.labelXs,
-  },
+    badgesTopoLinha: {
+      position: 'absolute',
+      top: 10,
+      left: 12,
+      right: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    badgeDistancia: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: Radii.full,
+      borderWidth: 1,
+      borderColor: theme.bordaOuro,
+    },
+    badgeDistanciaTexto: {
+      color: theme.ouro,
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.labelXs,
+    },
+    badgeAtiva: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      backgroundColor: theme.ouro,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: Radii.full,
+      marginLeft: 'auto',
+    },
+    badgeAtivaTexto: {
+      color: theme.textoEscuroSobreOuro,
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.labelXs,
+    },
 
-  cardCorpo: {
-    padding: Spacing.md,
-    gap: Spacing.sm,
-  },
-  topoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    marginTop: -Spacing.xl,
-  },
-  logoWrapper: {
-    width: 60,
-    height: 60,
-    borderRadius: Radii.md,
-    borderWidth: 2,
-    borderColor: Colors.ouro,
-    backgroundColor: Colors.superficie,
-    overflow: 'hidden',
-    ...Shadows.card,
-  },
-  logoImg: {
-    width: '100%',
-    height: '100%',
-  },
-  logoPlaceholder: {
-    flex: 1,
-    backgroundColor: Colors.ouro,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoLetra: {
-    fontFamily: FontFamily.bold,
-    fontSize: 26,
-    color: Colors.fundo,
-  },
+    cardCorpo: {
+      padding: Spacing.md,
+      gap: Spacing.sm,
+    },
+    topoCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      marginTop: -Spacing.xl,
+    },
+    logoWrapper: {
+      width: 60,
+      height: 60,
+      borderRadius: Radii.md,
+      borderWidth: 2,
+      borderColor: theme.ouro,
+      backgroundColor: theme.superficie,
+      overflow: 'hidden',
+      ...Shadows.card,
+    },
+    logoImg: {
+      width: '100%',
+      height: '100%',
+    },
+    logoPlaceholder: {
+      flex: 1,
+      backgroundColor: theme.ouro,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    logoLetra: {
+      fontFamily: FontFamily.bold,
+      fontSize: 26,
+      color: theme.textoEscuroSobreOuro,
+    },
 
-  titulosContainer: {
-    flex: 1,
-    paddingTop: Spacing.md,
-  },
-  nomeBarbearia: {
-    color: Colors.textoPrimario,
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyLg,
-  },
-  localLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
-  },
-  localTexto: {
-    color: Colors.ouroClaro,
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.bodySm,
-  },
+    titulosContainer: {
+      flex: 1,
+      paddingTop: Spacing.md,
+    },
+    nomeBarbearia: {
+      color: theme.textoPrimario,
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyLg,
+    },
+    localLinha: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginTop: 2,
+    },
+    localTexto: {
+      color: theme.ouroClaro,
+      fontFamily: FontFamily.medium,
+      fontSize: FontSize.bodySm,
+    },
 
-  descricaoBarbearia: {
-    color: Colors.textoSecundario,
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-    lineHeight: 18,
-    marginTop: 2,
-  },
+    descricaoBarbearia: {
+      color: theme.textoSecundario,
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+      lineHeight: 18,
+      marginTop: 2,
+    },
 
-  cardAcoes: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginTop: Spacing.xs,
-    paddingTop: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: Colors.borda,
-  },
-  btnDetalhes: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: Radii.md,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-  },
-  btnDetalhesTexto: {
-    color: Colors.textoSecundario,
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.bodySm,
-  },
-  btnEscolher: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: Colors.ouro,
-    paddingVertical: 10,
-    borderRadius: Radii.md,
-  },
-  btnEscolherAtivo: {
-    backgroundColor: 'rgba(203, 161, 74, 0.15)',
-    borderWidth: 1,
-    borderColor: Colors.ouro,
-  },
-  btnEscolherTexto: {
-    color: Colors.fundo,
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodySm,
-  },
-  btnEscolherTextoAtivo: {
-    color: Colors.ouro,
-  },
+    cardAcoes: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      marginTop: Spacing.xs,
+      paddingTop: Spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: theme.borda,
+    },
+    btnDetalhes: {
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      backgroundColor: theme.superficie2,
+    },
+    btnDetalhesTexto: {
+      color: theme.textoSecundario,
+      fontFamily: FontFamily.medium,
+      fontSize: FontSize.bodySm,
+    },
+    btnEscolher: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: theme.ouro,
+      paddingVertical: 10,
+      borderRadius: Radii.md,
+    },
+    btnEscolherAtivo: {
+      backgroundColor: theme.ouroTranslucido,
+      borderWidth: 1,
+      borderColor: theme.ouro,
+    },
+    btnEscolherTexto: {
+      color: theme.textoEscuroSobreOuro,
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodySm,
+    },
+    btnEscolherTextoAtivo: {
+      color: theme.ouroTexto,
+    },
 
-  centroLoading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-  },
-  loadingTexto: {
-    color: Colors.textoSecundario,
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-  },
+    centroLoading: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: Spacing.sm,
+    },
+    loadingTexto: {
+      color: theme.textoSecundario,
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+    },
 
-  vazio: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.giant,
-    gap: Spacing.xs,
-  },
-  vazioTitulo: {
-    color: Colors.textoPrimario,
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyLg,
-    marginTop: Spacing.sm,
-  },
-  vazioTexto: {
-    color: Colors.textoSecundario,
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-    textAlign: 'center',
-    maxWidth: 280,
-  },
+    vazio: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: Spacing.giant,
+      gap: Spacing.xs,
+    },
+    vazioTitulo: {
+      color: theme.textoPrimario,
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyLg,
+      marginTop: Spacing.sm,
+    },
+    vazioTexto: {
+      color: theme.textoSecundario,
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+      textAlign: 'center',
+      maxWidth: 280,
+    },
 
-  cardFooterCadastro: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.lg,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(203, 161, 74, 0.35)',
-    marginVertical: Spacing.md,
-    ...Shadows.card,
-  },
-  cardFooterIcone: {
-    width: 42,
-    height: 42,
-    borderRadius: Radii.md,
-    backgroundColor: Colors.ouroTranslucido,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardFooterTextos: {
-    flex: 1,
-    gap: 2,
-  },
-  cardFooterTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodySm,
-    color: Colors.ouro,
-  },
-  cardFooterSub: {
-    fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: Colors.textoSecundario,
-    lineHeight: 15,
-  },
-});
+    cardFooterCadastro: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.lg,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: theme.bordaOuro,
+      marginVertical: Spacing.md,
+      ...Shadows.card,
+    },
+    cardFooterIcone: {
+      width: 42,
+      height: 42,
+      borderRadius: Radii.md,
+      backgroundColor: theme.ouroTranslucido,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cardFooterTextos: {
+      flex: 1,
+      gap: 2,
+    },
+    cardFooterTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodySm,
+      color: theme.ouroTexto,
+    },
+    cardFooterSub: {
+      fontFamily: FontFamily.regular,
+      fontSize: 11,
+      color: theme.textoSecundario,
+      lineHeight: 15,
+    },
+  });

@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Bell, ChevronLeft, ChevronRight, AlertTriangle, X, Scissors, Calendar } from 'lucide-react-native';
-import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
+import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows, type ThemePalette } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -44,6 +44,7 @@ interface Notificacao {
 export default function TelaNotificacoes() {
   const router = useRouter();
   const { theme, isEscuro } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { session } = useAuth();
   const { barbearia } = useBarbearia();
   const [itens, setItens] = useState<Notificacao[]>([]);
@@ -99,7 +100,6 @@ export default function TelaNotificacoes() {
 
   function isImportanteAtivo(item: Notificacao): boolean {
     if (item.tipo !== 'reajuste_preco') return false;
-    // O selo de importante fica ativo até a data da mudança
     if (!item.dados?.dataVigencia) return true;
 
     try {
@@ -156,7 +156,7 @@ export default function TelaNotificacoes() {
                     styles.card,
                     { backgroundColor: theme.superficie, borderColor: theme.borda, borderWidth: 1 },
                     !item.lida_em && { borderLeftWidth: 3, borderLeftColor: theme.ouro },
-                    temSeloImportante && { borderColor: 'rgba(234, 179, 8, 0.4)', backgroundColor: isEscuro ? '#181712' : '#FFFDF5' },
+                    temSeloImportante && { borderColor: theme.bordaOuro, backgroundColor: theme.superficie },
                   ]}
                   onPress={() => abrir(item)}
                   activeOpacity={0.75}
@@ -170,7 +170,6 @@ export default function TelaNotificacoes() {
                   </View>
 
                   <View style={styles.conteudo}>
-                    {/* Selo IMPORTANTE (permanece visível mesmo após lida até a data da mudança) */}
                     {temSeloImportante && (
                       <View style={styles.badgeImportante}>
                         <AlertTriangle size={11} color={theme.amarelo} />
@@ -258,7 +257,7 @@ export default function TelaNotificacoes() {
                   )}
                 </ScrollView>
 
-                {/* Mensagem Opcional do Barbeiro (só exibida se o barbeiro tiver colocado) */}
+                {/* Mensagem Opcional do Barbeiro */}
                 {notificacaoReajusteSelecionada.dados?.justificativa && (
                   <View style={[styles.justificativaBox, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
                     <Text style={[styles.justificativaTitulo, { color: theme.ouroTexto }]}>Mensagem da Barbearia:</Text>
@@ -284,212 +283,216 @@ export default function TelaNotificacoes() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.fundo },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: Spacing.telaH,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borda,
-  },
-  titulo: { fontFamily: FontFamily.bold, fontSize: FontSize.headingSm, color: Colors.textoPrimario },
-  placeholder: { width: 24 },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  lista: { padding: Spacing.telaH, gap: Spacing.sm, paddingBottom: Spacing.giant },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
-    padding: Spacing.md,
-    borderRadius: Radii.md,
-    backgroundColor: Colors.superficie,
-  },
-  cardNaoLido: { borderLeftWidth: 3, borderLeftColor: Colors.ouro },
-  cardComImportante: {
-    borderWidth: 1,
-    borderColor: 'rgba(234, 179, 8, 0.3)',
-    backgroundColor: Colors.superficie,
-  },
-  icone: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.superficie2,
-    marginTop: 2,
-  },
-  iconeImportante: {
-    backgroundColor: 'rgba(234, 179, 8, 0.15)',
-  },
-  conteudo: { flex: 1, gap: 3 },
-  badgeImportante: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(234, 179, 8, 0.15)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: Radii.sm,
-    alignSelf: 'flex-start',
-    marginBottom: 2,
-  },
-  badgeImportanteTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: Colors.amarelo,
-    letterSpacing: 0.5,
-  },
-  cardTitulo: { fontFamily: FontFamily.semiBold, fontSize: FontSize.bodyMd, color: Colors.textoPrimario },
-  mensagem: { fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, color: Colors.textoSecundario },
-  data: { fontFamily: FontFamily.regular, fontSize: FontSize.labelXs, color: Colors.textoDesabilitado, marginTop: 2 },
-  ctaSaibaMais: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    marginTop: 4,
-  },
-  ctaSaibaMaisTexto: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.labelXs,
-    color: Colors.ouro,
-  },
-  vazio: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.xs, padding: Spacing.telaH },
-  vazioTitulo: { fontFamily: FontFamily.semiBold, fontSize: FontSize.bodyLg, color: Colors.textoPrimario },
-  vazioTexto: { fontFamily: FontFamily.regular, fontSize: FontSize.bodyMd, color: Colors.textoSecundario },
+const createStyles = (theme: ThemePalette) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: theme.fundo },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: Spacing.telaH,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borda,
+    },
+    titulo: { fontFamily: FontFamily.bold, fontSize: FontSize.headingSm, color: theme.textoPrimario },
+    placeholder: { width: 24 },
+    loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    lista: { padding: Spacing.telaH, gap: Spacing.sm, paddingBottom: Spacing.giant },
+    card: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: Spacing.sm,
+      padding: Spacing.md,
+      borderRadius: Radii.md,
+      backgroundColor: theme.superficie,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    cardNaoLido: { borderLeftWidth: 3, borderLeftColor: theme.ouro },
+    cardComImportante: {
+      borderWidth: 1,
+      borderColor: theme.ouro,
+      backgroundColor: theme.superficie,
+    },
+    icone: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.superficie2,
+      marginTop: 2,
+    },
+    iconeImportante: {
+      backgroundColor: theme.ouroTranslucido,
+    },
+    conteudo: { flex: 1, gap: 3 },
+    badgeImportante: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: theme.ouroTranslucido,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: Radii.sm,
+      alignSelf: 'flex-start',
+      marginBottom: 2,
+    },
+    badgeImportanteTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 10,
+      color: theme.ouroTexto,
+      letterSpacing: 0.5,
+    },
+    cardTitulo: { fontFamily: FontFamily.semiBold, fontSize: FontSize.bodyMd, color: theme.textoPrimario },
+    mensagem: { fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, color: theme.textoSecundario },
+    data: { fontFamily: FontFamily.regular, fontSize: FontSize.labelXs, color: theme.textoDesabilitado, marginTop: 2 },
+    ctaSaibaMais: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      marginTop: 4,
+    },
+    ctaSaibaMaisTexto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: FontSize.labelXs,
+      color: theme.ouroTexto,
+    },
+    vazio: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.xs, padding: Spacing.telaH },
+    vazioTitulo: { fontFamily: FontFamily.semiBold, fontSize: FontSize.bodyLg, color: theme.textoPrimario },
+    vazioTexto: { fontFamily: FontFamily.regular, fontSize: FontSize.bodyMd, color: theme.textoSecundario },
 
-  /* Modal */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'flex-end',
-  },
-  modalConteudo: {
-    backgroundColor: Colors.superficie,
-    borderTopLeftRadius: Radii.xl,
-    borderTopRightRadius: Radii.xl,
-    paddingHorizontal: Spacing.telaH,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.giant,
-    borderWidth: 1,
-    borderColor: Colors.bordaDestaque,
-    gap: Spacing.sm,
-    maxHeight: '85%',
-  },
-  modalTraco: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.bordaDestaque,
-    alignSelf: 'center',
-    marginBottom: Spacing.xs,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  modalTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.headingSm,
-    color: Colors.textoPrimario,
-  },
-  modalBtnFechar: { padding: 4 },
-  vigenciaBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(203, 161, 74, 0.12)',
-    borderRadius: Radii.sm,
-    padding: Spacing.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(203, 161, 74, 0.25)',
-  },
-  vigenciaTexto: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-    color: Colors.ouro,
-  },
-  modalSecaoTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.labelXs,
-    color: Colors.textoSecundario,
-    letterSpacing: 0.5,
-    marginTop: Spacing.xs,
-  },
-  itemPrecoLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borda,
-  },
-  itemPrecoNome: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoPrimario,
-  },
-  itemPrecoValores: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  itemPrecoAntigo: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
-    textDecorationLine: 'line-through',
-  },
-  itemPrecoSeta: {
-    color: Colors.ouro,
-    fontFamily: FontFamily.bold,
-  },
-  itemPrecoNovo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodySm,
-    color: Colors.verde,
-  },
-  mensagemCompleta: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-    color: '#D4D4D8',
-    lineHeight: 20,
-    paddingVertical: Spacing.xs,
-  },
-  justificativaBox: {
-    backgroundColor: Colors.superficie2,
-    borderRadius: Radii.sm,
-    padding: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.bordaDestaque,
-    gap: 2,
-  },
-  justificativaTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.labelXs,
-    color: Colors.ouro,
-  },
-  justificativaTexto: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-    color: '#E4E4E7',
-    fontStyle: 'italic',
-    lineHeight: 18,
-  },
-  botaoEntendido: {
-    backgroundColor: Colors.ouro,
-    paddingVertical: 14,
-    borderRadius: Radii.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.xs,
-  },
-  botaoEntendidoTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoEscuroSobreOuro,
-  },
-});
+    /* Modal */
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      justifyContent: 'flex-end',
+    },
+    modalConteudo: {
+      backgroundColor: theme.superficie,
+      borderTopLeftRadius: Radii.xl,
+      borderTopRightRadius: Radii.xl,
+      paddingHorizontal: Spacing.telaH,
+      paddingTop: Spacing.sm,
+      paddingBottom: Spacing.giant,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      gap: Spacing.sm,
+      maxHeight: '85%',
+    },
+    modalTraco: {
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: theme.bordaDestaque,
+      alignSelf: 'center',
+      marginBottom: Spacing.xs,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    modalTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.headingSm,
+      color: theme.textoPrimario,
+    },
+    modalBtnFechar: { padding: 4 },
+    vigenciaBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: theme.ouroTranslucido,
+      borderRadius: Radii.sm,
+      padding: Spacing.sm,
+      borderWidth: 1,
+      borderColor: theme.bordaOuro,
+    },
+    vigenciaTexto: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+      color: theme.ouroTexto,
+    },
+    modalSecaoTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.labelXs,
+      color: theme.textoSecundario,
+      letterSpacing: 0.5,
+      marginTop: Spacing.xs,
+    },
+    itemPrecoLinha: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borda,
+    },
+    itemPrecoNome: {
+      fontFamily: FontFamily.medium,
+      fontSize: FontSize.bodySm,
+      color: theme.textoPrimario,
+    },
+    itemPrecoValores: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    itemPrecoAntigo: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+      color: theme.textoSecundario,
+      textDecorationLine: 'line-through',
+    },
+    itemPrecoSeta: {
+      color: theme.ouroTexto,
+      fontFamily: FontFamily.bold,
+    },
+    itemPrecoNovo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+      color: theme.ouroTexto,
+    },
+    mensagemCompleta: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+      color: theme.textoSecundario,
+      lineHeight: 20,
+    },
+    justificativaBox: {
+      backgroundColor: theme.superficie2,
+      borderRadius: Radii.md,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      gap: 4,
+      marginTop: Spacing.xs,
+    },
+    justificativaTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.labelXs,
+      color: theme.textoSecundario,
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+    },
+    justificativaTexto: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+      color: theme.textoPrimario,
+      lineHeight: 20,
+    },
+    botaoEntendido: {
+      backgroundColor: theme.ouro,
+      paddingVertical: 14,
+      borderRadius: Radii.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: Spacing.sm,
+    },
+    botaoEntendidoTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+      color: theme.textoEscuroSobreOuro,
+    },
+  });

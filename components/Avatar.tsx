@@ -1,6 +1,7 @@
-﻿import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ViewStyle, Image } from 'react-native';
-import { Colors, FontFamily, Radii } from '@/theme';
+import { Colors, FontFamily, Radii, type ThemePalette } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface AvatarProps {
   nome?: string;
@@ -17,6 +18,8 @@ export function Avatar({
   estilo,
   usarNaReguaFallback = false,
 }: AvatarProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [erroImagem, setErroImagem] = useState(false);
 
   if (uri && !erroImagem) {
@@ -79,28 +82,29 @@ export function Avatar({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: Colors.superficie2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: Colors.ouro,
-  },
-  containerImagem: {
-    borderWidth: 1.5,
-    borderColor: Colors.ouro,
-    backgroundColor: Colors.superficie2,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  imagemFill: {
-    width: '100%',
-    height: '100%',
-  },
-  iniciais: {
-    fontFamily: FontFamily.bold,
-    color: Colors.ouro,
-  },
-});
+const createStyles = (theme: ThemePalette) =>
+  StyleSheet.create({
+    container: {
+      backgroundColor: theme.superficie2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1.5,
+      borderColor: theme.ouro,
+    },
+    containerImagem: {
+      borderWidth: 1.5,
+      borderColor: theme.ouro,
+      backgroundColor: theme.superficie2,
+      overflow: 'hidden',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    imagemFill: {
+      width: '100%',
+      height: '100%',
+    },
+    iniciais: {
+      fontFamily: FontFamily.bold,
+      color: theme.ouroTexto,
+    },
+  });

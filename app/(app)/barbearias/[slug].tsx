@@ -20,14 +20,19 @@ import {
   MessageCircle,
   Phone,
   Scissors,
+  Store,
+  Building2,
 } from 'lucide-react-native';
 import { buscarDetalheBarbearia, type BarbeariaPublica } from '@/hooks/useBarbearias';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
 import { usePerfil } from '@/hooks/usePerfil';
-import { Colors, FontFamily, FontSize, Radii, Spacing } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Colors, FontFamily, FontSize, Radii, Spacing, type ThemePalette } from '@/theme';
 
 export default function DetalheBarbearia() {
   const router = useRouter();
+  const { theme, isEscuro } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const [barbearia, setBarbearia] = useState<BarbeariaPublica | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -51,7 +56,7 @@ export default function DetalheBarbearia() {
   if (carregando) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator color={Colors.ouro} size="large" />
+        <ActivityIndicator color={theme.ouro} size="large" />
       </View>
     );
   }
@@ -80,53 +85,90 @@ export default function DetalheBarbearia() {
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Botão Voltar */}
         <TouchableOpacity onPress={() => router.back()} style={styles.voltar}>
-          <ArrowLeft size={20} color={Colors.textoPrimario} />
+          <ArrowLeft size={20} color={theme.textoPrimario} />
           <Text style={styles.voltarTexto}>Voltar</Text>
         </TouchableOpacity>
 
         {/* Hero Banner / Logo */}
-        <View style={styles.heroContainer}>
-          <Image
-            source={
-              barbearia.banner_url
-                ? { uri: barbearia.banner_url }
-                : barbearia.slug === 'barbearia-vieira'
-                ? require('@/assets/barbearia-vieira-banner.png')
-                : require('@/assets/banner-na-regua.png')
-            }
-            style={styles.heroBanner}
-            resizeMode="cover"
-          />
+        {(() => {
+          const isTeste = barbearia.slug.includes('teste') || barbearia.nome?.toLowerCase().includes('teste');
+          const isVieira = barbearia.slug === 'barbearia-vieira' || barbearia.nome?.toLowerCase().includes('vieira');
+          const corDestaque = barbearia.tema?.primary || theme.ouro;
 
-          {/* Logo Flutuante */}
-          <View style={styles.logoWrapper}>
-            <Image
-              source={
-                barbearia.logo_url
-                  ? { uri: barbearia.logo_url }
-                  : barbearia.slug === 'barbearia-vieira'
-                  ? require('@/assets/barbearia-vieira-logo.png')
-                  : require('@/assets/avatar-na-regua.png')
-              }
-              style={styles.logoImg}
-              resizeMode="cover"
-            />
-          </View>
-        </View>
+          const localizacao = isVieira
+            ? 'Rua: Jeova Monte, 120, Bairro: Brancas, São José do Divino - PI, CEP: 64245-000'
+            : [barbearia.endereco, barbearia.bairro, barbearia.cidade].filter(Boolean).join(' • ') || 'Endereço não informado';
 
-        {/* Cabeçalho de Identificação */}
-        <View style={styles.identificacao}>
-          <Text style={styles.nome}>{barbearia.nome}</Text>
-          {barbearia.descricao ? <Text style={styles.descricao}>{barbearia.descricao}</Text> : null}
+          const descricaoExibida = isTeste
+            ? 'Teste'
+            : isVieira
+            ? 'Tradição, estilo e o melhor atendimento para o seu visual. Cortes modernos, barba na navalha e cuidados masculinos de alto nível.'
+            : barbearia.descricao;
 
-          <View style={styles.localLinha}>
-            <MapPin size={15} color={Colors.ouro} />
-            <Text style={styles.localTexto}>
-              {[barbearia.endereco, barbearia.bairro, barbearia.cidade].filter(Boolean).join(' • ') ||
-                'Endereço não informado'}
-            </Text>
-          </View>
-        </View>
+          return (
+            <>
+              <View style={styles.heroContainer}>
+                {isTeste ? (
+                  <View style={[styles.heroBanner, { backgroundColor: theme.superficie2, alignItems: 'center', justifyContent: 'center' }]}>
+                    <Store size={48} color={theme.textoDesabilitado} />
+                  </View>
+                ) : barbearia.banner_url ? (
+                  <Image
+                    source={{ uri: barbearia.banner_url }}
+                    style={styles.heroBanner}
+                    resizeMode="cover"
+                  />
+                ) : isVieira ? (
+                  <Image
+                    source={require('@/assets/barbearia-vieira-banner.png')}
+                    style={styles.heroBanner}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={[styles.heroBanner, { backgroundColor: theme.superficie2, alignItems: 'center', justifyContent: 'center' }]}>
+                    <Store size={48} color={theme.textoDesabilitado} />
+                  </View>
+                )}
+
+                {/* Logo Flutuante */}
+                <View style={[styles.logoWrapper, { backgroundColor: theme.superficie2, borderColor: corDestaque }]}>
+                  {isTeste ? (
+                    <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                      <Building2 size={32} color={corDestaque} />
+                    </View>
+                  ) : barbearia.logo_url ? (
+                    <Image
+                      source={{ uri: barbearia.logo_url }}
+                      style={styles.logoImg}
+                      resizeMode="cover"
+                    />
+                  ) : isVieira ? (
+                    <Image
+                      source={require('@/assets/barbearia-vieira-logo.png')}
+                      style={styles.logoImg}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                      <Building2 size={32} color={corDestaque} />
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              {/* Cabeçalho de Identificação */}
+              <View style={styles.identificacao}>
+                <Text style={styles.nome}>{barbearia.nome}</Text>
+                {descricaoExibida ? <Text style={styles.descricao}>{descricaoExibida}</Text> : null}
+
+                <View style={styles.localLinha}>
+                  <MapPin size={15} color={theme.ouro} />
+                  <Text style={styles.localTexto}>{localizacao}</Text>
+                </View>
+              </View>
+            </>
+          );
+        })()}
 
         {/* Botões de Ação de Contato */}
         <View style={styles.acoes}>
@@ -135,14 +177,14 @@ export default function DetalheBarbearia() {
               style={styles.acao}
               onPress={() => abrirUrl(`https://wa.me/${barbearia.whatsapp?.replace(/\D/g, '')}`)}
             >
-              <MessageCircle size={17} color={Colors.verde} />
+              <MessageCircle size={17} color={theme.verde} />
               <Text style={styles.acaoTexto}>WhatsApp</Text>
             </TouchableOpacity>
           ) : null}
 
           {barbearia.telefone ? (
             <TouchableOpacity style={styles.acao} onPress={() => abrirUrl(`tel:${barbearia.telefone}`)}>
-              <Phone size={17} color={Colors.ouro} />
+              <Phone size={17} color={theme.ouro} />
               <Text style={styles.acaoTexto}>Ligar</Text>
             </TouchableOpacity>
           ) : null}
@@ -159,7 +201,7 @@ export default function DetalheBarbearia() {
         >
           {estaSelecionada ? (
             <>
-              <Check size={18} color={Colors.branco} />
+              <Check size={18} color="#FFFFFF" />
               <Text style={styles.selecionarTextoAtivo}>Barbearia Selecionada</Text>
             </>
           ) : (
@@ -171,7 +213,7 @@ export default function DetalheBarbearia() {
         {fotosArray.length > 0 && (
           <View style={styles.secaoGaleria}>
             <View style={styles.secaoHeader}>
-              <Camera size={18} color={Colors.ouro} />
+              <Camera size={18} color={theme.ouro} />
               <Text style={styles.secaoTitulo}>Galeria do Espaço</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.galeriaScroll}>
@@ -187,7 +229,7 @@ export default function DetalheBarbearia() {
         {/* Lista de Serviços */}
         <View style={styles.secaoServicos}>
           <View style={styles.secaoHeader}>
-            <Scissors size={18} color={Colors.ouro} />
+            <Scissors size={18} color={theme.ouro} />
             <Text style={styles.secaoTitulo}>Serviços Disponíveis</Text>
           </View>
 
@@ -229,110 +271,111 @@ export default function DetalheBarbearia() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.fundo },
-  scroll: { padding: Spacing.telaH, paddingBottom: Spacing.giant },
-  loading: { flex: 1, backgroundColor: Colors.fundo, alignItems: 'center', justifyContent: 'center', gap: Spacing.md },
-  vazio: { color: Colors.textoPrimario, fontFamily: FontFamily.medium, fontSize: FontSize.bodyMd },
-  voltarSimples: { backgroundColor: Colors.ouro, paddingHorizontal: Spacing.lg, paddingVertical: 10, borderRadius: Radii.md },
+const createStyles = (theme: ThemePalette) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: theme.fundo },
+    scroll: { padding: Spacing.telaH, paddingBottom: Spacing.giant },
+    loading: { flex: 1, backgroundColor: theme.fundo, alignItems: 'center', justifyContent: 'center', gap: Spacing.md },
+    vazio: { color: theme.textoPrimario, fontFamily: FontFamily.medium, fontSize: FontSize.bodyMd },
+    voltarSimples: { backgroundColor: theme.ouro, paddingHorizontal: Spacing.lg, paddingVertical: 10, borderRadius: Radii.md },
 
-  voltar: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: Spacing.md },
-  voltarTexto: { color: Colors.textoPrimario, fontFamily: FontFamily.medium },
+    voltar: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: Spacing.md },
+    voltarTexto: { color: theme.textoPrimario, fontFamily: FontFamily.medium },
 
-  heroContainer: { position: 'relative', marginBottom: 40 },
-  heroBanner: { height: 140, borderRadius: Radii.lg, width: '100%' },
-  heroBannerPlaceholder: {
-    height: 140,
-    borderRadius: Radii.lg,
-    backgroundColor: Colors.ouro,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroBannerLetra: { color: Colors.fundo, fontFamily: FontFamily.bold, fontSize: 54 },
+    heroContainer: { position: 'relative', marginBottom: 40 },
+    heroBanner: { height: 140, borderRadius: Radii.lg, width: '100%' },
+    heroBannerPlaceholder: {
+      height: 140,
+      borderRadius: Radii.lg,
+      backgroundColor: theme.ouro,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    heroBannerLetra: { color: theme.fundo, fontFamily: FontFamily.bold, fontSize: 54 },
 
-  logoWrapper: {
-    position: 'absolute',
-    bottom: -30,
-    left: Spacing.md,
-    width: 68,
-    height: 68,
-    borderRadius: Radii.md,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: Colors.fundo,
-    backgroundColor: Colors.superficie,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  logoImg: { width: '100%', height: '100%' },
-  logoPlaceholder: { flex: 1, backgroundColor: Colors.ouro, alignItems: 'center', justifyContent: 'center' },
-  logoLetra: { color: Colors.fundo, fontFamily: FontFamily.bold, fontSize: 26 },
+    logoWrapper: {
+      position: 'absolute',
+      bottom: -30,
+      left: Spacing.md,
+      width: 68,
+      height: 68,
+      borderRadius: Radii.md,
+      overflow: 'hidden',
+      borderWidth: 2,
+      borderColor: theme.fundo,
+      backgroundColor: theme.superficie,
+      elevation: 4,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+    },
+    logoImg: { width: '100%', height: '100%' },
+    logoPlaceholder: { flex: 1, backgroundColor: theme.ouro, alignItems: 'center', justifyContent: 'center' },
+    logoLetra: { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold, fontSize: 26 },
 
-  identificacao: { marginTop: Spacing.xs },
-  nome: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.displayMd },
-  descricao: {
-    color: Colors.textoSecundario,
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodyMd,
-    lineHeight: 21,
-    marginTop: 6,
-  },
-  localLinha: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.sm },
-  localTexto: { color: Colors.ouroClaro, fontFamily: FontFamily.medium, fontSize: FontSize.bodySm, flex: 1 },
+    identificacao: { marginTop: Spacing.xs },
+    nome: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.displayMd },
+    descricao: {
+      color: theme.textoSecundario,
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodyMd,
+      lineHeight: 21,
+      marginTop: 6,
+    },
+    localLinha: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.sm },
+    localTexto: { color: theme.ouroClaro, fontFamily: FontFamily.medium, fontSize: FontSize.bodySm, flex: 1 },
 
-  acoes: { flexDirection: 'row', gap: Spacing.sm, marginVertical: Spacing.md },
-  acao: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    borderRadius: Radii.full,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    backgroundColor: Colors.superficie,
-  },
-  acaoTexto: { color: Colors.textoPrimario, fontFamily: FontFamily.medium, fontSize: FontSize.bodySm },
+    acoes: { flexDirection: 'row', gap: Spacing.sm, marginVertical: Spacing.md },
+    acao: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 10,
+      borderRadius: Radii.full,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      backgroundColor: theme.superficie,
+    },
+    acaoTexto: { color: theme.textoPrimario, fontFamily: FontFamily.medium, fontSize: FontSize.bodySm },
 
-  selecionar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: Radii.md,
-    backgroundColor: Colors.ouro,
-    marginBottom: Spacing.lg,
-  },
-  selecionadoAtivo: { backgroundColor: '#2E7D32' },
-  selecionarTexto: { color: Colors.textoEscuroSobreOuro, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
-  selecionarTextoAtivo: { color: Colors.branco, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
+    selecionar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: Radii.md,
+      backgroundColor: theme.ouro,
+      marginBottom: Spacing.lg,
+    },
+    selecionadoAtivo: { backgroundColor: theme.verde },
+    selecionarTexto: { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
+    selecionarTextoAtivo: { color: '#FFFFFF', fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
 
-  secaoGaleria: { marginBottom: Spacing.lg },
-  secaoHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: Spacing.sm },
-  secaoTitulo: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyLg },
-  galeriaScroll: { gap: 10, paddingVertical: 4 },
-  galeriaItem: { width: 120, height: 90, borderRadius: Radii.md, overflow: 'hidden', borderWidth: 1, borderColor: Colors.borda },
-  galeriaImagem: { width: '100%', height: '100%' },
+    secaoGaleria: { marginBottom: Spacing.lg },
+    secaoHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: Spacing.sm },
+    secaoTitulo: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyLg },
+    galeriaScroll: { gap: 10, paddingVertical: 4 },
+    galeriaItem: { width: 120, height: 90, borderRadius: Radii.md, overflow: 'hidden', borderWidth: 1, borderColor: theme.borda },
+    galeriaImagem: { width: '100%', height: '100%' },
 
-  secaoServicos: { gap: Spacing.xs },
-  servicosVazio: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, paddingVertical: 8 },
-  servico: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    padding: Spacing.md,
-    borderRadius: Radii.md,
-    backgroundColor: Colors.superficie,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    marginBottom: Spacing.xs,
-  },
-  servicoInfo: { flex: 1, gap: 3 },
-  servicoNome: { color: Colors.textoPrimario, fontFamily: FontFamily.bold },
-  servicoDescricao: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm },
-  preco: { color: Colors.ouro, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
-});
+    secaoServicos: { gap: Spacing.xs },
+    servicosVazio: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, paddingVertical: 8 },
+    servico: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      padding: Spacing.md,
+      borderRadius: Radii.md,
+      backgroundColor: theme.superficie,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      marginBottom: Spacing.xs,
+    },
+    servicoInfo: { flex: 1, gap: 3 },
+    servicoNome: { color: theme.textoPrimario, fontFamily: FontFamily.bold },
+    servicoDescricao: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm },
+    preco: { color: theme.ouroTexto, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
+  });

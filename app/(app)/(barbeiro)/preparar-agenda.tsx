@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Clock, Save, Sparkles, Check, Zap, Calendar, CheckSquare, Square } from 'lucide-react-native';
 import { Botao } from '@/components';
-import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
+import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows, type ThemePalette } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -50,9 +50,11 @@ function dataLocal(data: Date) {
   return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
 }
 
+
 export default function PrepararAgenda() {
   const router = useRouter();
   const { theme, isEscuro } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { session } = useAuth();
   const { barbearia } = useBarbearia();
   const { carregarSemanaParaBarbeiro } = useAgendaSemanal(barbearia?.id);
@@ -631,7 +633,7 @@ export default function PrepararAgenda() {
             iconeEsquerda={<Save size={18} color="#FFFFFF" />}
             onPress={salvar}
             desabilitado={salvando || totalVagas === 0}
-            estiloContainer={abrirImediatamente ? { ...styles.botaoSalvar, backgroundColor: Colors.verde } : styles.botaoSalvar}
+            estiloContainer={abrirImediatamente ? { ...styles.botaoSalvar, backgroundColor: theme.verde } : styles.botaoSalvar}
           />
         </ScrollView>
       )}
@@ -639,256 +641,257 @@ export default function PrepararAgenda() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.fundo },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.telaH,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borda,
-  },
-  semanaTabContainer: {
-    flexDirection: 'row',
-    marginHorizontal: Spacing.telaH,
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.xs,
-    padding: 4,
-    borderRadius: Radii.lg,
-    borderWidth: 1,
-    gap: 4,
-  },
-  semanaTab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    paddingVertical: 8,
-    borderRadius: Radii.md,
-  },
-  semanaTabTexto: {
-    fontFamily: FontFamily.medium,
-    fontSize: 12,
-  },
-  botaoVoltar: {
-    padding: 4,
-  },
-  titulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.headingSm,
-    color: Colors.textoPrimario,
-  },
-  placeholder: {
-    width: 32,
-  },
-  scroll: {
-    padding: Spacing.telaH,
-    gap: Spacing.md,
-    paddingBottom: Spacing.giant,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.md,
-    paddingTop: 80,
-  },
-  loadingTexto: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
-  },
-  resumoCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.lg,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    ...Shadows.card,
-  },
-  resumoIconeWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: Radii.sm,
-    backgroundColor: 'rgba(203, 161, 74, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  resumoTexto: {
-    flex: 1,
-    gap: 2,
-  },
-  resumoTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoPrimario,
-  },
-  resumoDescricao: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.labelXs,
-    color: Colors.textoSecundario,
-    lineHeight: 16,
-  },
-  presetsContainer: {
-    gap: Spacing.xs,
-  },
-  presetsTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.labelXs,
-    letterSpacing: 0.5,
-  },
-  presetsLinha: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  presetChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: Radii.md,
-    borderWidth: 1,
-  },
-  presetChipTexto: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: 12,
-  },
-  boxAberturaImediata: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.md,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    gap: Spacing.sm,
-  },
-  boxAberturaImediataTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoPrimario,
-  },
-  boxAberturaImediataSub: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.labelXs,
-    color: Colors.textoSecundario,
-    lineHeight: 16,
-  },
-  secaoTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.labelXs,
-    color: Colors.textoSecundario,
-    letterSpacing: 0.5,
-    marginTop: Spacing.xs,
-  },
-  blocoSemana: {
-    gap: Spacing.xs,
-  },
-  semanaTituloContainer: {
-    paddingVertical: 4,
-    paddingHorizontal: 2,
-  },
-  semanaTituloTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: 12,
-    letterSpacing: 0.5,
-  },
-  diasLista: {
-    gap: Spacing.sm,
-  },
-  diaContainer: {
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.md,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    gap: Spacing.sm,
-  },
-  diaCabecalho: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  diaTexto: {
-    gap: 2,
-  },
-  diaNome: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoPrimario,
-  },
-  diaData: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.labelXs,
-    color: Colors.textoSecundario,
-  },
-  horariosGranularesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingTop: Spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: Colors.borda,
-  },
-  chipHorario: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: Radii.sm,
-    backgroundColor: Colors.superficie2,
-    borderWidth: 1,
-    borderColor: Colors.bordaDestaque,
-  },
-  chipHorarioTexto: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.labelXs,
-    color: Colors.textoSecundario,
-  },
-  horariosContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-  },
-  horaBotao: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: Radii.sm,
-    backgroundColor: Colors.superficie,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-  },
-  horaTexto: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
-  },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    backgroundColor: 'rgba(203, 161, 74, 0.1)',
-    borderRadius: Radii.sm,
-    padding: Spacing.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(203, 161, 74, 0.25)',
-  },
-  infoTexto: {
-    flex: 1,
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.labelXs,
-    color: Colors.ouro,
-    lineHeight: 16,
-  },
-  botaoSalvar: {
-    backgroundColor: Colors.vermelho,
-    marginTop: Spacing.xs,
-  },
-});
+const createStyles = (theme: ThemePalette) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: theme.fundo },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.telaH,
+      paddingTop: Spacing.md,
+      paddingBottom: Spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borda,
+    },
+    semanaTabContainer: {
+      flexDirection: 'row',
+      marginHorizontal: Spacing.telaH,
+      marginTop: Spacing.sm,
+      marginBottom: Spacing.xs,
+      padding: 4,
+      borderRadius: Radii.lg,
+      borderWidth: 1,
+      gap: 4,
+    },
+    semanaTab: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 5,
+      paddingVertical: 8,
+      borderRadius: Radii.md,
+    },
+    semanaTabTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: 12,
+    },
+    botaoVoltar: {
+      padding: 4,
+    },
+    titulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.headingSm,
+      color: theme.textoPrimario,
+    },
+    placeholder: {
+      width: 32,
+    },
+    scroll: {
+      padding: Spacing.telaH,
+      gap: Spacing.md,
+      paddingBottom: Spacing.giant,
+    },
+    loadingContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: Spacing.md,
+      paddingTop: 80,
+    },
+    loadingTexto: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+      color: theme.textoSecundario,
+    },
+    resumoCard: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: Spacing.sm,
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.lg,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      ...Shadows.card,
+    },
+    resumoIconeWrapper: {
+      width: 36,
+      height: 36,
+      borderRadius: Radii.sm,
+      backgroundColor: theme.ouroTranslucido,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    resumoTexto: {
+      flex: 1,
+      gap: 2,
+    },
+    resumoTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+      color: theme.textoPrimario,
+    },
+    resumoDescricao: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.labelXs,
+      color: theme.textoSecundario,
+      lineHeight: 16,
+    },
+    presetsContainer: {
+      gap: Spacing.xs,
+    },
+    presetsTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.labelXs,
+      letterSpacing: 0.5,
+    },
+    presetsLinha: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    presetChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+    },
+    presetChipTexto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: 12,
+    },
+    boxAberturaImediata: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.md,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      gap: Spacing.sm,
+    },
+    boxAberturaImediataTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodySm,
+      color: theme.textoPrimario,
+    },
+    boxAberturaImediataSub: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.labelXs,
+      color: theme.textoSecundario,
+      lineHeight: 16,
+    },
+    secaoTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.labelXs,
+      color: theme.textoSecundario,
+      letterSpacing: 0.5,
+      marginTop: Spacing.xs,
+    },
+    blocoSemana: {
+      gap: Spacing.xs,
+    },
+    semanaTituloContainer: {
+      paddingVertical: 4,
+      paddingHorizontal: 2,
+    },
+    semanaTituloTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 12,
+      letterSpacing: 0.5,
+    },
+    diasLista: {
+      gap: Spacing.sm,
+    },
+    diaContainer: {
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.md,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      gap: Spacing.sm,
+    },
+    diaCabecalho: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    diaTexto: {
+      gap: 2,
+    },
+    diaNome: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: FontSize.bodyMd,
+      color: theme.textoPrimario,
+    },
+    diaData: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.labelXs,
+      color: theme.textoSecundario,
+    },
+    horariosGranularesGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      paddingTop: Spacing.xs,
+      borderTopWidth: 1,
+      borderTopColor: theme.borda,
+    },
+    chipHorario: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: Radii.sm,
+      backgroundColor: theme.superficie2,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    chipHorarioTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: FontSize.labelXs,
+      color: theme.textoSecundario,
+    },
+    horariosContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.sm,
+    },
+    horaBotao: {
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: Radii.sm,
+      backgroundColor: theme.superficie,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    horaTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: FontSize.bodySm,
+      color: theme.textoSecundario,
+    },
+    infoBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.xs,
+      backgroundColor: theme.ouroTranslucido,
+      borderRadius: Radii.sm,
+      padding: Spacing.sm,
+      borderWidth: 1,
+      borderColor: theme.bordaOuro,
+    },
+    infoTexto: {
+      flex: 1,
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.labelXs,
+      color: theme.ouroTexto,
+      lineHeight: 16,
+    },
+    botaoSalvar: {
+      backgroundColor: theme.vermelho,
+      marginTop: Spacing.xs,
+    },
+  });

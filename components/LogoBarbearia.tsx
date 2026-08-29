@@ -1,7 +1,8 @@
-﻿import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Linking, ImageSourcePropType } from 'react-native';
 import { MessageCircle, Scissors, Sparkles } from 'lucide-react-native';
-import { Colors, FontFamily, FontSize, Spacing, Radii } from '@/theme';
+import { Colors, FontFamily, FontSize, Spacing, Radii, type ThemePalette } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export type TipoLogo =
   | 'banner'
@@ -33,6 +34,8 @@ export function LogoBarbearia({
   mensagemWhatsApp = 'Olá! Gostaria de falar com o suporte do Na Régua.',
   variante = 'vertical',
 }: LogoBarbeariaProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   let sourceImg: ImageSourcePropType = require('@/assets/logo-na-regua.png');
   let ratio = 1;
 
@@ -95,7 +98,7 @@ export function LogoBarbearia({
           onPress={handleAbrirWhatsApp}
           activeOpacity={0.7}
         >
-          <MessageCircle size={14} color={Colors.verde} />
+          <MessageCircle size={14} color={theme.verde} />
           <Text style={styles.telefoneTexto}>{numeroTelefone}</Text>
         </TouchableOpacity>
       );
@@ -125,57 +128,58 @@ export function LogoBarbearia({
   );
 }
 
-const styles = StyleSheet.create({
-  logoImagem: {
-    alignSelf: 'center',
-  },
-  logoRemota: {
-    borderRadius: Radii.md,
-  },
-  badgePlataforma: {
-    backgroundColor: Colors.superficie,
-    borderWidth: 2,
-    borderColor: Colors.ouro,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.ouro,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
-    position: 'relative',
-  },
-  badgePlataformaSparkle: {
-    position: 'absolute',
-    top: 6,
-    right: 8,
-  },
-  containerVertical: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.xs,
-  },
-  containerHorizontal: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  telefoneBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(203, 161, 74, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(203, 161, 74, 0.3)',
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: Radii.full,
-    marginTop: 4,
-  },
-  telefoneTexto: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.bodySm,
-    color: Colors.ouro,
-    letterSpacing: 0.5,
-  },
-});
+const createStyles = (theme: ThemePalette) =>
+  StyleSheet.create({
+    logoImagem: {
+      alignSelf: 'center',
+    },
+    logoRemota: {
+      borderRadius: Radii.md,
+    },
+    badgePlataforma: {
+      backgroundColor: theme.superficie,
+      borderWidth: 2,
+      borderColor: theme.ouro,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: theme.ouro,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 4,
+      position: 'relative',
+    },
+    badgePlataformaSparkle: {
+      position: 'absolute',
+      top: 6,
+      right: 8,
+    },
+    containerVertical: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: Spacing.xs,
+    },
+    containerHorizontal: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+    },
+    telefoneBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: theme.ouroTranslucido,
+      borderWidth: 1,
+      borderColor: theme.bordaOuro,
+      paddingVertical: 5,
+      paddingHorizontal: 12,
+      borderRadius: Radii.full,
+      marginTop: 4,
+    },
+    telefoneTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: FontSize.bodySm,
+      color: theme.ouroTexto,
+      letterSpacing: 0.5,
+    },
+  });

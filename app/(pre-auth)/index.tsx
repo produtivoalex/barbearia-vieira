@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import { useRouter } from 'expo-router';
 import { Mail, Lock, Eye, EyeOff, Store, ChevronRight } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Botao } from '@/components';
-import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
+import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows, type ThemePalette } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import { iniciarLoginGoogle } from '@/lib/socialAuth';
@@ -67,6 +67,8 @@ interface SocialAuthProps {
 function BotaoGoogleAuth({ onCarregando, altura = 48 }: SocialAuthProps) {
   const [carregando, setCarregando] = useState(false);
   const router = useRouter();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   async function handleGoogleLogin() {
     try {
@@ -92,7 +94,7 @@ function BotaoGoogleAuth({ onCarregando, altura = 48 }: SocialAuthProps) {
       disabled={carregando}
     >
       {carregando ? (
-        <ActivityIndicator size="small" color={Colors.textoPrimario} />
+        <ActivityIndicator size="small" color={theme.textoPrimario} />
       ) : (
         <IconeGoogle tamanho={18} />
       )}
@@ -104,6 +106,9 @@ function BotaoGoogleAuth({ onCarregando, altura = 48 }: SocialAuthProps) {
 }
 
 function BotaoAppleAuth({ onCarregando, altura = 48 }: SocialAuthProps) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   function handleAppleLogin() {
     Alert.alert(
       'Em Breve no iOS 🍏',
@@ -129,6 +134,7 @@ function BotaoAppleAuth({ onCarregando, altura = 48 }: SocialAuthProps) {
 export default function TelaLogin() {
   const router = useRouter();
   const { theme, isEscuro } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { height, width } = useWindowDimensions();
 
   // Breakpoints responsivos para telas pequenas, médias e grandes
@@ -330,171 +336,172 @@ export default function TelaLogin() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.fundo },
-  flex: { flex: 1 },
-  scroll: {
-    flexGrow: 1,
-    paddingHorizontal: Spacing.telaH,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  conteudoCentral: {
-    width: '100%',
-    maxWidth: 440,
-    alignSelf: 'center',
-  },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  plataformaSlogan: {
-    fontFamily: FontFamily.regular,
-    color: Colors.textoSecundario,
-    letterSpacing: 0.2,
-  },
-  card: {
-    width: '100%',
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.xl,
-    ...Shadows.card,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-  },
-  cardTopo: {
-    marginBottom: 2,
-  },
-  titulo: {
-    fontFamily: FontFamily.bold,
-    color: Colors.textoPrimario,
-    letterSpacing: 0.3,
-  },
-  subtitulo: {
-    fontFamily: FontFamily.regular,
-    color: Colors.textoSecundario,
-    marginTop: 2,
-  },
-  campoContainer: {},
-  campoLabel: {
-    fontFamily: FontFamily.medium,
-    fontSize: 12,
-    color: Colors.textoSecundario,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.superficie2,
-    borderRadius: Radii.md,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.xs,
-  },
-  inputIcone: { marginRight: 2 },
-  input: {
-    flex: 1,
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoPrimario,
-    height: '100%',
-  },
-  btnOlho: {
-    padding: 6,
-  },
-  botaoPrincipal: {
-    width: '100%',
-    marginTop: 4,
-  },
-  loader: { alignSelf: 'center' },
-  divisorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginVertical: 4,
-  },
-  divisorLinha: { flex: 1, height: 1, backgroundColor: Colors.borda },
-  divisorTexto: {
-    fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: Colors.textoSecundario,
-  },
-  sociaisContainer: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  botaoSocial: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderRadius: Radii.md,
-    paddingHorizontal: Spacing.sm,
-  },
-  botaoGoogle: {
-    backgroundColor: Colors.superficie2,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-  },
-  botaoApple: {
-    backgroundColor: '#000000',
-    borderWidth: 1,
-    borderColor: '#333333',
-  },
-  botaoDesabilitado: {
-    opacity: 0.6,
-  },
-  botaoSocialTexto: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoPrimario,
-  },
-  botaoAppleTexto: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.bodySm,
-    color: '#FFFFFF',
-  },
-  bannerBarbeiro: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(203, 161, 74, 0.3)',
-    ...Shadows.card,
-  },
-  bannerBarbeiroIcone: {
-    borderRadius: Radii.md,
-    backgroundColor: Colors.ouroTranslucido,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bannerBarbeiroTextos: {
-    flex: 1,
-    gap: 2,
-  },
-  bannerBarbeiroTitulo: {
-    fontFamily: FontFamily.bold,
-    color: Colors.ouro,
-  },
-  bannerBarbeiroDesc: {
-    fontFamily: FontFamily.regular,
-    color: Colors.textoSecundario,
-  },
-  rodape: {
-    paddingVertical: 6,
-    alignItems: 'center',
-  },
-  rodapeTexto: {
-    fontFamily: FontFamily.regular,
-    color: Colors.textoSecundario,
-    textAlign: 'center',
-  },
-  rodapeLink: {
-    fontFamily: FontFamily.bold,
-    color: Colors.ouro,
-  },
-});
+const createStyles = (theme: ThemePalette) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: theme.fundo },
+    flex: { flex: 1 },
+    scroll: {
+      flexGrow: 1,
+      paddingHorizontal: Spacing.telaH,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    conteudoCentral: {
+      width: '100%',
+      maxWidth: 440,
+      alignSelf: 'center',
+    },
+    logoContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+    },
+    plataformaSlogan: {
+      fontFamily: FontFamily.regular,
+      color: theme.textoSecundario,
+      letterSpacing: 0.2,
+    },
+    card: {
+      width: '100%',
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.xl,
+      ...Shadows.card,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    cardTopo: {
+      marginBottom: 2,
+    },
+    titulo: {
+      fontFamily: FontFamily.bold,
+      color: theme.textoPrimario,
+      letterSpacing: 0.3,
+    },
+    subtitulo: {
+      fontFamily: FontFamily.regular,
+      color: theme.textoSecundario,
+      marginTop: 2,
+    },
+    campoContainer: {},
+    campoLabel: {
+      fontFamily: FontFamily.medium,
+      fontSize: 12,
+      color: theme.textoSecundario,
+    },
+    inputWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.superficie2,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      paddingHorizontal: Spacing.md,
+      gap: Spacing.xs,
+    },
+    inputIcone: { marginRight: 2 },
+    input: {
+      flex: 1,
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodyMd,
+      color: theme.textoPrimario,
+      height: '100%',
+    },
+    btnOlho: {
+      padding: 6,
+    },
+    botaoPrincipal: {
+      width: '100%',
+      marginTop: 4,
+    },
+    loader: { alignSelf: 'center' },
+    divisorRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      marginVertical: 4,
+    },
+    divisorLinha: { flex: 1, height: 1, backgroundColor: theme.borda },
+    divisorTexto: {
+      fontFamily: FontFamily.regular,
+      fontSize: 11,
+      color: theme.textoSecundario,
+    },
+    sociaisContainer: {
+      flexDirection: 'row',
+      gap: Spacing.sm,
+    },
+    botaoSocial: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      borderRadius: Radii.md,
+      paddingHorizontal: Spacing.sm,
+    },
+    botaoGoogle: {
+      backgroundColor: theme.superficie2,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    botaoApple: {
+      backgroundColor: '#000000',
+      borderWidth: 1,
+      borderColor: '#333333',
+    },
+    botaoDesabilitado: {
+      opacity: 0.6,
+    },
+    botaoSocialTexto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: FontSize.bodySm,
+      color: theme.textoPrimario,
+    },
+    botaoAppleTexto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: FontSize.bodySm,
+      color: '#FFFFFF',
+    },
+    bannerBarbeiro: {
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.lg,
+      borderWidth: 1,
+      borderColor: theme.bordaOuro,
+      ...Shadows.card,
+    },
+    bannerBarbeiroIcone: {
+      borderRadius: Radii.md,
+      backgroundColor: theme.ouroTranslucido,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    bannerBarbeiroTextos: {
+      flex: 1,
+      gap: 2,
+    },
+    bannerBarbeiroTitulo: {
+      fontFamily: FontFamily.bold,
+      color: theme.ouroTexto,
+    },
+    bannerBarbeiroDesc: {
+      fontFamily: FontFamily.regular,
+      color: theme.textoSecundario,
+    },
+    rodape: {
+      paddingVertical: 6,
+      alignItems: 'center',
+    },
+    rodapeTexto: {
+      fontFamily: FontFamily.regular,
+      color: theme.textoSecundario,
+      textAlign: 'center',
+    },
+    rodapeLink: {
+      fontFamily: FontFamily.bold,
+      color: theme.ouroTexto,
+    },
+  });

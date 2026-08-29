@@ -1,9 +1,9 @@
-﻿import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { Home, CalendarDays, Scissors, User, Wrench, RefreshCw, LogOut } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors, FontFamily, FontSize, Radii, Spacing } from '@/theme';
+import { Colors, FontFamily, FontSize, Radii, Spacing, type ThemePalette } from '@/theme';
 import { usePerfil } from '@/hooks/usePerfil';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase';
 export default function TabsClienteLayout() {
   const { perfil, isBloqueado, carregandoPerfil } = usePerfil();
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
 
   useEffect(() => {
@@ -115,67 +116,68 @@ export default function TabsClienteLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  manutencaoSafe: {
-    flex: 1,
-    backgroundColor: Colors.fundo,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  manutencaoConteudo: {
-    paddingHorizontal: Spacing.telaH,
-    alignItems: 'center',
-    gap: Spacing.md,
-    maxWidth: 340,
-  },
-  manutencaoIconeWrapper: {
-    width: 80,
-    height: 80,
-    borderRadius: Radii.full,
-    backgroundColor: 'rgba(203, 161, 74, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.xs,
-  },
-  manutencaoTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.displayMd,
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  manutencaoTexto: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoSecundario,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  btnTentarNovamente: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.ouro,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: 14,
-    borderRadius: Radii.md,
-    marginTop: Spacing.sm,
-    width: '100%',
-    justifyContent: 'center',
-  },
-  btnTentarNovamenteTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoEscuroSobreOuro,
-  },
-  btnSairManutencao: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: Spacing.sm,
-  },
-  btnSairManutencaoTexto: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
-  },
-});
+const createStyles = (theme: ThemePalette) =>
+  StyleSheet.create({
+    manutencaoSafe: {
+      flex: 1,
+      backgroundColor: theme.fundo,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    manutencaoConteudo: {
+      paddingHorizontal: Spacing.telaH,
+      alignItems: 'center',
+      gap: Spacing.md,
+      maxWidth: 340,
+    },
+    manutencaoIconeWrapper: {
+      width: 80,
+      height: 80,
+      borderRadius: Radii.full,
+      backgroundColor: theme.ouroTranslucido,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: Spacing.xs,
+    },
+    manutencaoTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.displayMd,
+      color: theme.textoPrimario,
+      textAlign: 'center',
+    },
+    manutencaoTexto: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodyMd,
+      color: theme.textoSecundario,
+      textAlign: 'center',
+      lineHeight: 22,
+    },
+    btnTentarNovamente: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: theme.ouro,
+      paddingHorizontal: Spacing.xl,
+      paddingVertical: 14,
+      borderRadius: Radii.md,
+      marginTop: Spacing.sm,
+      width: '100%',
+      justifyContent: 'center',
+    },
+    btnTentarNovamenteTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+      color: theme.textoEscuroSobreOuro,
+    },
+    btnSairManutencao: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingVertical: Spacing.sm,
+    },
+    btnSairManutencaoTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: FontSize.bodySm,
+      color: theme.textoSecundario,
+    },
+  });

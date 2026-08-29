@@ -22,7 +22,7 @@ import {
   ArrowRight,
 } from 'lucide-react-native';
 import { IlustracaoServico } from '@/components';
-import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
+import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows, type ThemePalette } from '@/theme';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAgendamento } from '@/hooks/useAgendamento';
@@ -76,6 +76,7 @@ interface SlotSelecionado {
 export default function TelaHorario() {
   const router = useRouter();
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { barbearia } = useBarbearia();
   const params = useLocalSearchParams<{
     servicoId?: string;
@@ -118,7 +119,6 @@ export default function TelaHorario() {
         const dataObj = new Date(ano, mes - 1, diaNum, 12, 0, 0);
         return {
           data: dataObj,
-
           isoDate: d.data,
           ativo: d.ativo,
         };
@@ -515,7 +515,7 @@ export default function TelaHorario() {
         </View>
 
         {/* ─── Painel do Dia Ativo: Horários de Manhã e Tarde ─── */}
-        <View style={styles.painelDiaContainer}>
+        <View style={[styles.painelDiaContainer, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
           {/* Título do Dia Selecionado */}
           <View style={styles.painelDiaHeader}>
             <View style={{ flex: 1 }}>
@@ -705,7 +705,7 @@ export default function TelaHorario() {
       </ScrollView>
 
       {/* ─── Floating Apple Glass Bottom Bar ─── */}
-      <View style={[styles.floatingBar, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
+      <View style={styles.floatingBar}>
         <View style={styles.resumoContainer}>
           <Text style={[styles.resumoLabel, { color: theme.textoSecundario }]}>Horário Escolhido</Text>
           <Text style={[styles.resumoValor, { color: theme.textoPrimario }]} numberOfLines={1}>
@@ -741,404 +741,409 @@ export default function TelaHorario() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: '#F7F6F2',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.telaH,
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.superficie,
-  },
-  btnVoltar: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radii.full,
-    backgroundColor: Colors.superficie,
-  },
-  headerCentro: {
-    alignItems: 'center',
-  },
-  titulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyLg,
-    color: Colors.textoPrimario,
-  },
-  subtituloPasso: {
-    fontFamily: FontFamily.medium,
-    fontSize: 11,
-    color: Colors.ouro,
-    marginTop: 1,
-  },
-  scroll: {
-    paddingHorizontal: Spacing.telaH,
-    paddingTop: Spacing.md,
-    paddingBottom: 110,
-    gap: Spacing.md,
-  },
+const createStyles = (theme: ThemePalette) =>
+  StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: theme.fundo,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.telaH,
+      paddingVertical: Spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borda,
+    },
+    btnVoltar: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: Radii.full,
+      backgroundColor: theme.superficie,
+    },
+    headerCentro: {
+      alignItems: 'center',
+    },
+    titulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyLg,
+      color: theme.textoPrimario,
+    },
+    subtituloPasso: {
+      fontFamily: FontFamily.medium,
+      fontSize: 11,
+      color: theme.ouroTexto,
+      marginTop: 1,
+    },
+    scroll: {
+      paddingHorizontal: Spacing.telaH,
+      paddingTop: Spacing.md,
+      paddingBottom: 110,
+      gap: Spacing.md,
+    },
 
-  /* Banner Compacto do Serviço */
-  servicoBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: Radii.lg,
-    padding: Spacing.sm + 2,
-    gap: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-  },
-  servicoBarInfo: {
-    flex: 1,
-    gap: 1,
-  },
-  servicoBarNome: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoPrimario,
-  },
-  servicoBarDetalhes: {
-    fontFamily: FontFamily.regular,
-    fontSize: 11.5,
-    color: Colors.textoSecundario,
-  },
-  servicoBarPreco: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.ouro,
-  },
+    /* Banner Compacto do Serviço */
+    servicoBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.lg,
+      padding: Spacing.sm + 2,
+      gap: Spacing.sm,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    servicoBarInfo: {
+      flex: 1,
+      gap: 1,
+    },
+    servicoBarNome: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+      color: theme.textoPrimario,
+    },
+    servicoBarDetalhes: {
+      fontFamily: FontFamily.regular,
+      fontSize: 11.5,
+      color: theme.textoSecundario,
+    },
+    servicoBarPreco: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+      color: theme.ouroTexto,
+    },
 
-  /* Seção de Profissionais */
-  secaoProfissionais: {
-    gap: Spacing.xs,
-  },
-  secaoTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: 11.5,
-    color: Colors.textoSecundario,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
-  listaProfissionais: {
-    gap: Spacing.xs,
-    paddingVertical: 2,
-  },
-  chipProfissional: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: Radii.full,
-    backgroundColor: Colors.superficie,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-  },
-  chipProfissionalAtivo: {
-    backgroundColor: Colors.ouro,
-    borderColor: Colors.ouro,
-  },
-  avatarProfissional: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(203, 161, 74, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarProfissionalAtivo: {
-    backgroundColor: 'rgba(0, 0, 0, 0.15)',
-  },
-  nomeProfissional: {
-    fontFamily: FontFamily.medium,
-    fontSize: 12.5,
-    color: '#D4D4D8',
-  },
-  nomeProfissionalAtivo: {
-    fontFamily: FontFamily.bold,
-    color: '#0A0A0B',
-  },
+    /* Seção de Profissionais */
+    secaoProfissionais: {
+      gap: Spacing.xs,
+    },
+    secaoTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: 11.5,
+      color: theme.textoSecundario,
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+    },
+    listaProfissionais: {
+      gap: Spacing.xs,
+      paddingVertical: 2,
+    },
+    chipProfissional: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: Radii.full,
+      backgroundColor: theme.superficie,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    chipProfissionalAtivo: {
+      backgroundColor: theme.ouro,
+      borderColor: theme.ouro,
+    },
+    avatarProfissional: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: theme.ouroTranslucido,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarProfissionalAtivo: {
+      backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    },
+    nomeProfissional: {
+      fontFamily: FontFamily.medium,
+      fontSize: 12.5,
+      color: theme.textoSecundario,
+    },
+    nomeProfissionalAtivo: {
+      fontFamily: FontFamily.bold,
+      color: theme.textoEscuroSobreOuro,
+    },
 
-  /* Seção de Datas (Apple Date Strip) */
-  secaoDatas: {
-    gap: Spacing.xs,
-  },
-  datasHeaderLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  datasScroll: {
-    gap: 8,
-    paddingVertical: 4,
-  },
-  datePill: {
-    width: 66,
-    height: 86,
-    borderRadius: Radii.lg,
-    backgroundColor: Colors.superficie,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-    paddingVertical: 6,
-  },
-  datePillAtivo: {
-    backgroundColor: Colors.ouro,
-    borderColor: Colors.ouro,
-    ...Shadows.card,
-  },
-  datePillInativo: {
-    opacity: 0.4,
-    backgroundColor: Colors.superficie,
-    borderColor: Colors.superficie,
-  },
-  datePillSemana: {
-    fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: Colors.textoSecundario,
-    letterSpacing: 0.5,
-  },
-  datePillSemanaAtivo: {
-    color: '#0A0A0B',
-  },
-  datePillNumero: {
-    fontFamily: FontFamily.bold,
-    fontSize: 20,
-    color: Colors.textoPrimario,
-  },
-  datePillNumeroAtivo: {
-    color: '#0A0A0B',
-  },
-  datePillMes: {
-    fontFamily: FontFamily.medium,
-    fontSize: 10,
-    color: Colors.textoSecundario,
-    textTransform: 'uppercase',
-  },
-  datePillMesAtivo: {
-    color: Colors.superficie,
-    fontFamily: FontFamily.bold,
-  },
-  datePillPontoWrapper: {
-    marginTop: 2,
-  },
-  datePillDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-  },
+    /* Seção de Datas (Apple Date Strip) */
+    secaoDatas: {
+      gap: Spacing.xs,
+    },
+    datasHeaderLinha: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    datasScroll: {
+      gap: 8,
+      paddingVertical: 4,
+    },
+    datePill: {
+      width: 66,
+      height: 86,
+      borderRadius: Radii.lg,
+      backgroundColor: theme.superficie,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 2,
+      paddingVertical: 6,
+    },
+    datePillAtivo: {
+      backgroundColor: theme.ouro,
+      borderColor: theme.ouro,
+      ...Shadows.card,
+    },
+    datePillInativo: {
+      opacity: 0.4,
+      backgroundColor: theme.superficie2,
+      borderColor: theme.borda,
+    },
+    datePillSemana: {
+      fontFamily: FontFamily.bold,
+      fontSize: 10,
+      color: theme.textoSecundario,
+      letterSpacing: 0.5,
+    },
+    datePillSemanaAtivo: {
+      color: theme.textoEscuroSobreOuro,
+    },
+    datePillNumero: {
+      fontFamily: FontFamily.bold,
+      fontSize: 20,
+      color: theme.textoPrimario,
+    },
+    datePillNumeroAtivo: {
+      color: theme.textoEscuroSobreOuro,
+    },
+    datePillMes: {
+      fontFamily: FontFamily.medium,
+      fontSize: 10,
+      color: theme.textoSecundario,
+      textTransform: 'uppercase',
+    },
+    datePillMesAtivo: {
+      color: theme.textoEscuroSobreOuro,
+      fontFamily: FontFamily.bold,
+    },
+    datePillPontoWrapper: {
+      marginTop: 2,
+    },
+    datePillDot: {
+      width: 4,
+      height: 4,
+      borderRadius: 2,
+    },
 
-  /* Painel do Dia Ativo */
-  painelDiaContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: Radii.xl,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    gap: Spacing.md,
-    marginTop: 4,
-    ...Shadows.card,
-  },
-  painelDiaHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBottom: Spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borda,
-  },
-  painelDiaNome: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoPrimario,
-  },
-  painelDiaSub: {
-    fontFamily: FontFamily.regular,
-    fontSize: 11.5,
-    color: Colors.textoSecundario,
-    marginTop: 2,
-  },
-  badgeVagasDisponiveis: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(203, 161, 74, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: Radii.full,
-    borderWidth: 1,
-    borderColor: 'rgba(203, 161, 74, 0.25)',
-  },
-  badgeVagasTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: 10.5,
-    color: Colors.ouro,
-  },
+    /* Painel do Dia Ativo */
+    painelDiaContainer: {
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.xl,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      gap: Spacing.md,
+      marginTop: 4,
+      ...Shadows.card,
+    },
+    painelDiaHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingBottom: Spacing.xs,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borda,
+    },
+    painelDiaNome: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+      color: theme.textoPrimario,
+    },
+    painelDiaSub: {
+      fontFamily: FontFamily.regular,
+      fontSize: 11.5,
+      color: theme.textoSecundario,
+      marginTop: 2,
+    },
+    badgeVagasDisponiveis: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: theme.ouroTranslucido,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: Radii.full,
+      borderWidth: 1,
+      borderColor: theme.bordaOuro,
+    },
+    badgeVagasTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 10.5,
+      color: theme.ouroTexto,
+    },
 
-  /* Empty State para dias fechados/passados/lotados */
-  emptyCard: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.xl,
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.xs,
-  },
-  emptyTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoPrimario,
-    marginTop: 4,
-  },
-  emptyTexto: {
-    fontFamily: FontFamily.regular,
-    fontSize: 12,
-    color: Colors.textoSecundario,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
+    /* Empty State para dias fechados/passados/lotados */
+    emptyCard: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: Spacing.xl,
+      paddingHorizontal: Spacing.md,
+      gap: Spacing.xs,
+    },
+    emptyTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+      color: theme.textoPrimario,
+      marginTop: 4,
+    },
+    emptyTexto: {
+      fontFamily: FontFamily.regular,
+      fontSize: 12,
+      color: theme.textoSecundario,
+      textAlign: 'center',
+      lineHeight: 18,
+    },
 
-  /* Grid de Horários e Turnos */
-  horariosBloco: {
-    gap: Spacing.md,
-  },
-  turnoSecao: {
-    gap: Spacing.xs,
-  },
-  turnoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  turnoTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: 12.5,
-    color: '#D4D4D8',
-  },
-  turnoPeriodo: {
-    fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: '#71717A',
-  },
-  slotsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 4,
-  },
-  timePill: {
-    flexBasis: '31%',
-    flexGrow: 1,
-    height: 46,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.md,
-    borderWidth: 1,
-    borderColor: Colors.bordaDestaque,
-  },
-  timePillSelecionado: {
-    backgroundColor: Colors.ouro,
-    borderColor: Colors.ouro,
-    ...Shadows.card,
-  },
-  timePillIndisponivel: {
-    backgroundColor: Colors.superficie,
-    borderColor: Colors.superficie,
-    opacity: 0.35,
-  },
-  timePillTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: Colors.textoPrimario,
-    letterSpacing: 0.5,
-  },
-  timePillTextoSelecionado: {
-    color: '#0A0A0B',
-  },
-  timePillTextoIndisponivel: {
-    color: '#52525B',
-    textDecorationLine: 'line-through',
-  },
+    /* Grid de Horários e Turnos */
+    horariosBloco: {
+      gap: Spacing.md,
+    },
+    turnoSecao: {
+      gap: Spacing.xs,
+    },
+    turnoHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    turnoTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: 12.5,
+      color: theme.textoPrimario,
+    },
+    turnoPeriodo: {
+      fontFamily: FontFamily.regular,
+      fontSize: 11,
+      color: theme.textoSecundario,
+    },
+    slotsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginTop: 4,
+    },
+    timePill: {
+      flexBasis: '31%',
+      flexGrow: 1,
+      height: 46,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    timePillSelecionado: {
+      backgroundColor: theme.ouro,
+      borderColor: theme.ouro,
+      ...Shadows.card,
+    },
+    timePillIndisponivel: {
+      backgroundColor: theme.superficie2,
+      borderColor: theme.borda,
+      opacity: 0.35,
+    },
+    timePillTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 14,
+      color: theme.textoPrimario,
+      letterSpacing: 0.5,
+    },
+    timePillTextoSelecionado: {
+      color: theme.textoEscuroSobreOuro,
+    },
+    timePillTextoIndisponivel: {
+      color: theme.textoDesabilitado,
+      textDecorationLine: 'line-through',
+    },
 
-  /* Floating Apple Bottom Bar */
-  floatingBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(18, 18, 22, 0.96)',
-    borderTopWidth: 1,
-    borderTopColor: Colors.borda,
-    paddingHorizontal: Spacing.telaH,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.sm,
-    ...Shadows.cardElevado,
-  },
-  resumoContainer: {
-    flex: 1,
-    gap: 1,
-  },
-  resumoLabel: {
-    fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: Colors.textoSecundario,
-  },
-  resumoValor: {
-    fontFamily: FontFamily.bold,
-    fontSize: 12.5,
-    color: Colors.ouro,
-  },
-  btnContinuarApple: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: Colors.ouro,
-    paddingHorizontal: 20,
-    paddingVertical: 13,
-    borderRadius: Radii.lg,
-    minWidth: 130,
-  },
-  btnContinuarDesabilitado: {
-    backgroundColor: Colors.superficie2,
-    borderColor: Colors.bordaDestaque,
-    borderWidth: 1,
-  },
-  btnContinuarTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: 13.5,
-    color: '#0A0A0B',
-  },
-  btnContinuarTextoDesabilitado: {
-    color: Colors.textoDesabilitado,
-  },
-  btnVerProximoDia: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-    borderRadius: Radii.md,
-    marginTop: Spacing.sm,
-  },
-  btnVerProximoDiaTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: 13,
-  },
-});
+    /* Floating Apple Bottom Bar */
+    floatingBar: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: theme.superficie,
+      borderTopWidth: 1,
+      borderTopColor: theme.borda,
+      paddingHorizontal: Spacing.telaH,
+      paddingTop: Spacing.sm,
+      paddingBottom: Spacing.md,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: Spacing.sm,
+      ...Shadows.cardElevado,
+    },
+    resumoContainer: {
+      flex: 1,
+      gap: 1,
+    },
+    resumoLabel: {
+      fontFamily: FontFamily.regular,
+      fontSize: 11,
+      color: theme.textoSecundario,
+    },
+    resumoValor: {
+      fontFamily: FontFamily.bold,
+      fontSize: 12.5,
+      color: theme.ouroTexto,
+    },
+    btnContinuarApple: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      backgroundColor: theme.ouro,
+      paddingHorizontal: 20,
+      paddingVertical: 13,
+      borderRadius: Radii.lg,
+      minWidth: 130,
+    },
+    btnContinuarDesabilitado: {
+      backgroundColor: theme.superficie2,
+      borderColor: theme.borda,
+      borderWidth: 1,
+    },
+    btnContinuarTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 13.5,
+      color: theme.textoEscuroSobreOuro,
+    },
+    btnContinuarTextoDesabilitado: {
+      color: theme.textoDesabilitado,
+    },
+    btnVerProximoDia: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 11,
+      borderRadius: Radii.md,
+      marginTop: Spacing.sm,
+      backgroundColor: theme.superficie2,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    btnVerProximoDiaTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 13,
+      color: theme.textoPrimario,
+    },
+  });

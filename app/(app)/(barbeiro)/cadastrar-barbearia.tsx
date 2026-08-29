@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,7 +16,8 @@ import { ArrowLeft, Building2, Check, Globe, Lock, Plus, Sparkles, Store } from 
 import { useBarbearia } from '@/contexts/BarbeariaContext';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import { Colors, FontFamily, FontSize, Radii, Spacing } from '@/theme';
+import { Colors, FontFamily, FontSize, Radii, Spacing, type ThemePalette } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 function gerarSlugAutomatico(nome: string): string {
   return nome
@@ -30,6 +31,8 @@ function gerarSlugAutomatico(nome: string): string {
 
 export default function CadastrarBarbearia() {
   const router = useRouter();
+  const { theme, isEscuro } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { session } = useAuth();
   const { selecionarBarbearia } = useBarbearia();
 
@@ -114,7 +117,7 @@ export default function CadastrarBarbearia() {
           tema: {
             primary: '#CBA14A',
             secondary: '#141416',
-            background: Colors.fundo,
+            background: theme.fundo,
             text: '#FFFFFF',
             accent: '#F0D17D',
           },
@@ -299,7 +302,7 @@ export default function CadastrarBarbearia() {
         {/* Publicação na Vitrine */}
         <View style={styles.cardPublicacao}>
           <View style={styles.cardPublicacaoHeader}>
-            {publicada ? <Globe size={22} color={Colors.ouro} /> : <Lock size={22} color={Colors.textoSecundario} />}
+            {publicada ? <Globe size={22} color={theme.ouro} /> : <Lock size={22} color={theme.textoSecundario} />}
             <View style={{ flex: 1 }}>
               <Text style={styles.cardPublicacaoTitulo}>
                 {publicada ? 'Publicar na Vitrine Imediatamente' : 'Manter em Rascunho / Privado'}
@@ -313,8 +316,8 @@ export default function CadastrarBarbearia() {
             <Switch
               value={publicada}
               onValueChange={setPublicada}
-              trackColor={{ false: Colors.borda, true: Colors.ouro }}
-              thumbColor={Colors.branco}
+              trackColor={{ false: theme.borda, true: theme.ouro }}
+              thumbColor={theme.branco}
             />
           </View>
         </View>
@@ -322,10 +325,10 @@ export default function CadastrarBarbearia() {
         {/* Botão de Envio */}
         <TouchableOpacity style={styles.botaoCadastrar} onPress={handleCadastrar} disabled={salvando}>
           {salvando ? (
-            <ActivityIndicator color={Colors.fundo} size="small" />
+            <ActivityIndicator color={theme.fundo} size="small" />
           ) : (
             <>
-              <Sparkles size={18} color={Colors.fundo} />
+              <Sparkles size={18} color={theme.textoEscuroSobreOuro} />
               <Text style={styles.botaoCadastrarTexto}>Criar Estabelecimento</Text>
             </>
           )}
@@ -348,6 +351,9 @@ function Campo({
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   keyboardType?: 'default' | 'phone-pad';
 }) {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   return (
     <View style={styles.campo}>
       <Text style={styles.campoLabel}>{label}</Text>
@@ -355,88 +361,89 @@ function Campo({
         {...props}
         multiline={multiline}
         style={[styles.input, multiline && styles.inputMultiline]}
-        placeholderTextColor={Colors.textoDesabilitado}
+        placeholderTextColor={theme.textoDesabilitado}
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.fundo },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.telaH,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borda,
-  },
-  headerBotao: { padding: 4 },
-  headerCentro: { alignItems: 'center' },
-  headerTitulo: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyLg },
-  headerSubtitulo: { color: Colors.ouro, fontFamily: FontFamily.medium, fontSize: FontSize.bodySm, marginTop: 2 },
+const createStyles = (theme: ThemePalette) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: theme.fundo },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.telaH,
+      paddingVertical: Spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borda,
+    },
+    headerBotao: { padding: 4 },
+    headerCentro: { alignItems: 'center' },
+    headerTitulo: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyLg },
+    headerSubtitulo: { color: theme.ouroTexto, fontFamily: FontFamily.medium, fontSize: FontSize.bodySm, marginTop: 2 },
 
-  scroll: { padding: Spacing.telaH, paddingBottom: Spacing.giant, gap: Spacing.md },
+    scroll: { padding: Spacing.telaH, paddingBottom: Spacing.giant, gap: Spacing.md },
 
-  bannerInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    padding: Spacing.md,
-    borderRadius: Radii.md,
-    backgroundColor: Colors.superficie,
-    borderWidth: 1,
-    borderColor: 'rgba(203, 161, 74, 0.3)',
-  },
-  bannerInfoTitulo: { color: Colors.ouro, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
-  bannerInfoSub: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, marginTop: 2 },
+    bannerInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      padding: Spacing.md,
+      borderRadius: Radii.md,
+      backgroundColor: theme.superficie,
+      borderWidth: 1,
+      borderColor: theme.bordaOuro,
+    },
+    bannerInfoTitulo: { color: theme.ouroTexto, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
+    bannerInfoSub: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, marginTop: 2 },
 
-  secao: { gap: Spacing.sm },
-  secaoTitulo: {
-    color: Colors.ouro,
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.labelXs,
-    letterSpacing: 1.5,
-    marginTop: 4,
-  },
+    secao: { gap: Spacing.sm },
+    secaoTitulo: {
+      color: theme.ouroTexto,
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.labelXs,
+      letterSpacing: 1.5,
+      marginTop: 4,
+    },
 
-  campo: { gap: 6 },
-  campoLabel: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
-  input: {
-    minHeight: 46,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    borderRadius: Radii.md,
-    backgroundColor: Colors.superficie,
-    color: Colors.textoPrimario,
-    paddingHorizontal: Spacing.md,
-    fontFamily: FontFamily.regular,
-  },
-  inputMultiline: { minHeight: 85, paddingTop: Spacing.sm, textAlignVertical: 'top' },
-  linhaDupla: { flexDirection: 'row', gap: Spacing.sm },
+    campo: { gap: 6 },
+    campoLabel: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
+    input: {
+      minHeight: 46,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      borderRadius: Radii.md,
+      backgroundColor: theme.superficie,
+      color: theme.textoPrimario,
+      paddingHorizontal: Spacing.md,
+      fontFamily: FontFamily.regular,
+    },
+    inputMultiline: { minHeight: 85, paddingTop: Spacing.sm, textAlignVertical: 'top' },
+    linhaDupla: { flexDirection: 'row', gap: Spacing.sm },
 
-  cardPublicacao: {
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    borderRadius: Radii.md,
-    backgroundColor: Colors.superficie,
-    padding: Spacing.md,
-    marginTop: Spacing.xs,
-  },
-  cardPublicacaoHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  cardPublicacaoTitulo: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
-  cardPublicacaoSub: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, marginTop: 2 },
+    cardPublicacao: {
+      borderWidth: 1,
+      borderColor: theme.borda,
+      borderRadius: Radii.md,
+      backgroundColor: theme.superficie,
+      padding: Spacing.md,
+      marginTop: Spacing.xs,
+    },
+    cardPublicacaoHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+    cardPublicacaoTitulo: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
+    cardPublicacaoSub: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, marginTop: 2 },
 
-  botaoCadastrar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: Colors.ouro,
-    borderRadius: Radii.md,
-    paddingVertical: 14,
-    marginTop: Spacing.sm,
-  },
-  botaoCadastrarTexto: { color: Colors.fundo, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
-});
+    botaoCadastrar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: theme.ouro,
+      borderRadius: Radii.md,
+      paddingVertical: 14,
+      marginTop: Spacing.sm,
+    },
+    botaoCadastrarTexto: { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
+  });

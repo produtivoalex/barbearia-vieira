@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   ScrollView,
@@ -21,11 +21,12 @@ import {
   CheckCircle2,
 } from 'lucide-react-native';
 import { Botao, IlustracaoServico } from '@/components';
-import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
+import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows, type ThemePalette } from '@/theme';
 import { useServicos, type Servico } from '@/hooks/useServicos';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const DIAS_CONFIG = [
   { id: 2, nomeCurto: 'Ter', nomeCompleto: 'Terça-feira' },
@@ -40,6 +41,8 @@ const HORARIOS_CONFIG = ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '
 
 export default function TelaListaEspera() {
   const router = useRouter();
+  const { theme, isEscuro } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { session } = useAuth();
   const { barbearia } = useBarbearia();
   const { todosServicos, carregando: carregandoServicos } = useServicos('todos', barbearia?.id);
@@ -137,7 +140,7 @@ export default function TelaListaEspera() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.btnVoltar} activeOpacity={0.7}>
-          <ChevronLeft size={24} color={Colors.textoPrimario} />
+          <ChevronLeft size={24} color={theme.textoPrimario} />
         </TouchableOpacity>
         <Text style={styles.headerTitulo}>Lista de Espera</Text>
         <View style={{ width: 40 }} />
@@ -151,7 +154,7 @@ export default function TelaListaEspera() {
         {/* Banner Informativo Principal */}
         <View style={styles.heroCard}>
           <View style={styles.heroIconeBadge}>
-            <BellRing size={24} color={Colors.ouro} />
+            <BellRing size={24} color={theme.ouro} />
           </View>
           <View style={styles.heroInfo}>
             <Text style={styles.heroTitulo}>Avise-me se abrir uma vaga</Text>
@@ -161,7 +164,7 @@ export default function TelaListaEspera() {
           </View>
         </View>
 
-        {/* 1. Escolha do Serviço (Opção C: Carrossel Horizontal + Card de Prévia Detalhado) */}
+        {/* 1. Escolha do Serviço */}
         <View style={styles.secao}>
           <View style={styles.secaoHeader}>
             <Text style={styles.secaoNumero}>1</Text>
@@ -169,7 +172,7 @@ export default function TelaListaEspera() {
           </View>
 
           {carregandoServicos ? (
-            <ActivityIndicator size="small" color={Colors.ouro} style={{ marginVertical: 12 }} />
+            <ActivityIndicator size="small" color={theme.ouro} style={{ marginVertical: 12 }} />
           ) : (
             <View style={{ gap: Spacing.sm }}>
               {/* Carrossel Horizontal */}
@@ -203,7 +206,7 @@ export default function TelaListaEspera() {
                         </Text>
                         {ehCombo && (
                           <View style={styles.badgeVipMini}>
-                            <Sparkles size={8} color={Colors.ouro} />
+                            <Sparkles size={8} color={theme.ouro} />
                             <Text style={styles.badgeVipMiniTexto}>VIP</Text>
                           </View>
                         )}
@@ -219,11 +222,11 @@ export default function TelaListaEspera() {
                 })}
               </ScrollView>
 
-              {/* Card de Prévia / Resumo do Serviço Selecionado (Opção C) */}
+              {/* Card de Prévia / Resumo do Serviço Selecionado */}
               {servicoSelecionado && (
                 <View style={styles.cardPrevia}>
                   <View style={styles.cardPreviaCabecalho}>
-                    <Sparkles size={13} color={Colors.ouro} />
+                    <Sparkles size={13} color={theme.ouro} />
                     <Text style={styles.cardPreviaRotulo}>Serviço Selecionado</Text>
                   </View>
 
@@ -241,13 +244,13 @@ export default function TelaListaEspera() {
                         {(servicoSelecionado.categoria === 'combos' ||
                           servicoSelecionado.nome.toLowerCase().includes('combo')) && (
                           <View style={styles.badgeVip}>
-                            <Sparkles size={9} color={Colors.ouro} />
+                            <Sparkles size={9} color={theme.ouro} />
                             <Text style={styles.badgeVipTexto}>VIP</Text>
                           </View>
                         )}
                       </View>
 
-                      {/* Se for combo com múltiplos itens, exibe as tags sem cortes */}
+                      {/* Se for combo com múltiplos itens, exibe as tags */}
                       {servicoSelecionado.descricao && servicoSelecionado.descricao.includes('+') ? (
                         <View style={styles.comboTagsContainer}>
                           {servicoSelecionado.descricao
@@ -364,7 +367,7 @@ export default function TelaListaEspera() {
               onPress={selecionarTodosHorarios}
               activeOpacity={0.7}
             >
-              <Clock size={12} color={Colors.ouro} />
+              <Clock size={12} color={theme.ouro} />
               <Text style={[styles.btnAtalhoTexto, horariosSelecionados.length === 4 && styles.btnAtalhoTextoAtivo]}>
                 Qualquer horário da manhã (08h às 12h)
               </Text>
@@ -381,7 +384,7 @@ export default function TelaListaEspera() {
                   onPress={() => alternarHorario(hora)}
                   activeOpacity={0.7}
                 >
-                  <Clock size={14} color={ativo ? Colors.ouro : Colors.textoSecundario} />
+                  <Clock size={14} color={ativo ? theme.ouro : theme.textoSecundario} />
                   <Text style={[styles.horarioTexto, ativo && styles.horarioTextoAtivo]}>
                     {hora}
                   </Text>
@@ -398,7 +401,7 @@ export default function TelaListaEspera() {
 
         {/* Card Como Funciona */}
         <View style={styles.infoCard}>
-          <CheckCircle2 size={18} color={Colors.verde} />
+          <CheckCircle2 size={18} color={theme.verde} />
           <Text style={styles.infoTexto}>
             A entrada na fila é 100% gratuita. Você só paga pelo corte no momento do atendimento.
           </Text>
@@ -416,385 +419,386 @@ export default function TelaListaEspera() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.fundo },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.telaH,
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borda,
-  },
-  btnVoltar: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radii.full,
-    backgroundColor: Colors.superficie,
-  },
-  headerTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.headingSm,
-    color: Colors.textoPrimario,
-  },
-  scroll: {
-    padding: Spacing.telaH,
-    paddingBottom: Spacing.giant,
-    gap: Spacing.lg,
-  },
-  heroCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.md,
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.lg,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(203, 161, 74, 0.35)',
-    ...Shadows.card,
-  },
-  heroIconeBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: Radii.md,
-    backgroundColor: 'rgba(203, 161, 74, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  heroInfo: {
-    flex: 1,
-    gap: 3,
-  },
-  heroTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyLg,
-    color: '#FFFFFF',
-  },
-  heroSubtitulo: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoDesabilitado,
-    lineHeight: 18,
-  },
-  secao: {
-    gap: Spacing.sm,
-  },
-  secaoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  secaoNumero: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: Colors.ouro,
-    color: Colors.textoEscuroSobreOuro,
-    fontFamily: FontFamily.bold,
-    fontSize: 11,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  secaoTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoPrimario,
-  },
-  servicosHorizontalScroll: {
-    gap: Spacing.xs,
-    paddingVertical: 4,
-  },
-  cardServicoMini: {
-    width: 132,
-    minHeight: 122,
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.md,
-    padding: Spacing.sm,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 4,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    position: 'relative',
-  },
-  cardServicoMiniAtivo: {
-    borderColor: Colors.ouro,
-    backgroundColor: Colors.superficie2,
-  },
-  cardServicoMiniCabecalho: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 3,
-    width: '100%',
-  },
-  cardServicoNome: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: 11,
-    color: Colors.textoPrimario,
-    textAlign: 'center',
-    lineHeight: 14,
-  },
-  cardServicoNomeAtivo: {
-    color: Colors.ouro,
-    fontFamily: FontFamily.bold,
-  },
-  cardServicoPreco: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodySm,
-    color: Colors.ouro,
-  },
-  badgeVipMini: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: 'rgba(203, 161, 74, 0.15)',
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: Radii.full,
-    borderWidth: 1,
-    borderColor: Colors.ouro,
-  },
-  badgeVipMiniTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: 7,
-    color: Colors.ouro,
-  },
-  badgeVip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: 'rgba(203, 161, 74, 0.15)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: Radii.full,
-    borderWidth: 1,
-    borderColor: Colors.ouro,
-  },
-  badgeVipTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: 8,
-    color: Colors.ouro,
-  },
-  checkFlutuante: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: Colors.ouro,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardPrevia: {
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.lg,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(203, 161, 74, 0.3)',
-    gap: Spacing.xs,
-    ...Shadows.card,
-  },
-  cardPreviaCabecalho: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 2,
-  },
-  cardPreviaRotulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.labelXs,
-    color: Colors.ouro,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  cardPreviaCorpo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  cardPreviaInfo: {
-    flex: 1,
-    gap: 3,
-  },
-  cardPreviaTituloLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
-  },
-  cardPreviaNome: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: '#FFFFFF',
-  },
-  cardPreviaDescricao: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.labelXs,
-    color: Colors.textoSecundario,
-    lineHeight: 16,
-  },
-  comboTagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    marginVertical: 2,
-  },
-  comboTagPill: {
-    backgroundColor: 'rgba(203, 161, 74, 0.12)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: Radii.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(203, 161, 74, 0.25)',
-  },
-  comboTagTexto: {
-    fontFamily: FontFamily.medium,
-    fontSize: 10,
-    color: Colors.ouroClaro,
-  },
-  cardPreviaPrecoContainer: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  cardPreviaPreco: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.headingSm,
-    color: Colors.ouro,
-  },
-  atalhosRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.xs,
-  },
-  btnAtalho: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: Radii.full,
-    backgroundColor: Colors.superficie2,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-  },
-  btnAtalhoAtivo: {
-    backgroundColor: 'rgba(203, 161, 74, 0.15)',
-    borderColor: Colors.ouro,
-  },
-  btnAtalhoTexto: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.labelXs,
-    color: Colors.textoSecundario,
-  },
-  btnAtalhoTextoAtivo: {
-    color: Colors.ouro,
-    fontFamily: FontFamily.bold,
-  },
-  diasGrid: {
-    flexDirection: 'row',
-    gap: Spacing.xs,
-    justifyContent: 'space-between',
-  },
-  diaCard: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.sm,
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.md,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    gap: 6,
-  },
-  diaCardAtivo: {
-    backgroundColor: Colors.superficie2,
-    borderColor: Colors.ouro,
-  },
-  diaCheck: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: Colors.superficie2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  diaCheckAtivo: {
-    backgroundColor: Colors.ouro,
-  },
-  diaTexto: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
-  },
-  diaTextoAtivo: {
-    fontFamily: FontFamily.bold,
-    color: '#FFFFFF',
-  },
-  horariosGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.xs,
-  },
-  horarioCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.md,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    minWidth: '48%',
-    flex: 1,
-  },
-  horarioCardAtivo: {
-    backgroundColor: Colors.superficie2,
-    borderColor: Colors.ouro,
-  },
-  horarioTexto: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoSecundario,
-  },
-  horarioTextoAtivo: {
-    fontFamily: FontFamily.bold,
-    color: '#FFFFFF',
-  },
-  horarioCheckMini: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: Colors.ouro,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 4,
-  },
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: 'rgba(61, 191, 106, 0.1)',
-    borderRadius: Radii.md,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(61, 191, 106, 0.25)',
-  },
-  infoTexto: {
-    flex: 1,
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
-    lineHeight: 18,
-  },
-  btnSalvar: {
-    width: '100%',
-    marginTop: Spacing.xs,
-  },
-});
+const createStyles = (theme: ThemePalette) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: theme.fundo },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.telaH,
+      paddingVertical: Spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borda,
+    },
+    btnVoltar: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: Radii.full,
+      backgroundColor: theme.superficie,
+    },
+    headerTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.headingSm,
+      color: theme.textoPrimario,
+    },
+    scroll: {
+      padding: Spacing.telaH,
+      paddingBottom: Spacing.giant,
+      gap: Spacing.lg,
+    },
+    heroCard: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: Spacing.md,
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.lg,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: theme.bordaOuro,
+      ...Shadows.card,
+    },
+    heroIconeBadge: {
+      width: 44,
+      height: 44,
+      borderRadius: Radii.md,
+      backgroundColor: theme.ouroTranslucido,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 2,
+    },
+    heroInfo: {
+      flex: 1,
+      gap: 3,
+    },
+    heroTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyLg,
+      color: theme.textoPrimario,
+    },
+    heroSubtitulo: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+      color: theme.textoSecundario,
+      lineHeight: 18,
+    },
+    secao: {
+      gap: Spacing.sm,
+    },
+    secaoHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.xs,
+    },
+    secaoNumero: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: theme.ouro,
+      color: theme.textoEscuroSobreOuro,
+      fontFamily: FontFamily.bold,
+      fontSize: 11,
+      textAlign: 'center',
+      lineHeight: 22,
+    },
+    secaoTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+      color: theme.textoPrimario,
+    },
+    servicosHorizontalScroll: {
+      gap: Spacing.xs,
+      paddingVertical: 4,
+    },
+    cardServicoMini: {
+      width: 132,
+      minHeight: 122,
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.md,
+      padding: Spacing.sm,
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 4,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      position: 'relative',
+    },
+    cardServicoMiniAtivo: {
+      borderColor: theme.ouro,
+      backgroundColor: theme.superficie2,
+    },
+    cardServicoMiniCabecalho: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 3,
+      width: '100%',
+    },
+    cardServicoNome: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: 11,
+      color: theme.textoPrimario,
+      textAlign: 'center',
+      lineHeight: 14,
+    },
+    cardServicoNomeAtivo: {
+      color: theme.ouroTexto,
+      fontFamily: FontFamily.bold,
+    },
+    cardServicoPreco: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodySm,
+      color: theme.ouroTexto,
+    },
+    badgeVipMini: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+      backgroundColor: theme.ouroTranslucido,
+      paddingHorizontal: 4,
+      paddingVertical: 1,
+      borderRadius: Radii.full,
+      borderWidth: 1,
+      borderColor: theme.bordaOuro,
+    },
+    badgeVipMiniTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 7,
+      color: theme.ouroTexto,
+    },
+    badgeVip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+      backgroundColor: theme.ouroTranslucido,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: Radii.full,
+      borderWidth: 1,
+      borderColor: theme.bordaOuro,
+    },
+    badgeVipTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 8,
+      color: theme.ouroTexto,
+    },
+    checkFlutuante: {
+      position: 'absolute',
+      top: 6,
+      right: 6,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: theme.ouro,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cardPrevia: {
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.lg,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: theme.bordaOuro,
+      gap: Spacing.xs,
+      ...Shadows.card,
+    },
+    cardPreviaCabecalho: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginBottom: 2,
+    },
+    cardPreviaRotulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.labelXs,
+      color: theme.ouroTexto,
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+    },
+    cardPreviaCorpo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+    },
+    cardPreviaInfo: {
+      flex: 1,
+      gap: 3,
+    },
+    cardPreviaTituloLinha: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      flexWrap: 'wrap',
+    },
+    cardPreviaNome: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+      color: theme.textoPrimario,
+    },
+    cardPreviaDescricao: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.labelXs,
+      color: theme.textoSecundario,
+      lineHeight: 16,
+    },
+    comboTagsContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 4,
+      marginVertical: 2,
+    },
+    comboTagPill: {
+      backgroundColor: theme.superficie2,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: Radii.sm,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    comboTagTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: 10,
+      color: theme.ouroTexto,
+    },
+    cardPreviaPrecoContainer: {
+      alignItems: 'flex-end',
+      justifyContent: 'center',
+    },
+    cardPreviaPreco: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.headingSm,
+      color: theme.ouroTexto,
+    },
+    atalhosRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.xs,
+    },
+    btnAtalho: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: Radii.full,
+      backgroundColor: theme.superficie2,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    btnAtalhoAtivo: {
+      backgroundColor: theme.ouroTranslucido,
+      borderColor: theme.ouro,
+    },
+    btnAtalhoTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: FontSize.labelXs,
+      color: theme.textoSecundario,
+    },
+    btnAtalhoTextoAtivo: {
+      color: theme.ouroTexto,
+      fontFamily: FontFamily.bold,
+    },
+    diasGrid: {
+      flexDirection: 'row',
+      gap: Spacing.xs,
+      justifyContent: 'space-between',
+    },
+    diaCard: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: Spacing.sm,
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      gap: 6,
+    },
+    diaCardAtivo: {
+      backgroundColor: theme.superficie2,
+      borderColor: theme.ouro,
+    },
+    diaCheck: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: theme.superficie2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    diaCheckAtivo: {
+      backgroundColor: theme.ouro,
+    },
+    diaTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: FontSize.bodySm,
+      color: theme.textoSecundario,
+    },
+    diaTextoAtivo: {
+      fontFamily: FontFamily.bold,
+      color: theme.textoPrimario,
+    },
+    horariosGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.xs,
+    },
+    horarioCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      minWidth: '48%',
+      flex: 1,
+    },
+    horarioCardAtivo: {
+      backgroundColor: theme.superficie2,
+      borderColor: theme.ouro,
+    },
+    horarioTexto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: FontSize.bodyMd,
+      color: theme.textoSecundario,
+    },
+    horarioTextoAtivo: {
+      fontFamily: FontFamily.bold,
+      color: theme.textoPrimario,
+    },
+    horarioCheckMini: {
+      width: 14,
+      height: 14,
+      borderRadius: 7,
+      backgroundColor: theme.ouro,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginLeft: 4,
+    },
+    infoCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      backgroundColor: theme.verdeClaro,
+      borderRadius: Radii.md,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: theme.verde,
+    },
+    infoTexto: {
+      flex: 1,
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+      color: theme.textoSecundario,
+      lineHeight: 18,
+    },
+    btnSalvar: {
+      width: '100%',
+      marginTop: Spacing.xs,
+    },
+  });

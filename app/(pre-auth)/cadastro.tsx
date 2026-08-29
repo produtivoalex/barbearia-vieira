@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Mail, Lock, User, Eye, EyeOff, Scissors, Store, Sparkles } from 'lucide-react-native';
 import { Botao, LogoBarbearia } from '@/components';
-import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows } from '@/theme';
+import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows, type ThemePalette } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 
@@ -24,6 +24,7 @@ type TipoConta = 'cliente' | 'barbeiro';
 export default function TelaCadastro() {
   const router = useRouter();
   const { theme, isEscuro } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const params = useLocalSearchParams<{ tipo?: string }>();
 
   const [tipoConta, setTipoConta] = useState<TipoConta>(
@@ -296,136 +297,137 @@ export default function TelaCadastro() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.fundo },
-  flex: { flex: 1 },
-  scroll: {
-    flexGrow: 1,
-    paddingHorizontal: Spacing.telaH,
-    paddingBottom: Spacing.xxl,
-    gap: Spacing.md,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: Spacing.sm,
-  },
-  btnVoltar: {
-    width: 40,
-    height: 40,
-    borderRadius: Radii.full,
-    backgroundColor: Colors.superficie,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.borda,
-  },
-  seletorPerfil: {
-    flexDirection: 'row',
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.lg,
-    padding: 4,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    gap: 4,
-  },
-  seletorItem: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: Radii.md,
-  },
-  seletorItemAtivo: {
-    backgroundColor: Colors.ouro,
-  },
-  seletorTexto: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
-  },
-  seletorTextoAtivo: {
-    color: Colors.textoEscuroSobreOuro,
-    fontFamily: FontFamily.bold,
-  },
-  card: {
-    width: '100%',
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.lg,
-    padding: Spacing.xl,
-    gap: Spacing.md,
-    ...Shadows.card,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-  },
-  cardHeader: { gap: 4 },
-  titulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.displayMd,
-    color: Colors.textoPrimario,
-  },
-  subtitulo: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
-    lineHeight: 20,
-  },
-  badgeProfissional: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    backgroundColor: Colors.ouroTranslucido,
-    borderWidth: 1,
-    borderColor: 'rgba(203, 161, 74, 0.3)',
-    borderRadius: Radii.md,
-    padding: Spacing.sm,
-  },
-  badgeProfissionalTexto: {
-    flex: 1,
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.bodySm,
-    color: Colors.ouroClaro,
-    lineHeight: 18,
-  },
-  campoContainer: { gap: Spacing.xs },
-  campoLabel: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.superficie2,
-    borderRadius: Radii.sm,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    paddingHorizontal: Spacing.sm,
-    height: 52,
-    gap: Spacing.xs,
-  },
-  inputIcone: { marginRight: 2 },
-  input: {
-    flex: 1,
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodyLg,
-    color: Colors.textoPrimario,
-    height: '100%',
-  },
-  btnOlho: { padding: 6 },
-  botaoPrincipal: { width: '100%', marginTop: Spacing.xs },
-  loader: { alignSelf: 'center' },
-  rodape: { paddingVertical: Spacing.md, alignItems: 'center' },
-  rodapeTexto: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoSecundario,
-  },
-  rodapeLink: {
-    fontFamily: FontFamily.bold,
-    color: Colors.ouro,
-  },
-});
+const createStyles = (theme: ThemePalette) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: theme.fundo },
+    flex: { flex: 1 },
+    scroll: {
+      flexGrow: 1,
+      paddingHorizontal: Spacing.telaH,
+      paddingBottom: Spacing.xxl,
+      gap: Spacing.md,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: Spacing.sm,
+    },
+    btnVoltar: {
+      width: 40,
+      height: 40,
+      borderRadius: Radii.full,
+      backgroundColor: theme.superficie,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    seletorPerfil: {
+      flexDirection: 'row',
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.lg,
+      padding: 4,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      gap: 4,
+    },
+    seletorItem: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 12,
+      borderRadius: Radii.md,
+    },
+    seletorItemAtivo: {
+      backgroundColor: theme.ouro,
+    },
+    seletorTexto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: FontSize.bodySm,
+      color: theme.textoSecundario,
+    },
+    seletorTextoAtivo: {
+      color: theme.textoEscuroSobreOuro,
+      fontFamily: FontFamily.bold,
+    },
+    card: {
+      width: '100%',
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.lg,
+      padding: Spacing.xl,
+      gap: Spacing.md,
+      ...Shadows.card,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    cardHeader: { gap: 4 },
+    titulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.displayMd,
+      color: theme.textoPrimario,
+    },
+    subtitulo: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+      color: theme.textoSecundario,
+      lineHeight: 20,
+    },
+    badgeProfissional: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.xs,
+      backgroundColor: theme.ouroTranslucido,
+      borderWidth: 1,
+      borderColor: theme.bordaOuro,
+      borderRadius: Radii.md,
+      padding: Spacing.sm,
+    },
+    badgeProfissionalTexto: {
+      flex: 1,
+      fontFamily: FontFamily.medium,
+      fontSize: FontSize.bodySm,
+      color: theme.ouroTexto,
+      lineHeight: 18,
+    },
+    campoContainer: { gap: Spacing.xs },
+    campoLabel: {
+      fontFamily: FontFamily.medium,
+      fontSize: FontSize.bodySm,
+      color: theme.textoSecundario,
+    },
+    inputWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.superficie2,
+      borderRadius: Radii.sm,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      paddingHorizontal: Spacing.sm,
+      height: 52,
+      gap: Spacing.xs,
+    },
+    inputIcone: { marginRight: 2 },
+    input: {
+      flex: 1,
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodyLg,
+      color: theme.textoPrimario,
+      height: '100%',
+    },
+    btnOlho: { padding: 6 },
+    botaoPrincipal: { width: '100%', marginTop: Spacing.xs },
+    loader: { alignSelf: 'center' },
+    rodape: { paddingVertical: Spacing.md, alignItems: 'center' },
+    rodapeTexto: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodyMd,
+      color: theme.textoSecundario,
+    },
+    rodapeLink: {
+      fontFamily: FontFamily.bold,
+      color: theme.ouroTexto,
+    },
+  });

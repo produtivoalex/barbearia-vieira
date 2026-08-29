@@ -46,7 +46,7 @@ import { useMembrosBarbearia, type PapelMembro, type MembroBarbearia } from '@/h
 import { extrairCaminhoStorage, removerMidiaStorage, uploadImagemTenant } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 import { IlustracaoServico, Botao } from '@/components';
-import { Colors, FontFamily, FontSize, Radii, Spacing } from '@/theme';
+import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows, type ThemePalette } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { BarbeariaPublica } from '@/hooks/useBarbearias';
 
@@ -70,6 +70,7 @@ const PAPEL_ROTULOS: Record<PapelMembro, { rotulo: string; cor: string; desc: st
 export default function GestaoBarbearia() {
   const router = useRouter();
   const { theme, isEscuro } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { barbearia, selecionarBarbearia, atualizarTemaLocal } = useBarbearia();
   const {
     membros,
@@ -102,7 +103,7 @@ export default function GestaoBarbearia() {
   const [corPrimaria, setCorPrimaria] = useState('#CBA14A');
   const [corMoldura, setCorMoldura] = useState('#CBA14A');
   const [corAccent, setCorAccent] = useState('#F0D17D');
-  const [corCard, setCorCard] = useState(Colors.superficie);
+  const [corCard, setCorCard] = useState(theme.superficie);
   const [nomeTema, setNomeTema] = useState('Ouro Imperial');
   const [salvandoTema, setSalvandoTema] = useState(false);
 
@@ -167,7 +168,7 @@ export default function GestaoBarbearia() {
       setCorPrimaria(t.primary || '#CBA14A');
       setCorMoldura(t.frameColor || t.primary || '#CBA14A');
       setCorAccent(t.accent || '#F0D17D');
-      setCorCard(t.card || Colors.superficie);
+      setCorCard(t.card || theme.superficie);
       setNomeTema(t.nomeTema || 'Ouro Imperial');
     }
 
@@ -821,15 +822,15 @@ export default function GestaoBarbearia() {
                 <Switch
                   value={publicada}
                   onValueChange={setPublicada}
-                  trackColor={{ false: Colors.borda, true: Colors.ouro }}
-                  thumbColor={Colors.branco}
+                  trackColor={{ false: theme.borda, true: theme.ouro }}
+                  thumbColor={theme.branco}
                 />
               </View>
             </View>
 
             <TouchableOpacity style={styles.botaoSalvar} onPress={salvarDados} disabled={salvando}>
               {salvando ? (
-                <ActivityIndicator color={Colors.fundo} size="small" />
+                <ActivityIndicator color={theme.textoEscuroSobreOuro} size="small" />
               ) : (
                 <>
                   <Save size={18} color={Colors.fundo} />
@@ -1336,7 +1337,7 @@ export default function GestaoBarbearia() {
                 <Switch
                   value={fidelidadeAtiva}
                   onValueChange={setFidelidadeAtiva}
-                  trackColor={{ false: Colors.borda, true: Colors.ouro }}
+                  trackColor={{ false: theme.borda, true: theme.ouro }}
                   thumbColor="#FFFFFF"
                 />
               </View>
@@ -1372,7 +1373,7 @@ export default function GestaoBarbearia() {
                 <Switch
                   value={mimoAtivo}
                   onValueChange={setMimoAtivo}
-                  trackColor={{ false: Colors.borda, true: Colors.ouro }}
+                  trackColor={{ false: theme.borda, true: theme.ouro }}
                   thumbColor="#FFFFFF"
                 />
               </View>
@@ -1542,7 +1543,7 @@ export default function GestaoBarbearia() {
                 return (
                   <TouchableOpacity
                     key={papel}
-                    style={[styles.papelChip, selecionado && { borderColor: info.cor, backgroundColor: Colors.superficie2 }]}
+                    style={[styles.papelChip, selecionado && { borderColor: info.cor, backgroundColor: theme.superficie2 }]}
                     onPress={() => setPapelNovoMembro(papel)}
                   >
                     <View style={[styles.papelPonto, { backgroundColor: info.cor }]} />
@@ -1564,7 +1565,7 @@ export default function GestaoBarbearia() {
               disabled={salvandoMembro || !usuarioSelecionado}
             >
               {salvandoMembro ? (
-                <ActivityIndicator color={Colors.fundo} size="small" />
+                <ActivityIndicator color={theme.textoEscuroSobreOuro} size="small" />
               ) : (
                 <Text style={styles.botaoConfirmarModalTexto}>Confirmar Vínculo</Text>
               )}
@@ -1580,13 +1581,13 @@ export default function GestaoBarbearia() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitulo}>Alterar Papel de Acesso</Text>
               <TouchableOpacity onPress={() => setModalEditarMembro(null)}>
-                <X size={20} color={Colors.textoSecundario} />
+                <X size={20} color={theme.textoSecundario} />
               </TouchableOpacity>
             </View>
 
             <Text style={styles.modalSub}>
               Membro:{' '}
-              <Text style={{ color: Colors.ouro, fontFamily: FontFamily.bold }}>
+              <Text style={{ color: theme.ouroTexto, fontFamily: FontFamily.bold }}>
                 {modalEditarMembro?.perfil?.nome_completo || 'Profissional'}
               </Text>
             </Text>
@@ -1598,7 +1599,7 @@ export default function GestaoBarbearia() {
                 return (
                   <TouchableOpacity
                     key={papel}
-                    style={[styles.papelChip, selecionado && { borderColor: info.cor, backgroundColor: Colors.superficie2 }]}
+                    style={[styles.papelChip, selecionado && { borderColor: info.cor, backgroundColor: theme.superficie2 }]}
                     onPress={() => handleAlterarPapelMembro(papel)}
                   >
                     <View style={[styles.papelPonto, { backgroundColor: info.cor }]} />
@@ -1643,6 +1644,7 @@ function Campo({
   keyboardType?: 'default' | 'phone-pad' | 'numeric';
 }) {
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   return (
     <View style={styles.campo}>
       <Text style={[styles.campoLabel, { color: theme.textoSecundario }]}>{label}</Text>
@@ -1660,560 +1662,561 @@ function Campo({
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.fundo },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.telaH,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borda,
-  },
-  headerBotao: { padding: 4 },
-  headerCentro: { alignItems: 'center' },
-  headerTitulo: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyLg },
-  headerSubtitulo: { color: Colors.ouro, fontFamily: FontFamily.medium, fontSize: FontSize.bodySm, marginTop: 2 },
+const createStyles = (theme: ThemePalette) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: theme.fundo },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.telaH,
+      paddingVertical: Spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borda,
+    },
+    headerBotao: { padding: 4 },
+    headerCentro: { alignItems: 'center' },
+    headerTitulo: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyLg },
+    headerSubtitulo: { color: theme.ouroTexto, fontFamily: FontFamily.medium, fontSize: FontSize.bodySm, marginTop: 2 },
 
-  segmentosWrapper: {
-    marginHorizontal: Spacing.telaH,
-    marginTop: Spacing.md,
-  },
-  segmentosScroll: {
-    flexDirection: 'row',
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.md,
-    padding: 4,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    gap: 4,
-  },
-  segmento: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    borderRadius: Radii.sm,
-  },
-  segmentoAtivo: { backgroundColor: Colors.fundo, borderWidth: 1, borderColor: Colors.borda },
-  segmentoTexto: { color: Colors.textoSecundario, fontFamily: FontFamily.medium, fontSize: FontSize.bodySm },
-  segmentoTextoAtivo: { color: Colors.ouro, fontFamily: FontFamily.bold },
+    segmentosWrapper: {
+      marginHorizontal: Spacing.telaH,
+      marginTop: Spacing.md,
+    },
+    segmentosScroll: {
+      flexDirection: 'row',
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.md,
+      padding: 4,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      gap: 4,
+    },
+    segmento: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 9,
+      paddingHorizontal: 14,
+      borderRadius: Radii.sm,
+    },
+    segmentoAtivo: { backgroundColor: theme.superficie2, borderWidth: 1, borderColor: theme.borda },
+    segmentoTexto: { color: theme.textoSecundario, fontFamily: FontFamily.medium, fontSize: FontSize.bodySm },
+    segmentoTextoAtivo: { color: theme.ouroTexto, fontFamily: FontFamily.bold },
 
-  scroll: { padding: Spacing.telaH, paddingBottom: Spacing.giant },
-  secao: { gap: Spacing.md },
-  ajuda: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, lineHeight: 20 },
+    scroll: { padding: Spacing.telaH, paddingBottom: Spacing.giant },
+    secao: { gap: Spacing.md },
+    ajuda: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, lineHeight: 20 },
 
-  campo: { gap: 6 },
-  campoLabel: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
-  input: {
-    minHeight: 46,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    borderRadius: Radii.md,
-    backgroundColor: Colors.superficie,
-    color: Colors.textoPrimario,
-    paddingHorizontal: Spacing.md,
-    fontFamily: FontFamily.regular,
-  },
-  inputMultiline: { minHeight: 85, paddingTop: Spacing.sm, textAlignVertical: 'top' },
-  linhaDupla: { flexDirection: 'row', gap: Spacing.sm },
+    campo: { gap: 6 },
+    campoLabel: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
+    input: {
+      minHeight: 46,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      borderRadius: Radii.md,
+      backgroundColor: theme.superficie,
+      color: theme.textoPrimario,
+      paddingHorizontal: Spacing.md,
+      fontFamily: FontFamily.regular,
+    },
+    inputMultiline: { minHeight: 85, paddingTop: Spacing.sm, textAlignVertical: 'top' },
+    linhaDupla: { flexDirection: 'row', gap: Spacing.sm },
 
-  cardPublicacao: {
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    borderRadius: Radii.md,
-    backgroundColor: Colors.superficie,
-    padding: Spacing.md,
-    marginTop: Spacing.xs,
-  },
-  cardPublicacaoHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  cardPublicacaoTitulo: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
-  cardPublicacaoSub: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, marginTop: 2 },
+    cardPublicacao: {
+      borderWidth: 1,
+      borderColor: theme.borda,
+      borderRadius: Radii.md,
+      backgroundColor: theme.superficie,
+      padding: Spacing.md,
+      marginTop: Spacing.xs,
+    },
+    cardPublicacaoHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+    cardPublicacaoTitulo: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
+    cardPublicacaoSub: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, marginTop: 2 },
 
-  botaoSalvar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: Colors.ouro,
-    borderRadius: Radii.md,
-    paddingVertical: 14,
-    marginTop: Spacing.sm,
-  },
-  botaoSalvarTexto: { color: Colors.fundo, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
+    botaoSalvar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: theme.ouro,
+      borderRadius: Radii.md,
+      paddingVertical: 14,
+      marginTop: Spacing.sm,
+    },
+    botaoSalvarTexto: { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
 
-  // Mídia
-  cardMidia: {
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    borderRadius: Radii.md,
-    backgroundColor: Colors.superficie,
-    padding: Spacing.md,
-    gap: Spacing.sm,
-  },
-  cardMidiaTopo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  cardMidiaInfo: { flex: 1 },
-  cardMidiaTitulo: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
-  cardMidiaSub: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, marginTop: 2 },
+    // Mídia
+    cardMidia: {
+      borderWidth: 1,
+      borderColor: theme.borda,
+      borderRadius: Radii.md,
+      backgroundColor: theme.superficie,
+      padding: Spacing.md,
+      gap: Spacing.sm,
+    },
+    cardMidiaTopo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+    cardMidiaInfo: { flex: 1 },
+    cardMidiaTitulo: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
+    cardMidiaSub: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, marginTop: 2 },
 
-  previewLogoLinha: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginTop: 4 },
-  logoPreview: { width: 80, height: 80, borderRadius: Radii.md, overflow: 'hidden', backgroundColor: Colors.fundo, borderWidth: 1, borderColor: Colors.borda },
-  logoImagem: { width: '100%', height: '100%' },
-  logoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.ouro },
-  logoPlaceholderTexto: { fontFamily: FontFamily.bold, fontSize: 32, color: Colors.fundo },
+    previewLogoLinha: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginTop: 4 },
+    logoPreview: { width: 80, height: 80, borderRadius: Radii.md, overflow: 'hidden', backgroundColor: theme.fundo, borderWidth: 1, borderColor: theme.borda },
+    logoImagem: { width: '100%', height: '100%' },
+    logoPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.ouro },
+    logoPlaceholderTexto: { fontFamily: FontFamily.bold, fontSize: 32, color: theme.textoEscuroSobreOuro },
 
-  midiaBotoesColuna: { flex: 1, gap: 8 },
-  botaoMidiaPrincipal: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: Colors.ouro,
-    borderRadius: Radii.md,
-    paddingVertical: 10,
-    paddingHorizontal: Spacing.md,
-  },
-  botaoMidiaPrincipalTexto: { color: Colors.fundo, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
-  botaoMidiaRemover: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    borderRadius: Radii.md,
-    borderWidth: 1,
-    borderColor: Colors.vermelho,
-  },
-  botaoMidiaRemoverTexto: { color: Colors.vermelho, fontFamily: FontFamily.medium, fontSize: FontSize.bodySm },
+    midiaBotoesColuna: { flex: 1, gap: 8 },
+    botaoMidiaPrincipal: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      backgroundColor: theme.ouro,
+      borderRadius: Radii.md,
+      paddingVertical: 10,
+      paddingHorizontal: Spacing.md,
+    },
+    botaoMidiaPrincipalTexto: { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
+    botaoMidiaRemover: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 8,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      borderColor: theme.erro,
+    },
+    botaoMidiaRemoverTexto: { color: theme.erro, fontFamily: FontFamily.medium, fontSize: FontSize.bodySm },
 
-  bannerPreviewContainer: {
-    height: 110,
-    borderRadius: Radii.md,
-    overflow: 'hidden',
-    backgroundColor: Colors.fundo,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    marginTop: 4,
-  },
-  bannerImagem: { width: '100%', height: '100%' },
-  bannerPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4 },
-  bannerPlaceholderTexto: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm },
-  bannerAcoesLinha: { flexDirection: 'row', gap: Spacing.sm, marginTop: 4 },
+    bannerPreviewContainer: {
+      height: 110,
+      borderRadius: Radii.md,
+      overflow: 'hidden',
+      backgroundColor: theme.fundo,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      marginTop: 4,
+    },
+    bannerImagem: { width: '100%', height: '100%' },
+    bannerPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4 },
+    bannerPlaceholderTexto: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm },
+    bannerAcoesLinha: { flexDirection: 'row', gap: Spacing.sm, marginTop: 4 },
 
-  fotosGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
-  fotoItem: { width: '30.5%', aspectRatio: 1, borderRadius: Radii.md, overflow: 'hidden', position: 'relative' },
-  fotoImagem: { width: '100%', height: '100%' },
-  fotoBotaoExcluir: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: 'rgba(211, 47, 47, 0.85)',
-    borderRadius: Radii.full,
-    padding: 5,
-  },
-  fotoAddBotao: {
-    width: '30.5%',
-    aspectRatio: 1,
-    borderRadius: Radii.md,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: Colors.ouro,
-    backgroundColor: Colors.fundo,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  fotoAddTexto: { color: Colors.ouro, fontFamily: FontFamily.bold, fontSize: FontSize.labelXs },
+    fotosGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
+    fotoItem: { width: '30.5%', aspectRatio: 1, borderRadius: Radii.md, overflow: 'hidden', position: 'relative' },
+    fotoImagem: { width: '100%', height: '100%' },
+    fotoBotaoExcluir: {
+      position: 'absolute',
+      top: 4,
+      right: 4,
+      backgroundColor: 'rgba(211, 47, 47, 0.85)',
+      borderRadius: Radii.full,
+      padding: 5,
+    },
+    fotoAddBotao: {
+      width: '30.5%',
+      aspectRatio: 1,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: theme.ouro,
+      backgroundColor: theme.superficie,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+    },
+    fotoAddTexto: { color: theme.ouroTexto, fontFamily: FontFamily.bold, fontSize: FontSize.labelXs },
 
-  // Equipe
-  equipeTopo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
-  botaoAdicionarMembro: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.ouro,
-    borderRadius: Radii.md,
-    paddingVertical: 9,
-    paddingHorizontal: Spacing.md,
-  },
-  botaoAdicionarMembroTexto: { color: Colors.fundo, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
+    // Equipe
+    equipeTopo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
+    botaoAdicionarMembro: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: theme.ouro,
+      borderRadius: Radii.md,
+      paddingVertical: 9,
+      paddingHorizontal: Spacing.md,
+    },
+    botaoAdicionarMembroTexto: { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
 
-  membrosLista: { gap: Spacing.sm, marginTop: 6 },
-  membroCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.md,
-    borderRadius: Radii.md,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    backgroundColor: Colors.superficie,
-    gap: Spacing.sm,
-  },
-  membroCardInativo: { opacity: 0.6, borderColor: Colors.borda },
-  membroAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: Radii.full,
-    backgroundColor: Colors.fundo,
-    borderWidth: 1,
-    borderColor: Colors.ouro,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  membroAvatarTexto: { color: Colors.ouro, fontFamily: FontFamily.bold, fontSize: 18 },
-  membroInfo: { flex: 1, gap: 2 },
-  membroNomeLinha: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  membroNome: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
-  membroNomeInativo: { textDecorationLine: 'line-through' },
-  badgePapel: { borderWidth: 1, borderRadius: Radii.full, paddingHorizontal: 8, paddingVertical: 2 },
-  badgePapelTexto: { fontFamily: FontFamily.bold, fontSize: 10 },
-  membroContato: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm },
-  membroStatusLinha: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
-  statusPonto: { width: 6, height: 6, borderRadius: Radii.full },
-  membroStatusTexto: { color: Colors.textoSecundario, fontFamily: FontFamily.medium, fontSize: 11 },
-  membroAcoes: { flexDirection: 'row', gap: 6 },
-  membroAcaoBotao: {
-    padding: 8,
-    borderRadius: Radii.sm,
-    backgroundColor: Colors.fundo,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-  },
+    membrosLista: { gap: Spacing.sm, marginTop: 6 },
+    membroCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: Spacing.md,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      backgroundColor: theme.superficie,
+      gap: Spacing.sm,
+    },
+    membroCardInativo: { opacity: 0.6, borderColor: theme.borda },
+    membroAvatar: {
+      width: 44,
+      height: 44,
+      borderRadius: Radii.full,
+      backgroundColor: theme.ouroTranslucido,
+      borderWidth: 1,
+      borderColor: theme.bordaOuro,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    membroAvatarTexto: { color: theme.ouroTexto, fontFamily: FontFamily.bold, fontSize: 18 },
+    membroInfo: { flex: 1, gap: 2 },
+    membroNomeLinha: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+    membroNome: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
+    membroNomeInativo: { textDecorationLine: 'line-through' },
+    badgePapel: { borderWidth: 1, borderRadius: Radii.full, paddingHorizontal: 8, paddingVertical: 2 },
+    badgePapelTexto: { fontFamily: FontFamily.bold, fontSize: 10 },
+    membroContato: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm },
+    membroStatusLinha: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
+    statusPonto: { width: 6, height: 6, borderRadius: Radii.full },
+    membroStatusTexto: { color: theme.textoSecundario, fontFamily: FontFamily.medium, fontSize: 11 },
+    membroAcoes: { flexDirection: 'row', gap: 6 },
+    membroAcaoBotao: {
+      padding: 8,
+      borderRadius: Radii.sm,
+      backgroundColor: theme.superficie2,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
 
-  membrosVazio: { alignItems: 'center', paddingVertical: Spacing.xxl, gap: Spacing.sm },
-  membrosVazioTitulo: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
-  membrosVazioSub: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, textAlign: 'center' },
+    membrosVazio: { alignItems: 'center', paddingVertical: Spacing.xxl, gap: Spacing.sm },
+    membrosVazioTitulo: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
+    membrosVazioSub: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, textAlign: 'center' },
 
-  // Modais
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', padding: Spacing.telaH },
-  modalConteudo: {
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.lg,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    maxHeight: '85%',
-  },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  modalTitulo: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyLg },
-  modalSub: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, marginBottom: 12 },
+    // Modais
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', padding: Spacing.telaH },
+    modalConteudo: {
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.lg,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      maxHeight: '85%',
+    },
+    modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+    modalTitulo: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyLg },
+    modalSub: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, marginBottom: 12 },
 
-  buscaLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    borderRadius: Radii.md,
-    backgroundColor: Colors.fundo,
-    paddingHorizontal: Spacing.md,
-    height: 44,
-  },
-  buscaInput: { flex: 1, color: Colors.textoPrimario, fontFamily: FontFamily.regular },
-  buscaResultados: { maxHeight: 150, marginTop: 8, borderWidth: 1, borderColor: Colors.borda, borderRadius: Radii.md },
-  buscaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.sm,
-    gap: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borda,
-  },
-  buscaItemAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: Radii.full,
-    backgroundColor: Colors.ouro,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buscaItemAvatarTexto: { color: Colors.fundo, fontFamily: FontFamily.bold, fontSize: 14 },
-  buscaItemNome: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
-  buscaItemEmail: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: 11 },
+    buscaLinha: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      borderRadius: Radii.md,
+      backgroundColor: theme.superficie2,
+      paddingHorizontal: Spacing.md,
+      height: 44,
+    },
+    buscaInput: { flex: 1, color: theme.textoPrimario, fontFamily: FontFamily.regular },
+    buscaResultados: { maxHeight: 150, marginTop: 8, borderWidth: 1, borderColor: theme.borda, borderRadius: Radii.md },
+    buscaItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: Spacing.sm,
+      gap: Spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borda,
+    },
+    buscaItemAvatar: {
+      width: 32,
+      height: 32,
+      borderRadius: Radii.full,
+      backgroundColor: theme.ouro,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    buscaItemAvatarTexto: { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold, fontSize: 14 },
+    buscaItemNome: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
+    buscaItemEmail: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: 11 },
 
-  usuarioCardSelecionado: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.sm,
-    gap: Spacing.sm,
-    backgroundColor: Colors.fundo,
-    borderRadius: Radii.md,
-    borderWidth: 1,
-    borderColor: Colors.ouro,
-    marginTop: 8,
-  },
-  usuarioCardNome: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
-  usuarioCardEmail: { color: Colors.ouroClaro, fontFamily: FontFamily.regular, fontSize: 11 },
+    usuarioCardSelecionado: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: Spacing.sm,
+      gap: Spacing.sm,
+      backgroundColor: theme.superficie2,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      borderColor: theme.ouro,
+      marginTop: 8,
+    },
+    usuarioCardNome: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
+    usuarioCardEmail: { color: theme.ouroTexto, fontFamily: FontFamily.regular, fontSize: 11 },
 
-  papeisOpcoes: { gap: 8, marginTop: 6 },
-  papelChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.sm,
-    borderRadius: Radii.md,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    backgroundColor: Colors.fundo,
-    gap: Spacing.sm,
-  },
-  papelPonto: { width: 8, height: 8, borderRadius: Radii.full },
-  papelChipTexto: { color: Colors.textoPrimario, fontFamily: FontFamily.medium, fontSize: FontSize.bodySm },
-  papelChipDesc: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: 11, marginTop: 1 },
+    papeisOpcoes: { gap: 8, marginTop: 6 },
+    papelChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: Spacing.sm,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      backgroundColor: theme.superficie2,
+      gap: Spacing.sm,
+    },
+    papelPonto: { width: 8, height: 8, borderRadius: Radii.full },
+    papelChipTexto: { color: theme.textoPrimario, fontFamily: FontFamily.medium, fontSize: FontSize.bodySm },
+    papelChipDesc: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: 11, marginTop: 1 },
 
-  botaoConfirmarModal: {
-    backgroundColor: Colors.ouro,
-    borderRadius: Radii.md,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: Spacing.md,
-  },
-  botaoConfirmarModalTexto: { color: Colors.fundo, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
+    botaoConfirmarModal: {
+      backgroundColor: theme.ouro,
+      borderRadius: Radii.md,
+      paddingVertical: 12,
+      alignItems: 'center',
+      marginTop: Spacing.md,
+    },
+    botaoConfirmarModalTexto: { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
 
-  botaoExcluirMembroModal: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    marginTop: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: Colors.borda,
-  },
-  botaoExcluirMembroModalTexto: { color: Colors.vermelho, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
+    botaoExcluirMembroModal: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 12,
+      marginTop: Spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: theme.borda,
+    },
+    botaoExcluirMembroModalTexto: { color: theme.erro, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
 
-  // Estilos da Aba Tema & Molduras
-  paletasGrid: { gap: Spacing.sm, marginTop: 4 },
-  paletaCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.sm,
-    borderRadius: Radii.md,
-    backgroundColor: Colors.fundo,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    gap: Spacing.sm,
-  },
-  paletaCardAtiva: {
-    borderColor: Colors.ouro,
-    backgroundColor: 'rgba(203, 161, 74, 0.08)',
-  },
-  paletaCoresLinha: { flexDirection: 'row', gap: 4, alignItems: 'center' },
-  paletaCirculo: { width: 14, height: 14, borderRadius: Radii.full },
-  paletaInfo: { flex: 1 },
-  paletaNome: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
-  paletaDesc: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: 11, marginTop: 1 },
-  badgePaletaAtiva: {
-    width: 22,
-    height: 22,
-    borderRadius: Radii.full,
-    backgroundColor: Colors.ouro,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    // Estilos da Aba Tema & Molduras
+    paletasGrid: { gap: Spacing.sm, marginTop: 4 },
+    paletaCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: Spacing.sm,
+      borderRadius: Radii.md,
+      backgroundColor: theme.superficie,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      gap: Spacing.sm,
+    },
+    paletaCardAtiva: {
+      borderColor: theme.ouro,
+      backgroundColor: theme.ouroTranslucido,
+    },
+    paletaCoresLinha: { flexDirection: 'row', gap: 4, alignItems: 'center' },
+    paletaCirculo: { width: 14, height: 14, borderRadius: Radii.full },
+    paletaInfo: { flex: 1 },
+    paletaNome: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
+    paletaDesc: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: 11, marginTop: 1 },
+    badgePaletaAtiva: {
+      width: 22,
+      height: 22,
+      borderRadius: Radii.full,
+      backgroundColor: theme.ouro,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  campoCorContainer: { gap: 6, marginTop: Spacing.xs },
-  campoCorLabel: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
-  campoCorLinha: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  previewCorCaixa: { width: 44, height: 44, borderRadius: Radii.md, borderWidth: 1, borderColor: Colors.borda },
-  inputCorHex: {
-    flex: 1,
-    height: 44,
-    borderRadius: Radii.md,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    backgroundColor: Colors.fundo,
-    color: Colors.textoPrimario,
-    paddingHorizontal: Spacing.md,
-    fontFamily: FontFamily.bold,
-    letterSpacing: 1,
-  },
-  amostrasCores: { flexDirection: 'row', gap: 10, marginTop: 4, paddingVertical: 2 },
-  amostraCirculo: { width: 28, height: 28, borderRadius: Radii.full, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  amostraCirculoAtivo: { borderWidth: 2.5, borderColor: Colors.branco, transform: [{ scale: 1.15 }] },
+    campoCorContainer: { gap: 6, marginTop: Spacing.xs },
+    campoCorLabel: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
+    campoCorLinha: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+    previewCorCaixa: { width: 44, height: 44, borderRadius: Radii.md, borderWidth: 1, borderColor: theme.borda },
+    inputCorHex: {
+      flex: 1,
+      height: 44,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      backgroundColor: theme.superficie,
+      color: theme.textoPrimario,
+      paddingHorizontal: Spacing.md,
+      fontFamily: FontFamily.bold,
+      letterSpacing: 1,
+    },
+    amostrasCores: { flexDirection: 'row', gap: 10, marginTop: 4, paddingVertical: 2 },
+    amostraCirculo: { width: 28, height: 28, borderRadius: Radii.full, borderWidth: 1, borderColor: theme.borda },
+    amostraCirculoAtivo: { borderWidth: 2.5, borderColor: theme.ouro, transform: [{ scale: 1.15 }] },
 
-  demoCardServico: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.md,
-    borderRadius: Radii.md,
-    backgroundColor: Colors.fundo,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    gap: Spacing.md,
-    marginTop: 4,
-  },
-  demoServicoTitulo: { color: Colors.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
-  demoServicoSub: { color: Colors.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm },
-  demoServicoPreco: { fontFamily: FontFamily.bold, fontSize: FontSize.bodySm, marginTop: 2 },
+    demoCardServico: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: Spacing.md,
+      borderRadius: Radii.md,
+      backgroundColor: theme.superficie,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      gap: Spacing.md,
+      marginTop: 4,
+    },
+    demoServicoTitulo: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
+    demoServicoSub: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm },
+    demoServicoPreco: { fontFamily: FontFamily.bold, fontSize: FontSize.bodySm, marginTop: 2 },
 
-  demoBotao: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderRadius: Radii.md,
-    paddingVertical: 12,
-    marginTop: 4,
-  },
-  demoBotaoTexto: { color: Colors.fundo, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
+    demoBotao: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      borderRadius: Radii.md,
+      paddingVertical: 12,
+      marginTop: 4,
+    },
+    demoBotaoTexto: { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
 
-  botaoSalvarTema: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: Colors.ouro,
-    borderRadius: Radii.md,
-    paddingVertical: 14,
-    marginTop: Spacing.sm,
-  },
-  botaoSalvarTemaTexto: { color: Colors.fundo, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
+    botaoSalvarTema: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: theme.ouro,
+      borderRadius: Radii.md,
+      paddingVertical: 14,
+      marginTop: Spacing.sm,
+    },
+    botaoSalvarTemaTexto: { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
 
-  vazioContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.telaH, gap: Spacing.md },
-  vazioTexto: { color: Colors.textoPrimario, fontFamily: FontFamily.medium, textAlign: 'center' },
-  voltarBotao: { backgroundColor: Colors.ouro, paddingHorizontal: Spacing.lg, paddingVertical: 10, borderRadius: Radii.md },
-  voltarBotaoTexto: { color: Colors.fundo, fontFamily: FontFamily.bold },
+    vazioContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.telaH, gap: Spacing.md },
+    vazioTexto: { color: theme.textoPrimario, fontFamily: FontFamily.medium, textAlign: 'center' },
+    voltarBotao: { backgroundColor: theme.ouro, paddingHorizontal: Spacing.lg, paddingVertical: 10, borderRadius: Radii.md },
+    voltarBotaoTexto: { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
 
-  /* ─── ABA REGRAS & COMISSÕES ─── */
-  blocoRegra: {
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.lg,
-    padding: Spacing.md,
-    gap: Spacing.xs,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-  },
-  blocoRegraTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: 15,
-    color: Colors.textoPrimario,
-  },
-  blocoRegraDesc: {
-    fontFamily: FontFamily.regular,
-    fontSize: 12,
-    color: Colors.textoSecundario,
-    marginBottom: 4,
-    lineHeight: 16,
-  },
-  opcaoModoCard: {
-    backgroundColor: Colors.fundo,
-    borderRadius: Radii.md,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    gap: 4,
-    marginTop: 6,
-  },
-  opcaoModoCardAtivo: {
-    borderColor: Colors.ouro,
-    backgroundColor: 'rgba(203, 161, 74, 0.08)',
-  },
-  opcaoModoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  opcaoModoTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: 13.5,
-    color: Colors.textoPrimario,
-  },
-  opcaoModoTituloAtivo: {
-    color: Colors.ouro,
-  },
-  opcaoModoSub: {
-    fontFamily: FontFamily.regular,
-    fontSize: 11.5,
-    color: Colors.textoSecundario,
-    lineHeight: 15,
-  },
-  janelaDiasRow: {
-    flexDirection: 'row',
-    gap: Spacing.xs,
-    marginTop: 6,
-  },
-  chipJanela: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: Radii.md,
-    backgroundColor: Colors.fundo,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipJanelaAtivo: {
-    backgroundColor: Colors.ouro,
-    borderColor: Colors.ouro,
-  },
-  chipJanelaTexto: {
-    fontFamily: FontFamily.medium,
-    fontSize: 12,
-    color: Colors.textoSecundario,
-  },
-  chipJanelaTextoAtivo: {
-    color: Colors.textoEscuroSobreOuro,
-    fontFamily: FontFamily.bold,
-  },
-  inputComissaoWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.fundo,
-    borderRadius: Radii.md,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    paddingHorizontal: Spacing.md,
-    height: 48,
-    marginTop: 4,
-    gap: Spacing.xs,
-  },
-  inputComissao: {
-    flex: 1,
-    color: Colors.textoPrimario,
-    fontFamily: FontFamily.bold,
-    fontSize: 16,
-    height: '100%',
-  },
-  inputComissaoSufixo: {
-    fontFamily: FontFamily.medium,
-    fontSize: 13,
-    color: Colors.ouro,
-  },
-  fidelidadeHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.sm,
-  },
-  fidelidadeCampos: {
-    gap: Spacing.xs,
-    marginTop: Spacing.sm,
-    paddingTop: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: Colors.borda,
-  },
-  mimoTipoLabel: {
-    fontFamily: FontFamily.bold,
-    fontSize: 12.5,
-    color: Colors.ouro,
-    marginTop: 4,
-  },
-  botaoDisparoPush: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: Colors.ouro,
-    borderRadius: Radii.md,
-    paddingVertical: 12,
-    marginTop: Spacing.xs,
-  },
-  botaoDisparoPushTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: 13,
-    color: Colors.textoEscuroSobreOuro,
-  },
-});
+    /* ─── ABA REGRAS & COMISSÕES ─── */
+    blocoRegra: {
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.lg,
+      padding: Spacing.md,
+      gap: Spacing.xs,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    blocoRegraTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: 15,
+      color: theme.textoPrimario,
+    },
+    blocoRegraDesc: {
+      fontFamily: FontFamily.regular,
+      fontSize: 12,
+      color: theme.textoSecundario,
+      marginBottom: 4,
+      lineHeight: 16,
+    },
+    opcaoModoCard: {
+      backgroundColor: theme.superficie2,
+      borderRadius: Radii.md,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      gap: 4,
+      marginTop: 6,
+    },
+    opcaoModoCardAtivo: {
+      borderColor: theme.ouro,
+      backgroundColor: theme.ouroTranslucido,
+    },
+    opcaoModoHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    opcaoModoTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: 13.5,
+      color: theme.textoPrimario,
+    },
+    opcaoModoTituloAtivo: {
+      color: theme.ouroTexto,
+    },
+    opcaoModoSub: {
+      fontFamily: FontFamily.regular,
+      fontSize: 11.5,
+      color: theme.textoSecundario,
+      lineHeight: 15,
+    },
+    janelaDiasRow: {
+      flexDirection: 'row',
+      gap: Spacing.xs,
+      marginTop: 6,
+    },
+    chipJanela: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: Radii.md,
+      backgroundColor: theme.superficie2,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    chipJanelaAtivo: {
+      backgroundColor: theme.ouro,
+      borderColor: theme.ouro,
+    },
+    chipJanelaTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: 12,
+      color: theme.textoSecundario,
+    },
+    chipJanelaTextoAtivo: {
+      color: theme.textoEscuroSobreOuro,
+      fontFamily: FontFamily.bold,
+    },
+    inputComissaoWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.superficie2,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      paddingHorizontal: Spacing.md,
+      height: 48,
+      marginTop: 4,
+      gap: Spacing.xs,
+    },
+    inputComissao: {
+      flex: 1,
+      color: theme.textoPrimario,
+      fontFamily: FontFamily.bold,
+      fontSize: 16,
+      height: '100%',
+    },
+    inputComissaoSufixo: {
+      fontFamily: FontFamily.medium,
+      fontSize: 13,
+      color: theme.ouroTexto,
+    },
+    fidelidadeHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: Spacing.sm,
+    },
+    fidelidadeCampos: {
+      gap: Spacing.xs,
+      marginTop: Spacing.sm,
+      paddingTop: Spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: theme.borda,
+    },
+    mimoTipoLabel: {
+      fontFamily: FontFamily.bold,
+      fontSize: 12.5,
+      color: theme.ouroTexto,
+      marginTop: 4,
+    },
+    botaoDisparoPush: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: theme.ouro,
+      borderRadius: Radii.md,
+      paddingVertical: 12,
+      marginTop: Spacing.xs,
+    },
+    botaoDisparoPushTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 13,
+      color: theme.textoEscuroSobreOuro,
+    },
+  });

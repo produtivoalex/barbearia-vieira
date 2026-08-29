@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Calendar, Clock, Scissors, ChevronRight } from 'lucide-react-native';
 import { ControleSegmentado, IlustracaoServico } from '@/components';
-import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
+import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows, type ThemePalette } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useMeusAgendamentos, type AgendamentoCompleto } from '@/hooks/useMeusAgendamentos';
 
@@ -21,15 +21,9 @@ import { Alert } from 'react-native';
 import { CheckCircle2 } from 'lucide-react-native';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
 
-const LABELS_STATUS: Record<AgendamentoCompleto['status'], { texto: string; cor: string }> = {
-  pendente:   { texto: 'Agendado',   cor: Colors.amarelo },
-  confirmado: { texto: 'Confirmado', cor: Colors.verde },
-  cancelado:  { texto: 'Cancelado',  cor: Colors.erro },
-  concluido:  { texto: 'Concluído',  cor: Colors.textoSecundario },
-};
-
 export default function TelaAgenda() {
   const { theme, isEscuro } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const [aba, setAba] = useState<'proximos' | 'historico'>('proximos');
   const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
@@ -213,145 +207,148 @@ export default function TelaAgenda() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.fundo },
-  header: {
-    paddingHorizontal: Spacing.telaH,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.xs,
-  },
-  titulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.displayMd,
-    color: Colors.textoPrimario,
-  },
-  controleContainer: {
-    paddingHorizontal: Spacing.telaH,
-    paddingBottom: Spacing.md,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  lista: {
-    flexGrow: 1,
-    paddingHorizontal: Spacing.telaH,
-    paddingBottom: Spacing.giant,
-    gap: Spacing.sm,
-  },
-  card: {
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.md,
-    padding: Spacing.md,
-    gap: Spacing.sm,
-    ...Shadows.card,
-  },
-  cardTopo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  dataLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  dataTexto: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
-  },
-  badge: {
-    paddingHorizontal: Spacing.xs,
-    paddingVertical: 3,
-    borderRadius: Radii.full,
-  },
-  badgeTexto: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.labelXs,
-  },
-  divisor: {
-    height: 1,
-    backgroundColor: Colors.borda,
-  },
-  cardCorpo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  iconeServico: {
-    width: 36,
-    height: 36,
-    borderRadius: Radii.sm,
-    backgroundColor: Colors.superficie2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  infoServico: {
-    flex: 1,
-    gap: 3,
-  },
-  nomeServico: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoPrimario,
-  },
-  nomeBarbeiro: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
-  },
-  preco: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.ouro,
-  },
-  vazio: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.xs,
-    paddingTop: Spacing.giant,
-  },
-  vazioTitulo: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.bodyLg,
-    color: Colors.textoPrimario,
-    textAlign: 'center',
-    marginTop: Spacing.xs,
-  },
-  vazioSubtitulo: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoSecundario,
-    textAlign: 'center',
-    maxWidth: 280,
-  },
-  botaoAgendar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: Spacing.xs,
-    gap: 4,
-  },
-  botaoAgendarTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.ouro,
-  },
-  botaoConfirmar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.verde,
-    borderRadius: Radii.sm,
-    paddingVertical: 10,
-    marginTop: Spacing.xs,
-    gap: 6,
-  },
-  botaoConfirmarTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodySm,
-    color: Colors.fundo,
-  },
-});
+const createStyles = (theme: ThemePalette) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: theme.fundo },
+    header: {
+      paddingHorizontal: Spacing.telaH,
+      paddingTop: Spacing.md,
+      paddingBottom: Spacing.xs,
+    },
+    titulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.displayMd,
+      color: theme.textoPrimario,
+    },
+    controleContainer: {
+      paddingHorizontal: Spacing.telaH,
+      paddingBottom: Spacing.md,
+    },
+    loadingContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    lista: {
+      flexGrow: 1,
+      paddingHorizontal: Spacing.telaH,
+      paddingBottom: Spacing.giant,
+      gap: Spacing.sm,
+    },
+    card: {
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.md,
+      padding: Spacing.md,
+      gap: Spacing.sm,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      ...Shadows.card,
+    },
+    cardTopo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    dataLinha: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+    },
+    dataTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: FontSize.bodySm,
+      color: theme.textoSecundario,
+    },
+    badge: {
+      paddingHorizontal: Spacing.xs,
+      paddingVertical: 3,
+      borderRadius: Radii.full,
+    },
+    badgeTexto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: FontSize.labelXs,
+    },
+    divisor: {
+      height: 1,
+      backgroundColor: theme.borda,
+    },
+    cardCorpo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+    },
+    iconeServico: {
+      width: 36,
+      height: 36,
+      borderRadius: Radii.sm,
+      backgroundColor: theme.superficie2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    infoServico: {
+      flex: 1,
+      gap: 3,
+    },
+    nomeServico: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: FontSize.bodyMd,
+      color: theme.textoPrimario,
+    },
+    nomeBarbeiro: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+      color: theme.textoSecundario,
+    },
+    preco: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+      color: theme.ouroTexto,
+    },
+    vazio: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: Spacing.xs,
+      paddingTop: Spacing.giant,
+    },
+    vazioTitulo: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: FontSize.bodyLg,
+      color: theme.textoPrimario,
+      textAlign: 'center',
+      marginTop: Spacing.xs,
+    },
+    vazioSubtitulo: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodyMd,
+      color: theme.textoSecundario,
+      textAlign: 'center',
+      maxWidth: 280,
+    },
+    botaoAgendar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: Spacing.xs,
+      gap: 4,
+    },
+    botaoAgendarTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+      color: theme.ouroTexto,
+    },
+    botaoConfirmar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.verde,
+      borderRadius: Radii.sm,
+      paddingVertical: 10,
+      marginTop: Spacing.xs,
+      gap: 6,
+    },
+    botaoConfirmarTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodySm,
+      color: theme.textoEscuroSobreOuro,
+    },
+  });

@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -36,6 +37,9 @@ import {
   Moon,
   Sun,
   Smartphone,
+  Eye,
+  Share2,
+  Copy,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -46,7 +50,7 @@ import {
   type TipoServicoId,
 } from '@/components/IlustracaoServico';
 import { uploadImagemTenant, removerMidiaStorage } from '@/lib/storage';
-import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
+import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows, type ThemePalette } from '@/theme';
 import { usePerfil } from '@/hooks/usePerfil';
 import { useAuth } from '@/hooks/useAuth';
 import { useServicos, type Servico, type CategoriaServico, CATEGORIAS_CONFIG } from '@/hooks/useServicos';
@@ -63,6 +67,7 @@ export default function TelaBarbeiroMais() {
   const barbeiroId = session?.user?.id;
   const { barbearia } = useBarbearia();
   const { theme, isEscuro, modoTema, setModoTema } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { servicos, recarregar: recarregarServicos } = useServicos('todos', barbearia?.id);
 
   const [modalAtivo, setModalAtivo] = useState<TipoModal>(null);
@@ -231,7 +236,6 @@ export default function TelaBarbeiroMais() {
 
     setSalvandoIndividual(true);
     try {
-      // 1. Atualiza na tabela servicos
       const { error: erroUpdate } = await supabase
         .from('servicos')
         .update({ preco: valorNum })
@@ -247,7 +251,6 @@ export default function TelaBarbeiroMais() {
         novo_preco: valorNum,
       };
 
-      // 2. Registra o reajuste no histórico
       await supabase.from('reajustes_precos').insert({
         barbeiro_id: barbeiroId,
         tipo: 'individual',
@@ -256,7 +259,6 @@ export default function TelaBarbeiroMais() {
         itens_alterados: [alteracao],
       });
 
-      // 3. Notifica todos os clientes
       const precoFormatado = valorNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       await supabase.rpc('notificar_todos_clientes', {
         p_titulo: `Reajuste de Preço: ${servicoParaReajuste.nome}`,
@@ -291,7 +293,6 @@ export default function TelaBarbeiroMais() {
         if (novoStr) {
           const valorNum = parseFloat(novoStr.replace(',', '.'));
           if (!isNaN(valorNum) && valorNum > 0 && valorNum !== Number(s.preco)) {
-            // Atualiza serviço
             await supabase.from('servicos').update({ preco: valorNum }).eq('id', s.id);
             alteracoes.push({
               servico_id: s.id,
@@ -311,7 +312,6 @@ export default function TelaBarbeiroMais() {
 
       const hojeIso = new Date().toISOString().slice(0, 10);
 
-      // Registra reajuste em lote
       await supabase.from('reajustes_precos').insert({
         barbeiro_id: barbeiroId,
         tipo: 'lote',
@@ -320,7 +320,6 @@ export default function TelaBarbeiroMais() {
         itens_alterados: alteracoes,
       });
 
-      // Dispara UMA ÚNICA notificação consolidada com CTA sem citar a palavra justificativa no resumo
       await supabase.rpc('notificar_todos_clientes', {
         p_titulo: 'Aviso de Reajuste de Preços ✂️',
         p_mensagem: `Informamos que haverá reajuste de valores em nossos serviços a partir de ${dataVigenciaLote}. Toque em Saiba mais para ver os detalhes.`,
@@ -347,211 +346,243 @@ export default function TelaBarbeiroMais() {
     await supabase.auth.signOut();
   }
 
+  function handleCompartilharLink() {
+    const slug = barbearia?.slug || barbearia?.id || 'barbearia';
+    const nome = barbearia?.nome || 'nossa barbearia';
+    const link = `https://naregua.app/${slug}`;
+    Share.share({
+      message: `💈 Agende seu corte na ${nome} pelo app Na Régua:\n${link}`,
+      url: link,
+    }).catch(() => {});
+  }
+
+  function handleVerComoCliente() {
+    const slugOuId = barbearia?.slug || barbearia?.id;
+    if (slugOuId) {
+      router.push(`/(app)/barbearias/${slugOuId}`);
+    } else {
+      router.push('/(app)/barbearias');
+    }
+  }
+
   const nomeExibicao = carregandoPerfil
     ? 'Carregando...'
     : perfil?.nome_completo || 'Barbeiro Profissional';
   const emailExibicao = session?.user?.email || '';
+  const slugBarbearia = barbearia?.slug || 'vieira';
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.titulo}>Meu Negócio</Text>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]} edges={['top']}>
+      {/* ─── Header Apple Style ─── */}
+      <View style={[styles.header, { borderBottomColor: theme.borda }]}>
+        <Text style={[styles.titulo, { color: theme.textoPrimario }]}>Meu Negócio</Text>
+        <View style={[styles.badgeTopoPro, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
+          <Sparkles size={11} color={theme.ouroTexto} />
+          <Text style={[styles.badgeTopoProTexto, { color: theme.ouroTexto }]}>PAINEL PRO</Text>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Card do Perfil do Barbeiro */}
-        <View style={styles.perfilCard}>
-          <View style={styles.avatarWrapper}>
-            <LogoBarbearia tamanho={64} tipo="avatar" variante="compacto" uri={barbearia?.logo_url} />
-          </View>
-
-          <View style={styles.perfilInfo}>
-            <Text style={styles.perfilNome}>{nomeExibicao}</Text>
-            <Text style={styles.perfilContato}>{emailExibicao}</Text>
-            <View style={styles.badgeBarbeiro}>
-              <Sparkles size={11} color={Colors.ouro} />
-              <Text style={styles.badgeBarbeiroTexto}>{barbearia?.nome || 'Na Régua'}</Text>
+        {/* ─── HERO CARD DO ESTABELECIMENTO (Orgulho & Ação Rápida) ─── */}
+        <View style={[styles.heroBarbeariaCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
+          <View style={styles.heroTopo}>
+            <View style={styles.heroLogoWrapper}>
+              <LogoBarbearia tamanho={60} tipo="avatar" variante="compacto" uri={barbearia?.logo_url} />
             </View>
-          </View>
-        </View>
 
-        {/* Seção 1: Estabelecimento & Agenda */}
-        <View style={styles.secao}>
-          <Text style={styles.secaoTitulo}>MEU ESTABELECIMENTO</Text>
-          <View style={styles.cardGrupo}>
-            <TouchableOpacity
-              style={styles.itemLinha}
-              activeOpacity={0.7}
-              onPress={() => router.push('/(app)/(barbeiro)/gestao-barbearia')}
-            >
-              <View style={[styles.itemIconeContainer, styles.iconeOuro]}>
-                <Edit3 size={18} color={Colors.ouro} />
-              </View>
-              <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Meu Espaço & Identidade</Text>
-                <Text style={styles.itemSubtitulo}>Cores, fotos, dados comerciais e equipe</Text>
-              </View>
-              <ChevronRight size={18} color={Colors.textoDesabilitado} />
-            </TouchableOpacity>
-
-            <View style={styles.divisorItem} />
-
-            <TouchableOpacity
-              style={styles.itemLinha}
-              activeOpacity={0.7}
-              onPress={() => setModalAtivo('servicos')}
-            >
-              <View style={[styles.itemIconeContainer, styles.iconeOuro]}>
-                <Scissors size={18} color={Colors.ouro} />
-              </View>
-              <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Cortes & Barba</Text>
-                <Text style={styles.itemSubtitulo}>Tabela de serviços, preços e tempos</Text>
-              </View>
-              <ChevronRight size={18} color={Colors.textoDesabilitado} />
-            </TouchableOpacity>
-
-            <View style={styles.divisorItem} />
-
-            <TouchableOpacity
-              style={styles.itemLinha}
-              activeOpacity={0.7}
-              onPress={() => router.push('/(app)/(barbeiro)/preparar-agenda')}
-            >
-              <View style={[styles.itemIconeContainer, styles.iconeOuro]}>
-                <CalendarPlus size={18} color={Colors.ouro} />
-              </View>
-              <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Preparar Nova Agenda</Text>
-                <Text style={styles.itemSubtitulo}>Programar dias disponíveis e hora de abertura</Text>
-              </View>
-              <ChevronRight size={18} color={Colors.textoDesabilitado} />
-            </TouchableOpacity>
-
-            <View style={styles.divisorItem} />
-
-            <TouchableOpacity
-              style={styles.itemLinha}
-              activeOpacity={0.7}
-              onPress={() => router.push('/(app)/(barbeiro)/opcoes-avancadas')}
-            >
-              <View style={[styles.itemIconeContainer, styles.iconeOuro]}>
-                <Sliders size={18} color={Colors.ouro} />
-              </View>
-              <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Ajustes & Controles</Text>
-                <Text style={styles.itemSubtitulo}>Lista negra, horários da equipe e vagas</Text>
-              </View>
-              <ChevronRight size={18} color={Colors.textoDesabilitado} />
-            </TouchableOpacity>
-
-            <View style={styles.divisorItem} />
-
-            <TouchableOpacity
-              style={styles.itemLinha}
-              activeOpacity={0.7}
-              onPress={() => router.push({ pathname: '/(app)/barbearias', params: { modo: 'painel' } })}
-            >
-              <View style={styles.itemIconeContainer}>
-                <Store size={18} color={Colors.textoSecundario} />
-              </View>
-              <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Trocar Estabelecimento</Text>
-                <Text style={styles.itemSubtitulo}>{barbearia?.nome || 'Selecionar unidade'}</Text>
-              </View>
-              <ChevronRight size={18} color={Colors.textoDesabilitado} />
-            </TouchableOpacity>
-
-            <View style={styles.divisorItem} />
-
-            <TouchableOpacity
-              style={styles.itemLinha}
-              activeOpacity={0.7}
-              onPress={() => router.push('/(app)/(barbeiro)/cadastrar-barbearia')}
-            >
-              <View style={styles.itemIconeContainer}>
-                <Building2 size={18} color={Colors.textoSecundario} />
-              </View>
-              <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Cadastrar Nova Unidade</Text>
-                <Text style={styles.itemSubtitulo}>Criar uma nova barbearia no Na Régua</Text>
-              </View>
-              <ChevronRight size={18} color={Colors.textoDesabilitado} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Seção 2: Informações do Sistema */}
-        <View style={styles.secao}>
-          <Text style={styles.secaoTitulo}>CONTA & SISTEMA</Text>
-          <View style={styles.cardGrupo}>
-            {/* Aparência / Modo Claro / Escuro */}
-            <TouchableOpacity
-              style={styles.itemLinha}
-              activeOpacity={0.7}
-              onPress={() => setModalAtivo('aparencia')}
-            >
-              <View style={[styles.itemIconeContainer, styles.iconeOuro]}>
-                {isEscuro ? (
-                  <Moon size={18} color={Colors.ouro} />
-                ) : (
-                  <Sun size={18} color={Colors.ouro} />
-                )}
-              </View>
-              <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Aparência do App</Text>
-                <Text style={styles.itemSubtitulo}>
-                  {modoTema === 'escuro'
-                    ? 'Modo Escuro (Obsidian & Gold)'
-                    : modoTema === 'claro'
-                    ? 'Modo Claro (Pearl White & Gold)'
-                    : 'Automático (Segue o Sistema)'}
+            <View style={styles.heroInfo}>
+              <Text style={[styles.heroNomeBarbearia, { color: theme.textoPrimario }]} numberOfLines={1}>
+                {barbearia?.nome || 'Minha Barbearia'}
+              </Text>
+              <Text style={[styles.heroDono, { color: theme.textoSecundario }]} numberOfLines={1}>
+                {nomeExibicao} • {emailExibicao}
+              </Text>
+              <View style={styles.heroLinkLinha}>
+                <Text style={[styles.heroLinkTexto, { color: theme.ouroTexto }]} numberOfLines={1}>
+                  naregua.app/{slugBarbearia}
                 </Text>
               </View>
-              <ChevronRight size={18} color={Colors.textoDesabilitado} />
+            </View>
+          </View>
+
+          {/* Botões de Ação Rápida no Hero Card */}
+          <View style={[styles.heroAcoesLinha, { borderTopColor: theme.borda, backgroundColor: theme.superficie2 }]}>
+            <TouchableOpacity
+              style={styles.heroBtnAcao}
+              onPress={handleVerComoCliente}
+              activeOpacity={0.75}
+            >
+              <Eye size={15} color={theme.textoPrimario} />
+              <Text style={[styles.heroBtnAcaoTexto, { color: theme.textoPrimario }]}>Ver como Cliente</Text>
             </TouchableOpacity>
 
-            <View style={styles.divisorItem} />
+            <View style={[styles.heroDivisorVertical, { backgroundColor: theme.borda }]} />
 
             <TouchableOpacity
-              style={styles.itemLinha}
-              activeOpacity={0.7}
-              onPress={() => setModalAtivo('privacidade')}
+              style={styles.heroBtnAcao}
+              onPress={handleCompartilharLink}
+              activeOpacity={0.75}
             >
-              <View style={styles.itemIconeContainer}>
-                <ShieldCheck size={18} color={Colors.textoSecundario} />
+              <Share2 size={15} color={theme.ouroTexto} />
+              <Text style={[styles.heroBtnAcaoTexto, { color: theme.ouroTexto }]}>Compartilhar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ─── GRID 2x2: GERENCIAR (Apple Control Center Style) ─── */}
+        <View style={styles.secao}>
+          <Text style={[styles.secaoRotulo, { color: theme.textoSecundario }]}>GERENCIAR</Text>
+
+          <View style={styles.gridContainer}>
+            {/* Card 1: Serviços & Preços */}
+            <TouchableOpacity
+              style={[styles.gridCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}
+              onPress={() => setModalAtivo('servicos')}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.gridIconeBox, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
+                <Scissors size={20} color={theme.ouroTexto} />
               </View>
-              <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Segurança & Privacidade</Text>
-                <Text style={styles.itemSubtitulo}>Proteção de dados e criptografia</Text>
+              <Text style={[styles.gridCardTitulo, { color: theme.textoPrimario }]}>Serviços & Preços</Text>
+              <Text style={[styles.gridCardSub, { color: theme.textoSecundario }]}>
+                {servicos.length} {servicos.length === 1 ? 'serviço ativo' : 'serviços ativos'}
+              </Text>
+              <View style={styles.gridCardSeta}>
+                <ChevronRight size={14} color={theme.textoDesabilitado} />
               </View>
-              <ChevronRight size={18} color={Colors.textoDesabilitado} />
             </TouchableOpacity>
 
-            <View style={styles.divisorItem} />
+            {/* Card 2: Agenda & Vagas */}
+            <TouchableOpacity
+              style={[styles.gridCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}
+              onPress={() => router.push('/(app)/(barbeiro)/preparar-agenda')}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.gridIconeBox, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
+                <CalendarPlus size={20} color={theme.ouroTexto} />
+              </View>
+              <Text style={[styles.gridCardTitulo, { color: theme.textoPrimario }]}>Agenda & Vagas</Text>
+              <Text style={[styles.gridCardSub, { color: theme.textoSecundario }]}>
+                Próxima semana
+              </Text>
+              <View style={styles.gridCardSeta}>
+                <ChevronRight size={14} color={theme.textoDesabilitado} />
+              </View>
+            </TouchableOpacity>
 
-            <View style={styles.itemLinha}>
-              <View style={styles.itemIconeContainer}>
-                <Info size={18} color={Colors.textoSecundario} />
+            {/* Card 3: Espaço & Identidade */}
+            <TouchableOpacity
+              style={[styles.gridCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}
+              onPress={() => router.push('/(app)/(barbeiro)/gestao-barbearia')}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.gridIconeBox, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
+                <Edit3 size={20} color={theme.ouroTexto} />
               </View>
-              <View style={styles.itemTextoContainer}>
-                <Text style={styles.itemTitulo}>Versão do Aplicativo</Text>
-                <Text style={styles.itemSubtitulo}>Na Régua Pro v1.0</Text>
+              <Text style={[styles.gridCardTitulo, { color: theme.textoPrimario }]}>Espaço & Fotos</Text>
+              <Text style={[styles.gridCardSub, { color: theme.textoSecundario }]}>
+                Logo, fotos e dados
+              </Text>
+              <View style={styles.gridCardSeta}>
+                <ChevronRight size={14} color={theme.textoDesabilitado} />
               </View>
+            </TouchableOpacity>
+
+            {/* Card 4: Ajustes & Controles */}
+            <TouchableOpacity
+              style={[styles.gridCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}
+              onPress={() => router.push('/(app)/(barbeiro)/opcoes-avancadas')}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.gridIconeBox, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
+                <Sliders size={20} color={theme.ouroTexto} />
+              </View>
+              <Text style={[styles.gridCardTitulo, { color: theme.textoPrimario }]}>Ajustes & Equipe</Text>
+              <Text style={[styles.gridCardSub, { color: theme.textoSecundario }]}>
+                Regras e horários
+              </Text>
+              <View style={styles.gridCardSeta}>
+                <ChevronRight size={14} color={theme.textoDesabilitado} />
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ─── CARD AGRUPADO: SISTEMA & PREFERÊNCIAS (iOS Settings Style) ─── */}
+        <View style={styles.secao}>
+          <Text style={[styles.secaoRotulo, { color: theme.textoSecundario }]}>SISTEMA & PREFERÊNCIAS</Text>
+
+          <View style={[styles.cardAgrupadoIos, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
+            {/* Trocar Estabelecimento */}
+            <TouchableOpacity
+              style={styles.itemIosLinha}
+              onPress={() => router.push({ pathname: '/(app)/barbearias', params: { modo: 'painel' } })}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.itemIosIconeBox, { backgroundColor: theme.superficie2 }]}>
+                <Store size={16} color={theme.textoSecundario} />
+              </View>
+              <Text style={[styles.itemIosTitulo, { color: theme.textoPrimario }]}>Trocar Unidade</Text>
+              <Text style={[styles.itemIosValor, { color: theme.textoSecundario }]} numberOfLines={1}>
+                {barbearia?.nome || 'Selecionar'}
+              </Text>
+              <ChevronRight size={16} color={theme.textoDesabilitado} />
+            </TouchableOpacity>
+
+            <View style={[styles.divisorIos, { backgroundColor: theme.borda }]} />
+
+            {/* Cadastrar Nova Unidade */}
+            <TouchableOpacity
+              style={styles.itemIosLinha}
+              onPress={() => router.push('/(app)/(barbeiro)/cadastrar-barbearia')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.itemIosIconeBox, { backgroundColor: theme.superficie2 }]}>
+                <Building2 size={16} color={theme.textoSecundario} />
+              </View>
+              <Text style={[styles.itemIosTitulo, { color: theme.textoPrimario }]}>Nova Unidade</Text>
+              <ChevronRight size={16} color={theme.textoDesabilitado} />
+            </TouchableOpacity>
+
+            <View style={[styles.divisorIos, { backgroundColor: theme.borda }]} />
+
+            {/* Segurança & Privacidade */}
+            <TouchableOpacity
+              style={styles.itemIosLinha}
+              onPress={() => setModalAtivo('privacidade')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.itemIosIconeBox, { backgroundColor: theme.superficie2 }]}>
+                <ShieldCheck size={16} color={theme.textoSecundario} />
+              </View>
+              <Text style={[styles.itemIosTitulo, { color: theme.textoPrimario }]}>Segurança & Privacidade</Text>
+              <ChevronRight size={16} color={theme.textoDesabilitado} />
+            </TouchableOpacity>
+
+            <View style={[styles.divisorIos, { backgroundColor: theme.borda }]} />
+
+            {/* Versão do Aplicativo */}
+            <View style={styles.itemIosLinha}>
+              <View style={[styles.itemIosIconeBox, { backgroundColor: theme.superficie2 }]}>
+                <Info size={16} color={theme.textoSecundario} />
+              </View>
+              <Text style={[styles.itemIosTitulo, { color: theme.textoPrimario }]}>Versão</Text>
+              <Text style={[styles.itemIosValor, { color: theme.textoSecundario }]}>Na Régua Pro 1.0</Text>
             </View>
           </View>
         </View>
 
-        {/* Botão Sair */}
+        {/* ─── BOTÃO SAIR DISCRETO E ELEGANTE ─── */}
         <TouchableOpacity
-          style={styles.botaoSair}
+          style={[styles.btnSairIos, { backgroundColor: theme.superficie, borderColor: theme.borda }]}
           onPress={() => setModalAtivo('sair')}
-          activeOpacity={0.7}
+          activeOpacity={0.75}
         >
-          <LogOut size={18} color={Colors.erro} />
-          <Text style={styles.botaoSairTexto}>Sair da conta</Text>
+          <LogOut size={16} color={theme.erro} />
+          <Text style={[styles.btnSairIosTexto, { color: theme.erro }]}>Sair da Conta</Text>
         </TouchableOpacity>
+
+        <View style={{ height: Spacing.giant }} />
       </ScrollView>
 
       {/* ─── Modal da Tabela de Serviços & Reajustes ─── */}
@@ -562,64 +593,63 @@ export default function TelaBarbeiroMais() {
         onRequestClose={() => setModalAtivo(null)}
       >
         <Pressable style={styles.modalOverlay} onPress={() => setModalAtivo(null)}>
-          <Pressable style={styles.modalConteudo} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalTraco} />
+          <Pressable style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
+            <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
 
             <View style={styles.modalHeader}>
               <View style={styles.modalTituloLinha}>
-                <View style={styles.modalIconeBadge}>
-                  <Scissors size={20} color={Colors.ouro} />
+                <View style={[styles.modalIconeBadge, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
+                  <Scissors size={20} color={theme.ouroTexto} />
                 </View>
-                <Text style={styles.modalTitulo}>Tabela de Serviços & Preços</Text>
+                <Text style={[styles.modalTitulo, { color: theme.textoPrimario }]}>Serviços & Preços</Text>
               </View>
 
               <TouchableOpacity onPress={() => setModalAtivo(null)} style={styles.modalBtnFechar}>
-                <X size={20} color={Colors.textoSecundario} />
+                <X size={20} color={theme.textoSecundario} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.servicosAcoesTopo}>
               <TouchableOpacity
-                style={styles.botaoNovoServico}
+                style={[styles.botaoNovoServico, { backgroundColor: theme.ouro }]}
                 onPress={abrirNovoServico}
                 activeOpacity={0.8}
               >
-                <Plus size={16} color={Colors.fundo} />
+                <Plus size={16} color="#09090B" />
                 <Text style={styles.botaoNovoServicoTexto}>Novo Serviço</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.botaoReajusteLote}
+                style={[styles.botaoReajusteLote, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
                 onPress={abrirReajusteLote}
                 activeOpacity={0.8}
               >
-                <Zap size={14} color="#FFFFFF" />
-                <Text style={styles.botaoReajusteLoteTexto}>Reajuste em Lote</Text>
+                <Zap size={14} color={theme.ouroTexto} />
+                <Text style={[styles.botaoReajusteLoteTexto, { color: theme.textoPrimario }]}>Reajuste em Lote</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.dicaToqueTexto}>
-              Toque no botão de edição para fotos e moldura, ou no preço para reajustar valores.
+            <Text style={[styles.dicaToqueTexto, { color: theme.textoSecundario }]}>
+              Toque na paleta para editar fotos e moldura, ou no preço para reajustar valores.
             </Text>
 
             <ScrollView style={styles.servicosLista} showsVerticalScrollIndicator={false}>
               {servicos.map((s) => (
-                <View key={s.id} style={styles.servicoItem}>
-                  {/* Ilustração com Moldura */}
+                <View key={s.id} style={[styles.servicoItem, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
                   <IlustracaoServico
                     id={s.id}
                     nome={s.nome}
                     categoria={s.categoria}
                     imagemUrl={s.imagem_url}
                     tipoPredefinido={s.icone as any}
-                    corMoldura={s.cor_moldura || barbearia?.tema?.frameColor || barbearia?.tema?.primary || Colors.ouro}
+                    corMoldura={s.cor_moldura || barbearia?.tema?.frameColor || barbearia?.tema?.primary || theme.ouro}
                     tamanho={48}
                   />
 
                   <View style={styles.servicoInfo}>
-                    <Text style={styles.servicoNome}>{s.nome}</Text>
-                    <Text style={styles.servicoDescricao} numberOfLines={1}>{s.descricao}</Text>
-                    <Text style={styles.servicoDuracao}>{s.duracao_minutos} min</Text>
+                    <Text style={[styles.servicoNome, { color: theme.textoPrimario }]}>{s.nome}</Text>
+                    <Text style={[styles.servicoDescricao, { color: theme.textoSecundario }]} numberOfLines={1}>{s.descricao}</Text>
+                    <Text style={[styles.servicoDuracao, { color: theme.textoSecundario }]}>{s.duracao_minutos} min</Text>
                   </View>
 
                   <View style={{ alignItems: 'flex-end', gap: 6 }}>
@@ -627,27 +657,27 @@ export default function TelaBarbeiroMais() {
                       onPress={() => abrirReajusteIndividual(s)}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.servicoPreco}>
+                      <Text style={[styles.servicoPreco, { color: theme.ouroTexto }]}>
                         {Number(s.preco).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </Text>
                     </TouchableOpacity>
 
                     <View style={{ flexDirection: 'row', gap: 6 }}>
                       <TouchableOpacity
-                        style={styles.btnEditarServicoIcone}
+                        style={[styles.btnEditarServicoIcone, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}
                         onPress={() => abrirEditarServicoCompleto(s)}
                         activeOpacity={0.7}
                       >
-                        <Palette size={13} color={Colors.ouro} />
+                        <Palette size={13} color={theme.ouroTexto} />
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={styles.badgeEditarPreco}
+                        style={[styles.badgeEditarPreco, { backgroundColor: theme.ouroTranslucido }]}
                         onPress={() => abrirReajusteIndividual(s)}
                         activeOpacity={0.7}
                       >
-                        <Edit3 size={11} color={Colors.ouro} />
-                        <Text style={styles.badgeEditarPrecoTexto}>Preço</Text>
+                        <Edit3 size={11} color={theme.ouroTexto} />
+                        <Text style={[styles.badgeEditarPrecoTexto, { color: theme.ouroTexto }]}>Reajustar</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -658,167 +688,79 @@ export default function TelaBarbeiroMais() {
         </Pressable>
       </Modal>
 
-      {/* ─── Modal Completo: Editor de Serviço (Fotos, Molduras, Dados) ─── */}
+      {/* ─── Modal de Edição Completa de Serviço ─── */}
       <Modal
         visible={modalEditorServico}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setModalEditorServico(false)}
       >
         <Pressable style={styles.modalOverlay} onPress={() => setModalEditorServico(false)}>
-          <Pressable style={styles.modalConteudoGrande} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalTraco} />
+          <Pressable style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
+            <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
+
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitulo}>
-                {servicoEmEdicao ? 'Editar Serviço & Moldura' : 'Cadastrar Novo Serviço'}
+              <Text style={[styles.modalTitulo, { color: theme.textoPrimario }]}>
+                {servicoEmEdicao ? 'Editar Serviço' : 'Novo Serviço'}
               </Text>
-              <TouchableOpacity onPress={() => setModalEditorServico(false)} style={styles.modalBtnFechar}>
-                <X size={20} color="#8E8E93" />
+              <TouchableOpacity onPress={() => setModalEditorServico(false)}>
+                <X size={20} color={theme.textoSecundario} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>
-              {/* Nome */}
-              <Text style={styles.labelCampo}>NOME DO SERVIÇO *</Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 480 }}>
+              <Text style={[styles.labelCampo, { color: theme.textoSecundario }]}>NOME DO SERVIÇO</Text>
               <TextInput
-                style={styles.inputModal}
-                placeholder="Ex: Corte Degradê / Fade"
-                placeholderTextColor={Colors.textoDesabilitado}
+                style={[styles.inputModal, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
                 value={nomeForm}
                 onChangeText={setNomeForm}
+                placeholder="Ex: Corte Degradê, Barboterapia"
+                placeholderTextColor={theme.textoDesabilitado}
               />
 
-              {/* Preço e Duração */}
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+              <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.labelCampo}>PREÇO (R$) *</Text>
+                  <Text style={[styles.labelCampo, { color: theme.textoSecundario }]}>PREÇO (R$)</Text>
                   <TextInput
-                    style={styles.inputModal}
-                    placeholder="35,00"
-                    placeholderTextColor={Colors.textoDesabilitado}
-                    keyboardType="numeric"
+                    style={[styles.inputModal, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
                     value={precoForm}
                     onChangeText={setPrecoForm}
+                    placeholder="35,00"
+                    placeholderTextColor={theme.textoDesabilitado}
+                    keyboardType="numeric"
                   />
                 </View>
 
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.labelCampo}>DURAÇÃO (MIN) *</Text>
+                  <Text style={[styles.labelCampo, { color: theme.textoSecundario }]}>DURAÇÃO (MIN)</Text>
                   <TextInput
-                    style={styles.inputModal}
-                    placeholder="30"
-                    placeholderTextColor={Colors.textoDesabilitado}
-                    keyboardType="numeric"
+                    style={[styles.inputModal, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
                     value={duracaoForm}
                     onChangeText={setDuracaoForm}
+                    placeholder="30"
+                    placeholderTextColor={theme.textoDesabilitado}
+                    keyboardType="numeric"
                   />
                 </View>
               </View>
 
-              {/* Descrição */}
-              <Text style={[styles.labelCampo, { marginTop: 10 }]}>DESCRIÇÃO DETALHADA</Text>
+              <Text style={[styles.labelCampo, { color: theme.textoSecundario }]}>DESCRIÇÃO (OPCIONAL)</Text>
               <TextInput
-                style={[styles.inputModal, { minHeight: 65, textAlignVertical: 'top', paddingTop: 8 }]}
-                placeholder="Detalhes do serviço, produtos usados..."
-                placeholderTextColor={Colors.textoDesabilitado}
-                multiline
+                style={[styles.inputModal, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
                 value={descricaoForm}
                 onChangeText={setDescricaoForm}
+                placeholder="Detalhes ou diferenciais do serviço..."
+                placeholderTextColor={theme.textoDesabilitado}
               />
 
-              {/* BIBLIOTECA DE IMAGENS SUGERIDAS (9 RENDERS 3D) */}
-              <Text style={[styles.labelCampo, { marginTop: 14 }]}>IMAGEM DO SERVIÇO (SUGESTÕES DA BIBLIOTECA)</Text>
-              <Text style={styles.subLabelCampo}>
-                Escolha uma das ilustrações profissionais ou envie sua própria foto abaixo.
-              </Text>
-
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bibliotecaScroll}>
-                {BIBLIOTECA_SERVICOS.map((item) => {
-                  const selecionado = !imagemUrlForm && (iconeForm === item.id || (!iconeForm && servicoEmEdicao?.nome?.toLowerCase().includes(item.categoria)));
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={[styles.cardSugestaoImg, selecionado && styles.cardSugestaoImgAtivo]}
-                      onPress={() => {
-                        setIconeForm(item.id);
-                        setImagemUrlForm(null);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <IlustracaoServico tipoPredefinido={item.id} corMoldura={corMolduraForm || Colors.ouro} tamanho={46} />
-                      <Text style={[styles.sugestaoLabel, selecionado && styles.sugestaoLabelAtivo]} numberOfLines={1}>
-                        {item.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-
-              {/* OU Enviar Foto Própria */}
               <TouchableOpacity
-                style={styles.btnFotoPropria}
-                onPress={escolherFotoCustomizadaServico}
-                disabled={enviandoFotoServico}
-                activeOpacity={0.8}
-              >
-                {enviandoFotoServico ? (
-                  <ActivityIndicator size="small" color={Colors.ouro} />
-                ) : (
-                  <>
-                    <Camera size={16} color={Colors.ouro} />
-                    <Text style={styles.btnFotoPropriaTexto}>
-                      {imagemUrlForm ? 'Alterar Foto Própria da Galeria' : 'Escolher Foto Própria da Galeria'}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-
-              {/* COR DA MOLDURA EXTERNA DO SERVIÇO */}
-              <Text style={[styles.labelCampo, { marginTop: 14 }]}>COR DA MOLDURA EXTERNA DESTE SERVIÇO</Text>
-              <Text style={styles.subLabelCampo}>
-                A moldura envolve a foto garantindo a identidade visual da barbearia.
-              </Text>
-
-              <View style={styles.amostrasMolduraServico}>
-                {['#CBA14A', '#E63946', '#2A9D8F', '#3182CE', '#8338EC', '#E76F51', '#E0E1DD'].map((hex) => (
-                  <TouchableOpacity
-                    key={`moldura-form-${hex}`}
-                    style={[styles.amostraCirculo, { backgroundColor: hex }, corMolduraForm === hex && styles.amostraCirculoAtivo]}
-                    onPress={() => setCorMolduraForm(hex)}
-                  />
-                ))}
-              </View>
-
-              {/* PRÉVIA AO VIVO DESTE SERVIÇO */}
-              <View style={styles.previewContainerServico}>
-                <Text style={styles.previewTitulo}>Prévia da Foto com Moldura:</Text>
-                <View style={styles.previewItemLinha}>
-                  <IlustracaoServico
-                    imagemUrl={imagemUrlForm}
-                    tipoPredefinido={iconeForm}
-                    nome={nomeForm}
-                    categoria={categoriaForm}
-                    corMoldura={corMolduraForm || Colors.ouro}
-                    tamanho={58}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.previewNomeServico}>{nomeForm || 'Nome do Serviço'}</Text>
-                    <Text style={styles.previewPrecoServico}>
-                      {precoForm ? `R$ ${precoForm}` : 'R$ 0,00'} • {duracaoForm || '30'} min
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Botão Salvar */}
-              <TouchableOpacity
-                style={styles.botaoConfirmarModal}
+                style={[styles.botaoConfirmarModal, { backgroundColor: theme.ouro }]}
                 onPress={handleSalvarServicoCompleto}
                 disabled={salvandoServico}
                 activeOpacity={0.8}
               >
                 {salvandoServico ? (
-                  <ActivityIndicator color={Colors.fundo} size="small" />
+                  <ActivityIndicator size="small" color="#09090B" />
                 ) : (
                   <Text style={styles.botaoConfirmarModalTexto}>
                     {servicoEmEdicao ? 'Salvar Alterações' : 'Cadastrar Serviço'}
@@ -838,68 +780,49 @@ export default function TelaBarbeiroMais() {
         onRequestClose={() => setServicoParaReajuste(null)}
       >
         <Pressable style={styles.modalOverlay} onPress={() => setServicoParaReajuste(null)}>
-          <Pressable style={styles.modalConteudoGrande} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalTraco} />
+          <Pressable style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
+            <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
+
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitulo}>Reajustar Preço do Serviço</Text>
-              <TouchableOpacity onPress={() => setServicoParaReajuste(null)} style={styles.modalBtnFechar}>
-                <X size={20} color="#8E8E93" />
+              <Text style={[styles.modalTitulo, { color: theme.textoPrimario }]}>Reajustar Preço</Text>
+              <TouchableOpacity onPress={() => setServicoParaReajuste(null)}>
+                <X size={20} color={theme.textoSecundario} />
               </TouchableOpacity>
             </View>
 
             {servicoParaReajuste && (
-              <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
-                <View style={styles.cardInfoServico}>
-                  <Text style={styles.cardInfoServicoNome}>{servicoParaReajuste.nome}</Text>
-                  <Text style={styles.cardInfoServicoPreco}>
-                    Preço atual: R$ {Number(servicoParaReajuste.preco).toFixed(2)}
+              <View style={{ gap: Spacing.sm }}>
+                <View style={[styles.cardInfoServico, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                  <Text style={[styles.cardInfoServicoNome, { color: theme.textoPrimario }]}>{servicoParaReajuste.nome}</Text>
+                  <Text style={[styles.cardInfoServicoPreco, { color: theme.ouroTexto }]}>
+                    Preço atual: {Number(servicoParaReajuste.preco).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </Text>
                 </View>
 
-                <Text style={styles.labelCampo}>NOVO VALOR (R$)</Text>
+                <Text style={[styles.labelCampo, { color: theme.textoSecundario }]}>NOVO PREÇO (R$)</Text>
                 <TextInput
-                  style={styles.inputModal}
-                  keyboardType="numeric"
-                  placeholder="Ex: 25.00"
-                  placeholderTextColor="#636366"
+                  style={[styles.inputModal, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
                   value={novoPrecoIndividual}
                   onChangeText={setNovoPrecoIndividual}
-                />
-
-                <Text style={styles.labelCampo}>QUANDO ENTRARÁ EM VIGOR?</Text>
-                <TextInput
-                  style={styles.inputModal}
-                  placeholder="DD/MM/AAAA"
-                  placeholderTextColor="#636366"
-                  value={dataVigenciaIndividual}
-                  onChangeText={setDataVigenciaIndividual}
-                />
-
-                <Text style={styles.labelCampo}>JUSTIFICATIVA / MENSAGEM AOS CLIENTES (OPCIONAL)</Text>
-                <TextInput
-                  style={[styles.inputModal, { height: 80, textAlignVertical: 'top' }]}
-                  multiline
-                  placeholder="Ex: Reajuste anual para melhoria de insumos e atendimento."
-                  placeholderTextColor="#636366"
-                  value={justificativaIndividual}
-                  onChangeText={setJustificativaIndividual}
+                  placeholder="0,00"
+                  placeholderTextColor={theme.textoDesabilitado}
+                  keyboardType="numeric"
+                  autoFocus
                 />
 
                 <TouchableOpacity
-                  style={styles.botaoConfirmarReajuste}
+                  style={[styles.botaoConfirmarReajuste, { backgroundColor: theme.verde }]}
                   onPress={handleSalvarReajusteIndividual}
                   disabled={salvandoIndividual}
                   activeOpacity={0.8}
                 >
                   {salvandoIndividual ? (
-                    <ActivityIndicator color="#FFFFFF" />
+                    <ActivityIndicator size="small" color="#09090B" />
                   ) : (
-                    <Text style={styles.botaoConfirmarReajusteTexto}>
-                      Aplicar Reajuste & Notificar Clientes
-                    </Text>
+                    <Text style={styles.botaoConfirmarReajusteTexto}>Confirmar Reajuste</Text>
                   )}
                 </TouchableOpacity>
-              </ScrollView>
+              </View>
             )}
           </Pressable>
         </Pressable>
@@ -912,87 +835,55 @@ export default function TelaBarbeiroMais() {
         animationType="fade"
         onRequestClose={() => setModalLoteAberto(false)}
       >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={() => setModalLoteAberto(false)}
-          />
-          <View style={styles.modalConteudoGrande}>
-            <View style={styles.modalTraco} />
+        <Pressable style={styles.modalOverlay} onPress={() => setModalLoteAberto(false)}>
+          <Pressable style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
+            <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
+
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitulo}>Reajuste Geral de Todos os Serviços</Text>
-              <TouchableOpacity onPress={() => setModalLoteAberto(false)} style={styles.modalBtnFechar}>
-                <X size={20} color="#8E8E93" />
+              <Text style={[styles.modalTitulo, { color: theme.textoPrimario }]}>Reajuste em Lote</Text>
+              <TouchableOpacity onPress={() => setModalLoteAberto(false)}>
+                <X size={20} color={theme.textoSecundario} />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.labelCampo}>DATA DE VIGÊNCIA</Text>
-            <TextInput
-              style={styles.inputModal}
-              placeholder="DD/MM/AAAA"
-              placeholderTextColor="#636366"
-              value={dataVigenciaLote}
-              onChangeText={setDataVigenciaLote}
-            />
-
-            <Text style={styles.labelCampo}>JUSTIFICATIVA / COMUNICADO (OPCIONAL)</Text>
-            <TextInput
-              style={[styles.inputModal, { height: 68, textAlignVertical: 'top', paddingTop: 8 }]}
-              multiline
-              placeholder="Ex: Mensagem visível aos clientes no Saiba Mais"
-              placeholderTextColor="#636366"
-              value={justificativaLote}
-              onChangeText={setJustificativaLote}
-            />
-
-            <Text style={[styles.labelCampo, { marginTop: 6 }]}>
-              VALORES POR SERVIÇO ({servicos.length} SERVIÇOS)
-            </Text>
-
-            {/* ROLAGEM DEDICADA APENAS NA LISTA DE SERVIÇOS */}
-            <ScrollView
-              style={styles.servicosLoteLista}
-              contentContainerStyle={{ paddingVertical: 4 }}
-              nestedScrollEnabled
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator
-            >
+            <ScrollView style={styles.servicosLoteLista} showsVerticalScrollIndicator={false}>
               {servicos.map((s) => (
-                <View key={s.id} style={styles.linhaLoteServico}>
+                <View key={s.id} style={[styles.linhaLoteServico, { borderBottomColor: theme.borda }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.linhaLoteNome}>{s.nome}</Text>
-                    <Text style={styles.linhaLoteAtual}>Atual: R$ {Number(s.preco).toFixed(2)}</Text>
+                    <Text style={[styles.linhaLoteNome, { color: theme.textoPrimario }]}>{s.nome}</Text>
+                    <Text style={[styles.linhaLoteAtual, { color: theme.textoSecundario }]}>
+                      Atual: R$ {Number(s.preco).toFixed(2)}
+                    </Text>
                   </View>
                   <TextInput
-                    style={styles.inputLote}
-                    keyboardType="numeric"
+                    style={[styles.inputLote, { backgroundColor: theme.superficie, borderColor: theme.borda, color: theme.ouroTexto }]}
                     value={precosLote[s.id] || ''}
                     onChangeText={(val) => setPrecosLote((prev) => ({ ...prev, [s.id]: val }))}
+                    keyboardType="numeric"
+                    placeholder="0.00"
+                    placeholderTextColor={theme.textoDesabilitado}
                   />
                 </View>
               ))}
             </ScrollView>
 
             <TouchableOpacity
-              style={styles.botaoConfirmarReajuste}
+              style={[styles.botaoConfirmarReajuste, { backgroundColor: theme.verde }]}
               onPress={handleSalvarReajusteLote}
               disabled={salvandoLote}
               activeOpacity={0.8}
             >
               {salvandoLote ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator size="small" color="#09090B" />
               ) : (
-                <Text style={styles.botaoConfirmarReajusteTexto}>
-                  Salvar Reajuste Geral & Notificar Clientes
-                </Text>
+                <Text style={styles.botaoConfirmarReajusteTexto}>Salvar Todos os Reajustes</Text>
               )}
             </TouchableOpacity>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
 
-      {/* ─── Modal Aparência ─── */}
+      {/* ─── Modal de Aparência ─── */}
       <Modal
         visible={modalAtivo === 'aparencia'}
         transparent
@@ -1001,39 +892,16 @@ export default function TelaBarbeiroMais() {
       >
         <Pressable style={styles.modalOverlay} onPress={() => setModalAtivo(null)}>
           <Pressable style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalTraco} />
-            <View style={[styles.modalHeader, { borderBottomColor: theme.borda }]}>
+            <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
+
+            <View style={styles.modalHeader}>
               <Text style={[styles.modalTitulo, { color: theme.textoPrimario }]}>Aparência do Aplicativo</Text>
-              <TouchableOpacity onPress={() => setModalAtivo(null)} style={styles.modalBtnFechar}>
+              <TouchableOpacity onPress={() => setModalAtivo(null)}>
                 <X size={20} color={theme.textoSecundario} />
               </TouchableOpacity>
             </View>
-            <View style={styles.modalCorpo}>
-              <Text style={{ fontFamily: FontFamily.regular, fontSize: FontSize.bodySm, color: theme.textoSecundario, marginBottom: 4 }}>
-                Escolha o tema visual que melhor combina com seu estilo.
-              </Text>
 
-              {/* Opção 1: Automático do Sistema (Padrão) */}
-              <TouchableOpacity
-                style={[
-                  styles.opcaoTemaCard,
-                  { backgroundColor: theme.superficie2, borderColor: theme.borda },
-                  modoTema === 'sistema' && { borderColor: theme.ouro, backgroundColor: theme.ouroTranslucido },
-                ]}
-                onPress={() => setModoTema('sistema')}
-                activeOpacity={0.75}
-              >
-                <View style={[styles.opcaoTemaIconeWrapper, { backgroundColor: isEscuro ? '#1C1C22' : '#EAEAEA' }]}>
-                  <Smartphone size={18} color={theme.ouroTexto} />
-                </View>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd, color: theme.textoPrimario }}>Automático (Padrão do Sistema)</Text>
-                  <Text style={{ fontFamily: FontFamily.regular, fontSize: 11.5, color: theme.textoSecundario }}>Acompanha em tempo real o modo claro ou escuro do seu celular</Text>
-                </View>
-                {modoTema === 'sistema' && <Check size={18} color={theme.ouroTexto} strokeWidth={3} />}
-              </TouchableOpacity>
-
-              {/* Opção 2: Modo Escuro */}
+            <View style={{ gap: Spacing.sm }}>
               <TouchableOpacity
                 style={[
                   styles.opcaoTemaCard,
@@ -1041,19 +909,16 @@ export default function TelaBarbeiroMais() {
                   modoTema === 'escuro' && { borderColor: theme.ouro, backgroundColor: theme.ouroTranslucido },
                 ]}
                 onPress={() => setModoTema('escuro')}
-                activeOpacity={0.75}
+                activeOpacity={0.7}
               >
-                <View style={[styles.opcaoTemaIconeWrapper, { backgroundColor: '#09090B' }]}>
-                  <Moon size={18} color="#CBA14A" />
+                <Moon size={20} color={modoTema === 'escuro' ? theme.ouroTexto : theme.textoPrimario} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modalItemRotulo, { color: theme.textoPrimario }]}>Modo Escuro (Obsidian & Gold)</Text>
+                  <Text style={[styles.modalItemDescricao, { color: theme.textoSecundario }]}>Visual noturno elegante e luxuoso.</Text>
                 </View>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd, color: theme.textoPrimario }}>Modo Escuro (Obsidian & Gold)</Text>
-                  <Text style={{ fontFamily: FontFamily.regular, fontSize: 11.5, color: theme.textoSecundario }}>Preto Obsidiana com acabamento Dourado Imperial</Text>
-                </View>
-                {modoTema === 'escuro' && <Check size={18} color={theme.ouroTexto} strokeWidth={3} />}
+                {modoTema === 'escuro' && <Check size={18} color={theme.ouroTexto} />}
               </TouchableOpacity>
 
-              {/* Opção 3: Modo Claro */}
               <TouchableOpacity
                 style={[
                   styles.opcaoTemaCard,
@@ -1061,23 +926,38 @@ export default function TelaBarbeiroMais() {
                   modoTema === 'claro' && { borderColor: theme.ouro, backgroundColor: theme.ouroTranslucido },
                 ]}
                 onPress={() => setModoTema('claro')}
-                activeOpacity={0.75}
+                activeOpacity={0.7}
               >
-                <View style={[styles.opcaoTemaIconeWrapper, { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E4E4E7' }]}>
-                  <Sun size={18} color="#8B6508" />
+                <Sun size={20} color={modoTema === 'claro' ? theme.ouroTexto : theme.textoPrimario} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modalItemRotulo, { color: theme.textoPrimario }]}>Modo Claro (Pearl White & Gold)</Text>
+                  <Text style={[styles.modalItemDescricao, { color: theme.textoSecundario }]}>Interface iluminada e de alto contraste.</Text>
                 </View>
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={{ fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd, color: theme.textoPrimario }}>Modo Claro (Luxury White)</Text>
-                  <Text style={{ fontFamily: FontFamily.regular, fontSize: 11.5, color: theme.textoSecundario }}>Branco Pérola, tipografia Carvão e Dourado de alto contraste</Text>
+                {modoTema === 'claro' && <Check size={18} color={theme.ouroTexto} />}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.opcaoTemaCard,
+                  { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                  modoTema === 'sistema' && { borderColor: theme.ouro, backgroundColor: theme.ouroTranslucido },
+                ]}
+                onPress={() => setModoTema('sistema')}
+                activeOpacity={0.7}
+              >
+                <Smartphone size={20} color={modoTema === 'sistema' ? theme.ouroTexto : theme.textoPrimario} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modalItemRotulo, { color: theme.textoPrimario }]}>Automático (Sistema)</Text>
+                  <Text style={[styles.modalItemDescricao, { color: theme.textoSecundario }]}>Segue o tema das configurações do seu aparelho.</Text>
                 </View>
-                {modoTema === 'claro' && <Check size={18} color={theme.ouroTexto} strokeWidth={3} />}
+                {modoTema === 'sistema' && <Check size={18} color={theme.ouroTexto} />}
               </TouchableOpacity>
             </View>
           </Pressable>
         </Pressable>
       </Modal>
 
-      {/* ─── Modal Privacidade ─── */}
+      {/* ─── Modal de Privacidade ─── */}
       <Modal
         visible={modalAtivo === 'privacidade'}
         transparent
@@ -1085,19 +965,28 @@ export default function TelaBarbeiroMais() {
         onRequestClose={() => setModalAtivo(null)}
       >
         <Pressable style={styles.modalOverlay} onPress={() => setModalAtivo(null)}>
-          <Pressable style={styles.modalConteudo} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalTraco} />
+          <Pressable style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
+            <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
+
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitulo}>Segurança & Privacidade</Text>
-              <TouchableOpacity onPress={() => setModalAtivo(null)} style={styles.modalBtnFechar}>
-                <X size={20} color="#8E8E93" />
+              <Text style={[styles.modalTitulo, { color: theme.textoPrimario }]}>Segurança & Privacidade</Text>
+              <TouchableOpacity onPress={() => setModalAtivo(null)}>
+                <X size={20} color={theme.textoSecundario} />
               </TouchableOpacity>
             </View>
-            <View style={styles.modalCorpo}>
-              <View style={styles.modalItemCard}>
-                <Text style={styles.modalItemRotulo}>Segurança do Painel</Text>
-                <Text style={styles.modalItemDescricao}>
-                  Acesso protegido pelo papel 'barbeiro' no banco de dados Supabase e autenticado via sessão criptografada.
+
+            <View style={{ gap: Spacing.sm }}>
+              <View style={[styles.modalItemCard, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                <Text style={[styles.modalItemRotulo, { color: theme.ouroTexto }]}>Criptografia Ponta a Ponta</Text>
+                <Text style={[styles.modalItemDescricao, { color: theme.textoSecundario }]}>
+                  Seus dados financeiros, listas de clientes e registros de agendamentos são protegidos por criptografia de nível bancário.
+                </Text>
+              </View>
+
+              <View style={[styles.modalItemCard, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                <Text style={[styles.modalItemRotulo, { color: theme.ouroTexto }]}>LGPD & Privacidade</Text>
+                <Text style={[styles.modalItemDescricao, { color: theme.textoSecundario }]}>
+                  Respeitamos integralmente a Lei Geral de Proteção de Dados. Seus contatos nunca são compartilhados com terceiros.
                 </Text>
               </View>
             </View>
@@ -1105,7 +994,7 @@ export default function TelaBarbeiroMais() {
         </Pressable>
       </Modal>
 
-      {/* ─── Modal Sair ─── */}
+      {/* ─── Modal de Sair da Conta ─── */}
       <Modal
         visible={modalAtivo === 'sair'}
         transparent
@@ -1113,32 +1002,36 @@ export default function TelaBarbeiroMais() {
         onRequestClose={() => setModalAtivo(null)}
       >
         <Pressable style={styles.modalOverlay} onPress={() => setModalAtivo(null)}>
-          <Pressable style={styles.modalConteudo} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalTraco} />
+          <Pressable style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
+            <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
+
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitulo}>Encerrar Sessão</Text>
-              <TouchableOpacity onPress={() => setModalAtivo(null)} style={styles.modalBtnFechar}>
-                <X size={20} color="#8E8E93" />
+              <Text style={[styles.modalTitulo, { color: theme.textoPrimario }]}>Encerrar Sessão</Text>
+              <TouchableOpacity onPress={() => setModalAtivo(null)}>
+                <X size={20} color={theme.textoSecundario} />
               </TouchableOpacity>
             </View>
-            <View style={styles.modalCorpo}>
-              <Text style={styles.modalTextoConfirmacao}>
-                Deseja desconectar sua conta de barbeiro deste dispositivo?
-              </Text>
-              <View style={styles.modalAcoesRow}>
-                <TouchableOpacity
-                  style={styles.modalBotaoCancelar}
-                  onPress={() => setModalAtivo(null)}
-                >
-                  <Text style={styles.modalBotaoCancelarTexto}>Cancelar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.modalBotaoSair}
-                  onPress={handleConfirmarSair}
-                >
-                  <Text style={styles.modalBotaoSairTexto}>Sair da conta</Text>
-                </TouchableOpacity>
-              </View>
+
+            <Text style={[styles.modalTextoConfirmacao, { color: theme.textoPrimario }]}>
+              Tem certeza que deseja sair da sua conta profissional?
+            </Text>
+
+            <View style={styles.modalAcoesRow}>
+              <TouchableOpacity
+                style={[styles.modalBotaoCancelar, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
+                onPress={() => setModalAtivo(null)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.modalBotaoCancelarTexto, { color: theme.textoPrimario }]}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalBotaoSair, { backgroundColor: theme.erro }]}
+                onPress={handleConfirmarSair}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalBotaoSairTexto}>Sair</Text>
+              </TouchableOpacity>
             </View>
           </Pressable>
         </Pressable>
@@ -1147,575 +1040,478 @@ export default function TelaBarbeiroMais() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.fundo },
-  header: {
-    paddingHorizontal: Spacing.telaH,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borda,
-  },
-  titulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.displayMd,
-    color: Colors.textoPrimario,
-  },
-  scroll: {
-    padding: Spacing.telaH,
-    gap: Spacing.lg,
-    paddingBottom: Spacing.giant,
-  },
-  perfilCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.lg,
-    padding: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    ...Shadows.card,
-  },
-  avatarWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  perfilInfo: {
-    flex: 1,
-    gap: 3,
-  },
-  perfilNome: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.headingSm,
-    color: Colors.textoPrimario,
-  },
-  perfilContato: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
-  },
-  badgeBarbeiro: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(203, 161, 74, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: Radii.full,
-    alignSelf: 'flex-start',
-    marginTop: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(203, 161, 74, 0.3)',
-  },
-  badgeBarbeiroTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: 10,
-    color: Colors.ouro,
-  },
-  secao: {
-    gap: Spacing.xs,
-  },
-  secaoTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.labelXs,
-    color: Colors.textoSecundario,
-    letterSpacing: 1,
-    marginLeft: 4,
-  },
-  cardGrupo: {
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.lg,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    overflow: 'hidden',
-  },
-  itemLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.md,
-    gap: Spacing.sm,
-  },
-  itemIconeContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: Radii.sm,
-    backgroundColor: Colors.superficie2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconeOuro: {
-    backgroundColor: 'rgba(203, 161, 74, 0.15)',
-  },
-  itemTextoContainer: {
-    flex: 1,
-    gap: 2,
-  },
-  itemTitulo: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoPrimario,
-  },
-  itemSubtitulo: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.labelXs,
-    color: Colors.textoSecundario,
-  },
-  divisorItem: {
-    height: 1,
-    backgroundColor: Colors.borda,
-    marginLeft: 56,
-  },
-  botaoSair: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.xs,
-    paddingVertical: Spacing.md,
-    backgroundColor: 'rgba(229, 57, 53, 0.1)',
-    borderRadius: Radii.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(229, 57, 53, 0.25)',
-  },
-  botaoSairTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.erro,
-  },
+const createStyles = (theme: ThemePalette) =>
+  StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: theme.fundo,
+    },
+    header: {
+      paddingHorizontal: Spacing.telaH,
+      paddingTop: Spacing.sm,
+      paddingBottom: Spacing.sm,
+      borderBottomWidth: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    titulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.headingSm,
+    },
+    badgeTopoPro: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: Radii.full,
+      borderWidth: 1,
+    },
+    badgeTopoProTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 10,
+      letterSpacing: 0.5,
+    },
+    scroll: {
+      padding: Spacing.telaH,
+      gap: Spacing.md,
+      paddingBottom: Spacing.giant,
+    },
 
-  /* Modais */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'flex-end',
-  },
-  modalConteudo: {
-    backgroundColor: Colors.superficie,
-    borderTopLeftRadius: Radii.xl,
-    borderTopRightRadius: Radii.xl,
-    paddingHorizontal: Spacing.telaH,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.giant,
-    borderWidth: 1,
-    borderColor: Colors.bordaDestaque,
-    gap: Spacing.sm,
-    maxHeight: '85%',
-  },
-  modalConteudoGrande: {
-    backgroundColor: Colors.superficie,
-    borderTopLeftRadius: Radii.xl,
-    borderTopRightRadius: Radii.xl,
-    paddingHorizontal: Spacing.telaH,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.xl,
-    borderWidth: 1,
-    borderColor: Colors.bordaDestaque,
-    gap: Spacing.sm,
-    maxHeight: '92%',
-  },
-  modalTraco: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.bordaDestaque,
-    alignSelf: 'center',
-    marginBottom: Spacing.xs,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  modalTituloLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  modalIconeBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: Radii.sm,
-    backgroundColor: 'rgba(203, 161, 74, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.headingSm,
-    color: Colors.textoPrimario,
-  },
-  modalBtnFechar: { padding: 4 },
-  botaoReajusteLote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: Colors.vermelho,
-    paddingVertical: 12,
-    borderRadius: Radii.md,
-  },
-  botaoReajusteLoteTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoPrimario,
-  },
-  dicaToqueTexto: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.labelXs,
-    color: Colors.textoSecundario,
-  },
-  servicosLista: { maxHeight: 340 },
-  servicoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borda,
-    gap: Spacing.sm,
-  },
-  servicoInfo: { flex: 1, gap: 2 },
-  servicoNome: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoPrimario,
-  },
-  servicoDescricao: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.labelXs,
-    color: Colors.textoSecundario,
-  },
-  servicoDuracao: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.labelXs,
-    color: Colors.ouro,
-  },
-  servicoPreco: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.ouro,
-  },
-  badgeEditarPreco: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: 'rgba(203, 161, 74, 0.15)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: Radii.sm,
-  },
-  badgeEditarPrecoTexto: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: 10,
-    color: Colors.ouro,
-  },
-  cardInfoServico: {
-    backgroundColor: Colors.superficie2,
-    borderRadius: Radii.md,
-    padding: Spacing.md,
-    gap: 2,
-    borderWidth: 1,
-    borderColor: Colors.bordaDestaque,
-  },
-  cardInfoServicoNome: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoPrimario,
-  },
-  cardInfoServicoPreco: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-    color: Colors.ouro,
-  },
-  labelCampo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.labelXs,
-    color: Colors.textoSecundario,
-    letterSpacing: 0.5,
-    marginTop: Spacing.xs,
-    marginBottom: 4,
-  },
-  inputModal: {
-    backgroundColor: Colors.superficie2,
-    borderRadius: Radii.sm,
-    borderWidth: 1,
-    borderColor: Colors.bordaDestaque,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    color: Colors.textoPrimario,
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodyMd,
-  },
-  botaoConfirmarReajuste: {
-    backgroundColor: Colors.verde,
-    paddingVertical: 14,
-    borderRadius: Radii.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.md,
-  },
-  botaoConfirmarReajusteTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoPrimario,
-  },
-  servicosLoteLista: {
-    height: 200,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    borderRadius: Radii.sm,
-    backgroundColor: Colors.superficie2,
-    paddingHorizontal: Spacing.sm,
-  },
-  linhaLoteServico: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borda,
-    gap: Spacing.sm,
-  },
-  linhaLoteNome: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoPrimario,
-  },
-  linhaLoteAtual: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.labelXs,
-    color: Colors.textoSecundario,
-  },
-  inputLote: {
-    width: 80,
-    backgroundColor: Colors.superficie2,
-    borderRadius: Radii.sm,
-    borderWidth: 1,
-    borderColor: Colors.bordaDestaque,
-    color: Colors.ouro,
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    textAlign: 'center',
-    paddingVertical: 4,
-  },
-  modalCorpo: { gap: Spacing.sm },
-  modalItemCard: {
-    backgroundColor: Colors.superficie2,
-    borderRadius: Radii.md,
-    padding: Spacing.md,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: Colors.bordaDestaque,
-  },
-  modalItemRotulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.labelXs,
-    color: Colors.ouro,
-  },
-  modalItemDescricao: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoDesabilitado,
-    lineHeight: 18,
-  },
-  modalTextoConfirmacao: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodyLg,
-    color: Colors.textoPrimario,
-    textAlign: 'center',
-    paddingVertical: Spacing.md,
-  },
-  modalAcoesRow: { flexDirection: 'row', gap: Spacing.sm },
-  modalBotaoCancelar: {
-    flex: 1,
-    backgroundColor: Colors.superficie2,
-    borderRadius: Radii.md,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalBotaoCancelarTexto: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoPrimario,
-  },
-  modalBotaoSair: {
-    flex: 1,
-    backgroundColor: Colors.vermelho,
-    borderRadius: Radii.md,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalBotaoSairTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoPrimario,
-  },
+    /* ─── HERO CARD DO ESTABELECIMENTO (Apple Style) ─── */
+    heroBarbeariaCard: {
+      borderRadius: Radii.lg,
+      borderWidth: 1,
+      overflow: 'hidden',
+      ...Shadows.card,
+    },
+    heroTopo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: Spacing.md,
+      gap: Spacing.md,
+    },
+    heroLogoWrapper: {
+      width: 60,
+      height: 60,
+      borderRadius: Radii.md,
+      overflow: 'hidden',
+    },
+    heroInfo: {
+      flex: 1,
+      gap: 2,
+    },
+    heroNomeBarbearia: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyLg,
+    },
+    heroDono: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.labelXs,
+    },
+    heroLinkLinha: {
+      marginTop: 2,
+    },
+    heroLinkTexto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: 11.5,
+    },
+    heroAcoesLinha: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderTopWidth: 1,
+      paddingVertical: 4,
+    },
+    heroBtnAcao: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 10,
+    },
+    heroBtnAcaoTexto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: FontSize.bodySm,
+    },
+    heroDivisorVertical: {
+      width: 1,
+      height: 24,
+    },
 
-  // Estilos do Editor de Serviços, Imagens e Molduras
-  servicosAcoesTopo: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
-  botaoNovoServico: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: Colors.ouro,
-    paddingVertical: 12,
-    borderRadius: Radii.md,
-  },
-  botaoNovoServicoTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodySm,
-    color: Colors.fundo,
-  },
-  btnEditarServicoIcone: {
-    backgroundColor: 'rgba(203, 161, 74, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: Radii.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(203, 161, 74, 0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    /* ─── SEÇÃO & GRID 2x2 GERENCIAR (Control Center Style) ─── */
+    secao: {
+      gap: Spacing.xs,
+    },
+    secaoRotulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.labelXs,
+      letterSpacing: 0.5,
+      marginLeft: 4,
+      marginBottom: 2,
+    },
+    gridContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.sm,
+    },
+    gridCard: {
+      width: '48.2%',
+      padding: Spacing.md,
+      borderRadius: Radii.lg,
+      borderWidth: 1,
+      gap: 6,
+      position: 'relative',
+      ...Shadows.card,
+    },
+    gridIconeBox: {
+      width: 40,
+      height: 40,
+      borderRadius: Radii.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      marginBottom: 2,
+    },
+    gridCardTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodySm,
+    },
+    gridCardSub: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.labelXs,
+      lineHeight: 14,
+    },
+    gridCardSeta: {
+      position: 'absolute',
+      top: 14,
+      right: 14,
+    },
 
-  subLabelCampo: {
-    fontFamily: FontFamily.regular,
-    fontSize: 11,
-    color: Colors.textoSecundario,
-    marginBottom: 6,
-  },
-  bibliotecaScroll: {
-    gap: 10,
-    paddingVertical: 4,
-  },
-  cardSugestaoImg: {
-    width: 76,
-    alignItems: 'center',
-    padding: 6,
-    borderRadius: Radii.md,
-    backgroundColor: Colors.superficie,
-    borderWidth: 1,
-    borderColor: Colors.bordaDestaque,
-    gap: 4,
-  },
-  cardSugestaoImgAtivo: {
-    borderColor: Colors.ouro,
-    backgroundColor: 'rgba(203, 161, 74, 0.12)',
-  },
-  sugestaoLabel: {
-    fontFamily: FontFamily.medium,
-    fontSize: 9.5,
-    color: Colors.textoDesabilitado,
-    textAlign: 'center',
-  },
-  sugestaoLabelAtivo: {
-    color: Colors.ouro,
-    fontFamily: FontFamily.bold,
-  },
+    /* ─── CARD AGRUPADO: SISTEMA & PREFERÊNCIAS (iOS Settings Style) ─── */
+    cardAgrupadoIos: {
+      borderRadius: Radii.lg,
+      borderWidth: 1,
+      overflow: 'hidden',
+      ...Shadows.card,
+    },
+    itemIosLinha: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 12,
+      gap: Spacing.sm,
+    },
+    itemIosIconeBox: {
+      width: 32,
+      height: 32,
+      borderRadius: Radii.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    itemIosTitulo: {
+      flex: 1,
+      fontFamily: FontFamily.medium,
+      fontSize: FontSize.bodyMd,
+    },
+    itemIosValor: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+      marginRight: 4,
+    },
+    divisorIos: {
+      height: 1,
+      marginLeft: 54,
+    },
 
-  btnFotoPropria: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: Colors.ouro,
-    borderRadius: Radii.md,
-    paddingVertical: 10,
-    marginTop: 8,
-    backgroundColor: Colors.superficie,
-  },
-  btnFotoPropriaTexto: {
-    color: Colors.ouro,
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodySm,
-  },
+    /* ─── BOTÃO SAIR ─── */
+    btnSairIos: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: Radii.lg,
+      borderWidth: 1,
+      marginTop: Spacing.xs,
+    },
+    btnSairIosTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+    },
 
-  amostrasMolduraServico: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingVertical: 4,
-  },
-  amostraCirculo: {
-    width: 28,
-    height: 28,
-    borderRadius: Radii.full,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  amostraCirculoAtivo: {
-    borderWidth: 2.5,
-    borderColor: Colors.branco,
-    transform: [{ scale: 1.15 }],
-  },
-
-  previewContainerServico: {
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.md,
-    borderWidth: 1,
-    borderColor: Colors.bordaDestaque,
-    padding: Spacing.sm,
-    marginTop: 12,
-    gap: 6,
-  },
-  previewTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: Colors.ouro,
-  },
-  previewItemLinha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  previewNomeServico: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoPrimario,
-  },
-  previewPrecoServico: {
-    fontFamily: FontFamily.medium,
-    fontSize: FontSize.labelXs,
-    color: Colors.ouro,
-    marginTop: 2,
-  },
-
-  botaoConfirmarModal: {
-    backgroundColor: Colors.ouro,
-    borderRadius: Radii.md,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.md,
-    marginBottom: Spacing.sm,
-  },
-  botaoConfirmarModalTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyMd,
-    color: Colors.fundo,
-  },
-  opcaoTemaCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    padding: Spacing.md,
-    borderRadius: Radii.lg,
-    borderWidth: 1.5,
-    marginBottom: Spacing.xs,
-  },
-  opcaoTemaIconeWrapper: {
-    width: 38,
-    height: 38,
-    borderRadius: Radii.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+    /* ─── MODAIS ─── */
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      justifyContent: 'flex-end',
+    },
+    modalConteudo: {
+      borderTopLeftRadius: Radii.xl,
+      borderTopRightRadius: Radii.xl,
+      paddingHorizontal: Spacing.telaH,
+      paddingTop: Spacing.sm,
+      paddingBottom: Spacing.giant,
+      borderWidth: 1,
+      gap: Spacing.md,
+    },
+    modalTraco: {
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      alignSelf: 'center',
+      marginBottom: Spacing.xs,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    modalTituloLinha: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+    },
+    modalIconeBadge: {
+      width: 34,
+      height: 34,
+      borderRadius: Radii.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+    },
+    modalTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.headingSm,
+    },
+    modalBtnFechar: {
+      padding: 6,
+    },
+    servicosAcoesTopo: {
+      flexDirection: 'row',
+      gap: 8,
+      alignItems: 'center',
+    },
+    botaoNovoServico: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 12,
+      borderRadius: Radii.md,
+    },
+    botaoNovoServicoTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodySm,
+      color: '#09090B',
+    },
+    botaoReajusteLote: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 12,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+    },
+    botaoReajusteLoteTexto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: FontSize.bodySm,
+    },
+    dicaToqueTexto: {
+      fontFamily: FontFamily.regular,
+      fontSize: 11,
+    },
+    servicosLista: {
+      maxHeight: 380,
+    },
+    servicoItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: Spacing.sm,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      gap: Spacing.sm,
+      marginBottom: Spacing.xs,
+    },
+    servicoInfo: {
+      flex: 1,
+      gap: 2,
+    },
+    servicoNome: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodySm,
+    },
+    servicoDescricao: {
+      fontFamily: FontFamily.regular,
+      fontSize: 11,
+    },
+    servicoDuracao: {
+      fontFamily: FontFamily.medium,
+      fontSize: 11,
+    },
+    servicoPreco: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+    },
+    btnEditarServicoIcone: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: Radii.sm,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    badgeEditarPreco: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      paddingHorizontal: 6,
+      paddingVertical: 4,
+      borderRadius: Radii.sm,
+    },
+    badgeEditarPrecoTexto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: 10,
+    },
+    cardInfoServico: {
+      borderRadius: Radii.md,
+      padding: Spacing.md,
+      gap: 2,
+      borderWidth: 1,
+    },
+    cardInfoServicoNome: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+    },
+    cardInfoServicoPreco: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+    },
+    labelCampo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.labelXs,
+      letterSpacing: 0.5,
+      marginTop: Spacing.xs,
+      marginBottom: 4,
+    },
+    inputModal: {
+      borderRadius: Radii.sm,
+      borderWidth: 1,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 10,
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodyMd,
+    },
+    botaoConfirmarReajuste: {
+      paddingVertical: 14,
+      borderRadius: Radii.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: Spacing.md,
+    },
+    botaoConfirmarReajusteTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+      color: '#09090B',
+    },
+    servicosLoteLista: {
+      maxHeight: 250,
+    },
+    linhaLoteServico: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      gap: Spacing.sm,
+    },
+    linhaLoteNome: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: FontSize.bodySm,
+    },
+    linhaLoteAtual: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.labelXs,
+    },
+    inputLote: {
+      width: 80,
+      borderRadius: Radii.sm,
+      borderWidth: 1,
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+      textAlign: 'center',
+      paddingVertical: 4,
+    },
+    botaoConfirmarModal: {
+      borderRadius: Radii.md,
+      paddingVertical: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: Spacing.md,
+      marginBottom: Spacing.sm,
+    },
+    botaoConfirmarModalTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+      color: '#09090B',
+    },
+    opcaoTemaCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      padding: Spacing.md,
+      borderRadius: Radii.lg,
+      borderWidth: 1.5,
+      marginBottom: Spacing.xs,
+    },
+    modalItemCard: {
+      borderRadius: Radii.md,
+      padding: Spacing.md,
+      gap: 4,
+      borderWidth: 1,
+    },
+    modalItemRotulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodySm,
+    },
+    modalItemDescricao: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+      lineHeight: 18,
+    },
+    modalTextoConfirmacao: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodyLg,
+      textAlign: 'center',
+      paddingVertical: Spacing.md,
+    },
+    modalAcoesRow: { flexDirection: 'row', gap: Spacing.sm },
+    modalBotaoCancelar: {
+      flex: 1,
+      borderRadius: Radii.md,
+      paddingVertical: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+    },
+    modalBotaoCancelarTexto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: FontSize.bodyMd,
+    },
+    modalBotaoSair: {
+      flex: 1,
+      borderRadius: Radii.md,
+      paddingVertical: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalBotaoSairTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+      color: '#FFFFFF',
+    },
+  });

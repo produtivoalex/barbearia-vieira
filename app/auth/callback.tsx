@@ -1,12 +1,15 @@
 import React from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { Colors, FontFamily, FontSize, Spacing } from '@/theme';
+import { FontFamily, FontSize, Spacing } from '@/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function AuthCallback() {
+  const { theme } = useTheme();
+
   return (
-    <View style={styles.container}>
-      <ActivityIndicator size="large" color={Colors.ouro} />
-      <Text style={styles.texto}>Autenticando no Na Régua...</Text>
+    <View style={[styles.container, { backgroundColor: theme.fundo }]}>
+      <ActivityIndicator size="large" color={theme.ouro} />
+      <Text style={[styles.texto, { color: theme.textoSecundario }]}>Autenticando no Na Régua...</Text>
     </View>
   );
 }
@@ -14,7 +17,6 @@ export default function AuthCallback() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.fundo,
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.md,
@@ -23,7 +25,6 @@ const styles = StyleSheet.create({
   texto: {
     fontFamily: FontFamily.medium,
     fontSize: FontSize.bodyMd,
-    color: Colors.textoSecundario,
     textAlign: 'center',
   },
 });

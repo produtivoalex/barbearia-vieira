@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { CheckCircle, AlertCircle, Calendar, User, Sparkles, BellRing } from 'lucide-react-native';
 import { Botao, IndicadorEtapas, IlustracaoServico } from '@/components';
-import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
+import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows, type ThemePalette } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,6 +20,7 @@ import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 export default function TelaConfirmacao() {
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const params = useLocalSearchParams<{
     servicoId?: string;
@@ -137,7 +138,7 @@ export default function TelaConfirmacao() {
     : 'R$ --';
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]} edges={['top']}>
       {/* Indicador de 3 Etapas */}
       <IndicadorEtapas etapaAtual={3} />
 
@@ -278,164 +279,165 @@ export default function TelaConfirmacao() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.fundo },
-  scroll: {
-    paddingHorizontal: Spacing.telaH,
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.giant,
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 100,
-    gap: Spacing.md,
-  },
-  loadingTexto: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodyMd,
-    color: Colors.textoSecundario,
-  },
-  erroContainer: {
-    alignItems: 'center',
-    gap: Spacing.md,
-    paddingTop: 40,
-    width: '100%',
-  },
-  iconeContainer: {
-    marginBottom: Spacing.xs,
-  },
-  titulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.headingSm,
-    color: Colors.textoPrimario,
-    textAlign: 'center',
-  },
-  subtitulo: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: Spacing.md,
-  },
-  card: {
-    width: '100%',
-    backgroundColor: Colors.superficie,
-    borderRadius: Radii.lg,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.borda,
-    gap: Spacing.sm,
-    marginTop: Spacing.sm,
-    ...Shadows.card,
-  },
-  cabecalhoServico: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    paddingVertical: Spacing.xs,
-  },
-  cabecalhoServicoInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  servicoNomeDestaque: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyLg,
-    color: Colors.textoPrimario,
-  },
-  divisor: {
-    height: 1,
-    backgroundColor: Colors.borda,
-  },
-  detalheRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: Spacing.xs,
-  },
-  detalheIconeLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  detalheLabel: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
-  },
-  detalheValor: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoPrimario,
-  },
-  detalheValorPreco: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.bodyLg,
-    color: Colors.ouro,
-  },
-  botao: {
-    width: '100%',
-    marginTop: Spacing.md,
-  },
-  cardNotificacao: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#FFFDF8',
-    borderRadius: Radii.lg,
-    padding: Spacing.md,
-    gap: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.bordaOuro,
-    marginTop: Spacing.xs,
-    ...Shadows.card,
-  },
-  notifIconeWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: Radii.md,
-    backgroundColor: Colors.ouroTranslucido,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  notifInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  notifTitulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: 14,
-    color: Colors.ouro,
-  },
-  notifSubtitulo: {
-    fontFamily: FontFamily.regular,
-    fontSize: 12,
-    color: Colors.textoSecundario,
-    lineHeight: 16,
-  },
-  notifBotao: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.ouro,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: Radii.full,
-    marginTop: 6,
-  },
-  notifBotaoTexto: {
-    fontFamily: FontFamily.bold,
-    fontSize: 11,
-    color: Colors.textoEscuroSobreOuro,
-  },
-  botaoVoltar: {
-    padding: Spacing.sm,
-  },
-  botaoVoltarTexto: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-    color: Colors.textoSecundario,
-  },
-});
+const createStyles = (theme: ThemePalette) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: theme.fundo },
+    scroll: {
+      paddingHorizontal: Spacing.telaH,
+      paddingTop: Spacing.xl,
+      paddingBottom: Spacing.giant,
+      alignItems: 'center',
+      gap: Spacing.md,
+    },
+    loadingContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: 100,
+      gap: Spacing.md,
+    },
+    loadingTexto: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodyMd,
+      color: theme.textoSecundario,
+    },
+    erroContainer: {
+      alignItems: 'center',
+      gap: Spacing.md,
+      paddingTop: 40,
+      width: '100%',
+    },
+    iconeContainer: {
+      marginBottom: Spacing.xs,
+    },
+    titulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.headingSm,
+      color: theme.textoPrimario,
+      textAlign: 'center',
+    },
+    subtitulo: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+      color: theme.textoSecundario,
+      textAlign: 'center',
+      lineHeight: 20,
+      paddingHorizontal: Spacing.md,
+    },
+    card: {
+      width: '100%',
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.lg,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      gap: Spacing.sm,
+      marginTop: Spacing.sm,
+      ...Shadows.card,
+    },
+    cabecalhoServico: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      paddingVertical: Spacing.xs,
+    },
+    cabecalhoServicoInfo: {
+      flex: 1,
+      gap: 2,
+    },
+    servicoNomeDestaque: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyLg,
+      color: theme.textoPrimario,
+    },
+    divisor: {
+      height: 1,
+      backgroundColor: theme.borda,
+    },
+    detalheRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: Spacing.xs,
+    },
+    detalheIconeLabel: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.xs,
+    },
+    detalheLabel: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+      color: theme.textoSecundario,
+    },
+    detalheValor: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: FontSize.bodySm,
+      color: theme.textoPrimario,
+    },
+    detalheValorPreco: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyLg,
+      color: theme.ouroTexto,
+    },
+    botao: {
+      width: '100%',
+      marginTop: Spacing.md,
+    },
+    cardNotificacao: {
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.lg,
+      padding: Spacing.md,
+      gap: Spacing.md,
+      borderWidth: 1,
+      borderColor: theme.bordaOuro,
+      marginTop: Spacing.xs,
+      ...Shadows.card,
+    },
+    notifIconeWrapper: {
+      width: 44,
+      height: 44,
+      borderRadius: Radii.md,
+      backgroundColor: theme.ouroTranslucido,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    notifInfo: {
+      flex: 1,
+      gap: 4,
+    },
+    notifTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: 14,
+      color: theme.ouroTexto,
+    },
+    notifSubtitulo: {
+      fontFamily: FontFamily.regular,
+      fontSize: 12,
+      color: theme.textoSecundario,
+      lineHeight: 16,
+    },
+    notifBotao: {
+      alignSelf: 'flex-start',
+      backgroundColor: theme.ouro,
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      borderRadius: Radii.full,
+      marginTop: 6,
+    },
+    notifBotaoTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 11,
+      color: theme.textoEscuroSobreOuro,
+    },
+    botaoVoltar: {
+      padding: Spacing.sm,
+    },
+    botaoVoltarTexto: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+      color: theme.textoSecundario,
+    },
+  });
