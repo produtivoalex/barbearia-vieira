@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   RefreshControl,
@@ -14,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
+  AlertTriangle,
   Building2,
   ChevronRight,
   Compass,
@@ -21,8 +23,10 @@ import {
   Phone,
   Search,
   Scissors,
+  ShieldCheck,
   Sparkles,
   Store,
+  Trash2,
   X,
 } from 'lucide-react-native';
 import { useBarbearias, type BarbeariaPublica } from '@/hooks/useBarbearias';
@@ -30,7 +34,22 @@ import { useLocalizacao } from '@/hooks/useLocalizacao';
 import { usePerfil } from '@/hooks/usePerfil';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { supabase } from '@/lib/supabase';
 import { Colors, FontFamily, FontSize, Radii, Shadows, Spacing, type ThemePalette } from '@/theme';
+
+function calcularDistanciaKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 export default function ListaBarbearias() {
   const router = useRouter();
@@ -39,6 +58,7 @@ export default function ListaBarbearias() {
   const { modo } = useLocalSearchParams<{ modo?: string }>();
   const [busca, setBusca] = useState('');
   const [cidadeSelecionada, setCidadeSelecionada] = useState<string>('Todas');
+  const [excluindoId, setExcluindoId] = useState<string | null>(null);
   const { perfil } = usePerfil();
   const { barbearia: barbeariaAtiva, selecionarBarbearia } = useBarbearia();
   const { coordenadas, permissaoConcedida } = useLocalizacao(true);
@@ -76,14 +96,64 @@ export default function ListaBarbearias() {
     }
   }
 
+  async function handleExcluirBarbearia(item: BarbeariaPublica) {
+    if (item.slug === 'barbearia-vieira' || item.id === '7917fb7a-e118-4928-b16b-94e4f26f8591') {
+      Alert.alert('Operação Bloqueada 🔒', 'A Barbearia Vieira é a matriz principal e está protegida contra exclusão.');
+      return;
+    }
+
+    Alert.alert(
+      `Excluir ${item.nome}?`,
+      `Deseja realmente excluir a unidade "${item.nome}"?\n\n• Todos os dados desta unidade serão apagados.\n• A Barbearia Vieira e todos os seus serviços permanecerão 100% intactos.\n\nEsta ação não pode ser desfeita.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sim, Excluir Unidade',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setExcluindoId(item.id);
+              await supabase.from('barbearia_membros').delete().eq('barbearia_id', item.id);
+              await supabase.from('servicos').delete().eq('barbearia_id', item.id);
+              await supabase.from('horarios_atendimento').delete().eq('barbearia_id', item.id);
+              await supabase.from('reajustes_precos').delete().eq('barbearia_id', item.id);
+              const { error } = await supabase.from('barbearias').delete().eq('id', item.id);
+              if (error) throw error;
+
+              // Se a barbearia excluída era a ativa no momento, reseta para a Barbearia Vieira
+              if (barbeariaAtiva?.id === item.id) {
+                const { data: vieira } = await supabase
+                  .from('barbearias')
+                  .select('id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status, modo_agenda, dias_janela_agendamento, comissao_padrao, regras_fidelidade, mimo_ativo')
+                  .eq('slug', 'barbearia-vieira')
+                  .maybeSingle();
+
+                if (vieira) {
+                  await selecionarBarbearia(vieira as BarbeariaPublica);
+                }
+              }
+
+              recarregar();
+              Alert.alert('Sucesso', `A unidade "${item.nome}" foi excluída com sucesso.`);
+            } catch (err: any) {
+              Alert.alert('Erro ao excluir', err?.message || 'Não foi possível excluir a barbearia no momento.');
+            } finally {
+              setExcluindoId(null);
+            }
+          },
+        },
+      ]
+    );
+  }
+
   function renderCardBarbearia({ item }: { item: BarbeariaPublica }) {
     const isAtiva = barbeariaAtiva?.id === item.id;
     const isTeste = item.slug.includes('teste') || item.nome?.toLowerCase().includes('teste');
     const isVieira = item.slug === 'barbearia-vieira' || item.nome?.toLowerCase().includes('vieira');
 
     const localizacao = isVieira
-      ? 'Brancas, São José do Divino - PI'
-      : [item.bairro, item.cidade].filter(Boolean).join(', ') || 'Localização a confirmar';
+      ? 'São José do Divino, PI, Rua Jeova Monte, 120, Brancas'
+      : [item.cidade ? `${item.cidade}, PI` : '', item.endereco, item.bairro].filter(Boolean).join(', ') || 'Localização a confirmar';
 
     const descricaoExibida = isTeste
       ? 'Teste'
@@ -92,6 +162,15 @@ export default function ListaBarbearias() {
       : item.descricao;
 
     const corDestaque = item.tema?.primary || theme.ouro;
+
+    let distanciaKm: number | null = null;
+    if (coordenadas?.latitude && coordenadas?.longitude) {
+      const latBarbearia = isVieira ? -3.6074 : (item as any).latitude ?? -3.6074;
+      const lonBarbearia = isVieira ? -41.8242 : (item as any).longitude ?? -41.8242;
+      distanciaKm = calcularDistanciaKm(coordenadas.latitude, coordenadas.longitude, latBarbearia, lonBarbearia);
+    } else if (item.distancia_km !== null && item.distancia_km !== undefined) {
+      distanciaKm = Number(item.distancia_km);
+    }
 
     return (
       <View style={[styles.card, isAtiva && styles.cardAtiva, { borderColor: isAtiva ? corDestaque : theme.borda }]}>
@@ -123,13 +202,13 @@ export default function ListaBarbearias() {
           {/* Badges do Topo */}
           <View style={styles.badgesTopoLinha}>
             {/* Badge de Distância */}
-            {item.distancia_km !== null && item.distancia_km !== undefined ? (
+            {distanciaKm !== null && distanciaKm !== undefined ? (
               <View style={styles.badgeDistancia}>
                 <MapPin size={10} color={Colors.ouro} />
                 <Text style={styles.badgeDistanciaTexto}>
-                  {item.distancia_km < 1
-                    ? `${Math.round(Number(item.distancia_km) * 1000)} m`
-                    : `${Number(item.distancia_km).toFixed(1)} km`}
+                  {distanciaKm < 1
+                    ? `${Math.round(Number(distanciaKm) * 1000)} m`
+                    : `${Number(distanciaKm).toFixed(1)} km`}
                 </Text>
               </View>
             ) : null}
@@ -199,6 +278,24 @@ export default function ListaBarbearias() {
             >
               <Text style={[styles.btnDetalhesTexto, { color: theme.textoPrimario }]}>Ver Vitrine</Text>
             </TouchableOpacity>
+
+            {!isVieira && (
+              <TouchableOpacity
+                style={[styles.btnExcluirCard, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}
+                onPress={() => handleExcluirBarbearia(item)}
+                disabled={excluindoId === item.id}
+                activeOpacity={0.7}
+              >
+                {excluindoId === item.id ? (
+                  <ActivityIndicator size="small" color={theme.erro} />
+                ) : (
+                  <>
+                    <Trash2 size={14} color={theme.erro} />
+                    <Text style={[styles.btnExcluirCardTexto, { color: theme.erro }]}>Excluir</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={[styles.btnEscolher, isAtiva && styles.btnEscolherAtivo, { backgroundColor: isAtiva ? 'transparent' : corDestaque, borderColor: corDestaque }]}
@@ -593,6 +690,19 @@ const createStyles = (theme: ThemePalette) =>
     btnDetalhesTexto: {
       color: theme.textoSecundario,
       fontFamily: FontFamily.medium,
+      fontSize: FontSize.bodySm,
+    },
+    btnExcluirCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+    },
+    btnExcluirCardTexto: {
+      fontFamily: FontFamily.bold,
       fontSize: FontSize.bodySm,
     },
     btnEscolher: {

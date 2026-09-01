@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- SEO Primary Meta Tags -->
+  <title>Na Régua | Plataforma Inteligente de Agendamento para Barbearias</title>
+  <meta name="title" content="Na Régua | Plataforma Inteligente de Agendamento para Barbearias" />
+  <meta name="description" content="O sistema definitivo para barbearias de alto padrão. Agendamento em 3 cliques, fila de espera inteligente, vitrine com até 30 mídias e recuperação automática de vagas." />
+  <meta name="keywords" content="barbearia, agendamento barbearia, app barbearia, na régua, barbearia vieira, corte de cabelo, degradê, fila de espera barbearia" />
+  <meta name="robots" content="index, follow" />
+  
+  <!-- Open Graph / Facebook / WhatsApp -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://naregua.vercel.app/" />
+  <meta property="og:title" content="Na Régua — O App Definitivo para Barbearias" />
+  <meta property="og:description" content="Automatize sua agenda semanal, recupere cancelamentos com a fila inteligente e encante seus clientes." />
+  <meta property="og:image" content="assets/banner-na-regua.png" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://naregua.vercel.app/" />
+  <meta property="twitter:title" content="Na Régua — O App Definitivo para Barbearias" />
+  <meta property="twitter:description" content="Agendamento rápido, fila de espera automatizada e gestão premium para barbeiros." />
+  <meta property="twitter:image" content="assets/banner-na-regua.png" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/icon.png" />
+  <link rel="apple-touch-icon" href="assets/icon.png" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- Glow Elements -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="bg-glow bg-glow-3"></div>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="container nav-inner">
+      <a href="#" class="nav-brand">
+        <img src="assets/icon.png" alt="Na Régua Logo" class="nav-logo-img" />
+        <span class="nav-brand-text">NA RÉGUA</span>
+        <span class="nav-brand-badge">PRO</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="#recursos" class="nav-link">Recursos</a></li>
+        <li><a href="#barbearia-vieira" class="nav-link">Barbearia Vieira</a></li>
+        <li><a href="#calculadora" class="nav-link">Economia</a></li>
+        <li><a href="#planos" class="nav-link">Planos</a></li>
+        <li><a href="#faq" class="nav-link">Dúvidas</a></li>
+      </ul>
+
+      <div class="nav-cta">
+        <a href="#download" class="btn btn-secondary btn-sm">Baixar App</a>
+        <a href="#barbearia-vieira" class="btn btn-primary btn-sm">Agendar Horário</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO SECTION -->
+  <header class="hero">
+    <div class="container hero-grid">
+      <div class="hero-content">
+        <div class="hero-pill">
+          <span class="hero-pill-dot"></span>
+          <span class="hero-pill-text">Plataforma Multi-Barbearia em Tempo Real</span>
+        </div>
+
+        <h1 class="hero-title">
+          A Experiência Definitiva de <span class="gradient-text">Agendamento & Gestão</span> para Barbearias
+        </h1>
+
+        <p class="hero-sub">
+          Esqueça a perda de tempo organizando horários no WhatsApp. Agendamento em 3 passos para os clientes, fila de espera que recupera desistências e vitrine dinâmica com até 30 fotos e vídeos.
+        </p>
+
+        <div class="hero-actions">
+          <a href="#barbearia-vieira" class="btn btn-primary btn-lg">
+            <span>💈 Agendar na Barbearia Vieira</span>
+          </a>
+          <a href="#recursos" class="btn btn-secondary btn-lg">
+            <span>Conhecer Recursos</span>
+          </a>
+        </div>
+
+        <div class="hero-stats">
+          <div class="stat-item">
+            <h4>+98%</h4>
+            <p>Pontualidade</p>
+          </div>
+          <div class="stat-item">
+            <h4>3 min</h4>
+            <p>Recuperação de Vagas</p>
+          </div>
+          <div class="stat-item">
+            <h4>30</h4>
+            <p>Mídias na Vitrine</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Interactive Phone Mockup -->
+      <div class="mockup-wrapper">
+        <div class="phone-card">
+          <div class="phone-screen">
+            <div class="phone-header">
+              <span class="phone-brand">Na Régua ✂️</span>
+              <span class="phone-badge-live">AO VIVO</span>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div class="phone-tabs">
+              <div class="phone-tab-btn active" data-tab="inicio">Início</div>
+              <div class="phone-tab-btn" data-tab="vitrine">Vitrine</div>
+              <div class="phone-tab-btn" data-tab="fila">Fila</div>
+              <div class="phone-tab-btn" data-tab="gestao">Barbeiro</div>
+            </div>
+
+            <!-- Dynamic Tab Content -->
+            <div id="phone-screen-body"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- SPOTLIGHT BARBEARIA VIEIRA -->
+  <section id="barbearia-vieira" class="spotlight-section">
+    <div class="container">
+      <div class="text-center">
+        <span class="section-tag">Destaque Oficial</span>
+        <h2 class="section-title">Barbearia Vieira</h2>
+        <p class="section-sub">A barbearia referência em cortes modernos, degradês perfeitos e atendimento de excelência.</p>
+      </div>
+
+      <div class="spotlight-card">
+        <div class="spotlight-img-wrap">
+          <img src="assets/barbearia-vieira-banner.png" alt="Barbearia Vieira" class="spotlight-img" />
+        </div>
+
+        <div class="spotlight-info">
+          <h3>Barbearia Vieira</h3>
+          <p class="spotlight-address">
+            📍 São José do Divino, PI, Rua Jeova Monte, 120, Brancas
+          </p>
+
+          <p style="color:var(--text-secondary); margin-bottom:20px; font-size:0.95rem; line-height:1.6;">
+            Ambiente climatizado, equipamentos profissionais de última geração, toalha quente e barba terapia. Agende suas manhãs com antecedência pelo app ou por ordem de chegada à tarde.
+          </p>
+
+          <div class="spotlight-badge-list">
+            <span class="spotlight-badge">☕ Café & Climatização</span>
+            <span class="spotlight-badge">✂️ Degradês & Navalhados</span>
+            <span class="spotlight-badge">🔥 Toalha Quente</span>
+            <span class="spotlight-badge">⚡ Atendimento Sem Fila</span>
+          </div>
+
+          <div style="display:flex; gap:14px; flex-wrap:wrap;">
+            <a href="https://wa.me/5586981442111" target="_blank" class="btn btn-primary">
+              <span>Agendar Agora pelo WhatsApp / App</span>
+            </a>
+            <a href="#download" class="btn btn-secondary">
+              <span>Baixar App</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RECURSOS DO APP -->
+  <section id="recursos">
+    <div class="container">
+      <div class="text-center">
+        <span class="section-tag">Tecnologia Feita para Barbeiros</span>
+        <h2 class="section-title">Por que o Na Régua é Revolucionário?</h2>
+        <p class="section-sub">Criado do zero para resolver os gargalos reais de comunicação, cancelamentos e sobrecarga de mensagens.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon-wrap">⚡</div>
+          <h3>Ciclo de Ouro da Agenda</h3>
+          <p>Prepare a semana em 1 minuto na segunda-feira. Abertura automatizada com contagem regressiva e aviso instantâneo no celular dos clientes.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrap">🔄</div>
+          <h3>Fila de Espera Inteligente</h3>
+          <p>Um cliente cancelou? O app oferece a vaga automaticamente ao próximo da fila por 3 a 5 minutos, sem você precisar digitar uma única mensagem.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrap">🎬</div>
+          <h3>Vitrine com 30 Mídias</h3>
+          <p>Mostre seus melhores cortes e transformações com até 30 fotos e vídeos com reordenação dinâmica (`◀`, `⭐`, `▶`) e destaque para a capa.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrap">🎁</div>
+          <h3>Mimo dos 40 Dias & Fidelidade</h3>
+          <p>Fidelização automática: clientes frequentes ganham cortes de cortesia programados, aumentando o ticket médio e a retenção do seu salão.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrap">📍</div>
+          <h3>Endereço e Rotas Padronizadas</h3>
+          <p>Seus clientes nunca mais erram o local: Cidade, Estado, Rua, Número e Bairro padronizados com integração direta para Waze, Google Maps e Uber.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrap">📱</div>
+          <h3>Zero Burocracia no Cadastro</h3>
+          <p>O cliente não precisa preencher formulários longos. Com apenas Nome e WhatsApp o agendamento já está confirmado em segundos.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INTERACTIVE ROI CALCULATOR -->
+  <section id="calculadora" style="background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);">
+    <div class="container">
+      <div class="text-center">
+        <span class="section-tag">Calculadora de Produtividade</span>
+        <h2 class="section-title">Quanto Tempo você Economiza?</h2>
+        <p class="section-sub">Arraste o seletor abaixo e veja o impacto do Na Régua na sua rotina semanal.</p>
+      </div>
+
+      <div class="calc-box">
+        <div class="calc-slider-wrap">
+          <div class="calc-slider-header">
+            <span>Quantos clientes você atende por dia?</span>
+            <span id="calc-clients-val" class="ouro-text" style="font-size:1.2rem; font-weight:800;">10 clientes/dia</span>
+          </div>
+          <input type="range" id="calc-clients-slider" class="calc-slider" min="4" max="30" value="10" step="1" />
+        </div>
+
+        <div class="calc-results-grid">
+          <div>
+            <div id="calc-hours-saved" class="calc-result-num">6.0h</div>
+            <div class="calc-result-label">Horas Salvas / Semana</div>
+          </div>
+          <div>
+            <div id="calc-slots-recovered" class="calc-result-num">+7 vagas</div>
+            <div class="calc-result-label">Recuperadas pela Fila</div>
+          </div>
+          <div>
+            <div id="calc-revenue-gained" class="calc-result-num">+R$ 315</div>
+            <div class="calc-result-label">Faturamento Resgatado</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PLANOS / PRICING -->
+  <section id="planos">
+    <div class="container">
+      <div class="text-center">
+        <span class="section-tag">Planos Transparentes</span>
+        <h2 class="section-title">Escolha o Plano Ideal para seu Negócio</h2>
+        <p class="section-sub">Sem contratos abusivos, sem taxas ocultas. Cancele quando quiser.</p>
+      </div>
+
+      <div class="pricing-grid">
+        <!-- Plano Básico -->
+        <div class="pricing-card">
+          <h3 class="pricing-title">Barbeiro Autônomo</h3>
+          <p class="pricing-desc">Ideal para quem atende sozinho e quer acabar com as mensagens manuais.</p>
+          <div class="pricing-price">R$ 49<span>/mês</span></div>
+
+          <ul class="pricing-features">
+            <li class="pricing-feature-item"><span class="check">✓</span> 1 Profissional</li>
+            <li class="pricing-feature-item"><span class="check">✓</span> Agenda Semanal Inteligente</li>
+            <li class="pricing-feature-item"><span class="check">✓</span> Fila de Espera Automática</li>
+            <li class="pricing-feature-item"><span class="check">✓</span> Vitrine de até 10 Mídias</li>
+            <li class="pricing-feature-item"><span class="check">✓</span> Lembretes de Agendamento</li>
+          </ul>
+
+          <a href="#download" class="btn btn-secondary">Começar Agora</a>
+        </div>
+
+        <!-- Plano Pro (Destaque) -->
+        <div class="pricing-card featured">
+          <span class="pricing-badge-popular">Mais Escolhido</span>
+          <h3 class="pricing-title">Barbearia Pro</h3>
+          <p class="pricing-desc">Para barbearias em crescimento com equipe e alta rotatividade de clientes.</p>
+          <div class="pricing-price">R$ 97<span>/mês</span></div>
+
+          <ul class="pricing-features">
+            <li class="pricing-feature-item"><span class="check">✓</span> Até 5 Barbeiros / Membros</li>
+            <li class="pricing-feature-item"><span class="check">✓</span> Fila de Espera & Fila de Troca</li>
+            <li class="pricing-feature-item"><span class="check">✓</span> Vitrine Completa com 30 Mídias</li>
+            <li class="pricing-feature-item"><span class="check">✓</span> Programa Mimo dos 40 Dias</li>
+            <li class="pricing-feature-item"><span class="check">✓</span> Relatórios de Faturamento & Métricas</li>
+            <li class="pricing-feature-item"><span class="check">✓</span> Link Personalizado (/barbearias/seu-slug)</li>
+          </ul>
+
+          <a href="#download" class="btn btn-primary">Garantir Plano Pro</a>
+        </div>
+
+        <!-- Plano Enterprise -->
+        <div class="pricing-card">
+          <h3 class="pricing-title">Redes & Franquias</h3>
+          <p class="pricing-desc">Para donos de múltiplas unidades com gestão centralizada.</p>
+          <div class="pricing-price">R$ 197<span>/mês</span></div>
+
+          <ul class="pricing-features">
+            <li class="pricing-feature-item"><span class="check">✓</span> Barbeiros e Unidades Ilimitadas</li>
+            <li class="pricing-feature-item"><span class="check">✓</span> Gestão Centralizada Multi-Tenants</li>
+            <li class="pricing-feature-item"><span class="check">✓</span> Suporte VIP Prioritário no WhatsApp</li>
+            <li class="pricing-feature-item"><span class="check">✓</span> Treinamento Exclusivo da Equipe</li>
+          </ul>
+
+          <a href="https://wa.me/5586981442111" target="_blank" class="btn btn-secondary">Falar com Consultor</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ ACCORDION -->
+  <section id="faq">
+    <div class="container">
+      <div class="text-center">
+        <span class="section-tag">Tire suas Dúvidas</span>
+        <h2 class="section-title">Perguntas Frequentes</h2>
+        <p class="section-sub">Tudo o que você precisa saber sobre o aplicativo Na Régua.</p>
+      </div>
+
+      <div class="faq-wrap">
+        <div class="faq-item active">
+          <div class="faq-question">
+            <span>O cliente precisa criar login e senha complexa?</span>
+            <span class="faq-toggle-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            Não! O processo foi feito para ser ultrarrápido. O cliente apenas informa o Nome e o WhatsApp no primeiro acesso, salvando tudo no próprio aparelho sem senhas para esquecer.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>Como funciona a recuperação de cancelamentos?</span>
+            <span class="faq-toggle-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            Quando um cliente cancela um horário, o sistema aciona a Fila de Espera e envia uma notificação instantânea para o primeiro cliente que cadastrou preferência para aquele dia e horário. Ele tem de 3 a 5 minutos para aceitar antes da vaga ir para o próximo.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>Posso adicionar fotos e vídeos na minha vitrine?</span>
+            <span class="faq-toggle-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            Sim! O aplicativo suporta até 30 mídias (fotos e vídeos), com controles de reordenação dinâmica (mover para esquerda, direita ou fixar como foto principal de capa).
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>Como funciona a Barbearia Vieira no app?</span>
+            <span class="faq-toggle-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            A Barbearia Vieira atende com agendamento nas manhãs (08:00 às 12:00) de Terça a Domingo. O endereço oficial é em São José do Divino, PI (Rua Jeova Monte, 120, Brancas).
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA BANNER -->
+  <section id="download" class="container">
+    <div class="cta-banner">
+      <h2>Pronto para Colocar sua Barbearia <span class="gradient-text">Na Régua</span>?</h2>
+      <p>Tenha mais liberdade, pontualidade máxima e clientes apaixonados pelo seu atendimento.</p>
+      
+      <div style="display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
+        <a href="https://wa.me/5586981442111" target="_blank" class="btn btn-primary btn-lg">
+          <span>📲 Falar no WhatsApp & Cadastrar</span>
+        </a>
+        <a href="#barbearia-vieira" class="btn btn-secondary btn-lg">
+          <span>Ver Demonstração ao Vivo</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <h3>NA RÉGUA 💈</h3>
+          <p>O ecossistema definitivo de agendamento e gestão para barbearias de alto padrão.</p>
+        </div>
+
+        <div class="footer-col">
+          <h4>Plataforma</h4>
+          <ul class="footer-links">
+            <li><a href="#recursos">Recursos</a></li>
+            <li><a href="#calculadora">Calculadora</a></li>
+            <li><a href="#planos">Planos</a></li>
+            <li><a href="#faq">Dúvidas</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Barbearias</h4>
+          <ul class="footer-links">
+            <li><a href="#barbearia-vieira">Barbearia Vieira</a></li>
+            <li><a href="#download">Cadastre sua Barbearia</a></li>
+            <li><a href="#planos">Planos para Equipes</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Contato</h4>
+          <ul class="footer-links">
+            <li><a href="https://wa.me/5586981442111" target="_blank">WhatsApp Suporte</a></li>
+            <li><a href="#">Instagram @naregua.app</a></li>
+            <li><a href="#">Termos de Uso</a></li>
+            <li><a href="#">Privacidade</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>© 2026 Na Régua — Todos os direitos reservados. Barbearia Vieira & Parceiros.</p>
+        <p>Hospedado na Vercel • naregua.vercel.app</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

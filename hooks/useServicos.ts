@@ -27,10 +27,10 @@ export interface Servico {
 export const CATEGORIAS_CONFIG: { id: CategoriaServico; label: string; iconeEmoji: string }[] = [
   { id: 'todos', label: 'Todos', iconeEmoji: '✨' },
   { id: 'cortes', label: 'Cortes', iconeEmoji: '✂️' },
-  { id: 'combos', label: 'Combos VIP', iconeEmoji: '👑' },
   { id: 'barba', label: 'Barba', iconeEmoji: '🧔' },
   { id: 'sobrancelha', label: 'Sobrancelha', iconeEmoji: '📐' },
   { id: 'limpeza_de_pele', label: 'Limpeza de Pele', iconeEmoji: '🧴' },
+  { id: 'combos', label: 'Combos VIP', iconeEmoji: '👑' },
 ];
 
 export function deduzirCategoria(nome: string): CategoriaServico {
@@ -42,7 +42,7 @@ export function deduzirCategoria(nome: string): CategoriaServico {
   return 'cortes';
 }
 
-/** Catálogo oficial com todos os 14 serviços reais da Barbearia Vieira */
+/** Catálogo oficial com todos os 14 serviços reais da Barbearia Vieira (Combos no final) */
 export const SERVICOS_REAIS_CATALOGO: Servico[] = [
   // ── 1. Cortes (4 serviços) ───────────────────────────────────
   {
@@ -82,7 +82,49 @@ export const SERVICOS_REAIS_CATALOGO: Servico[] = [
     categoria: 'cortes',
   },
 
-  // ── 2. Combos VIP (6 combos detalhados) ─────────────────────
+  // ── 2. Barba (2 serviços) ───────────────────────────────────
+  {
+    id: 'srv-barba-desenhada',
+    nome: 'Barba desenhada',
+    descricao: 'Alinhamento e contorno milimétrico da barba na navalha',
+    preco: 15.0,
+    duracao_minutos: 30,
+    ativo: true,
+    categoria: 'barba',
+  },
+  {
+    id: 'srv-barba-simples',
+    nome: 'Barba simples',
+    descricao: 'Raspada toda a barba com rapidez e suavidade',
+    preco: 8.0,
+    duracao_minutos: 20,
+    ativo: true,
+    categoria: 'barba',
+  },
+
+  // ── 3. Sobrancelha (1 serviço) ──────────────────────────────
+  {
+    id: 'srv-sobrancelha',
+    nome: 'Sobrancelha',
+    descricao: 'Design e alinhamento de sobrancelha masculino com navalha',
+    preco: 10.0,
+    duracao_minutos: 15,
+    ativo: true,
+    categoria: 'sobrancelha',
+  },
+
+  // ── 4. Limpeza de Pele (1 serviço) ──────────────────────────
+  {
+    id: 'srv-limpeza-pele',
+    nome: 'Limpeza de pele',
+    descricao: 'Remoção de impurezas, esfoliação facial e revitalização profunda',
+    preco: 20.0,
+    duracao_minutos: 30,
+    ativo: true,
+    categoria: 'limpeza_de_pele',
+  },
+
+  // ── 5. Combos VIP por último (6 combos detalhados) ───────────
   {
     id: 'srv-combo-1',
     nome: 'Combo 1',
@@ -137,59 +179,21 @@ export const SERVICOS_REAIS_CATALOGO: Servico[] = [
     ativo: true,
     categoria: 'combos',
   },
-
-  // ── 3. Barba (2 serviços) ───────────────────────────────────
-  {
-    id: 'srv-barba-desenhada',
-    nome: 'Barba desenhada',
-    descricao: 'Alinhamento e contorno milimétrico da barba na navalha',
-    preco: 15.0,
-    duracao_minutos: 30,
-    ativo: true,
-    categoria: 'barba',
-  },
-  {
-    id: 'srv-barba-simples',
-    nome: 'Barba simples',
-    descricao: 'Raspada toda a barba com rapidez e suavidade',
-    preco: 8.0,
-    duracao_minutos: 20,
-    ativo: true,
-    categoria: 'barba',
-  },
-
-  // ── 4. Sobrancelha (1 serviço) ──────────────────────────────
-  {
-    id: 'srv-sobrancelha',
-    nome: 'Sobrancelha',
-    descricao: 'Design e alinhamento de sobrancelha masculino com navalha',
-    preco: 10.0,
-    duracao_minutos: 15,
-    ativo: true,
-    categoria: 'sobrancelha',
-  },
-
-  // ── 5. Limpeza de Pele (1 serviço) ──────────────────────────
-  {
-    id: 'srv-limpeza-pele',
-    nome: 'Limpeza de pele',
-    descricao: 'Remoção de impurezas, esfoliação facial e revitalização profunda',
-    preco: 20.0,
-    duracao_minutos: 30,
-    ativo: true,
-    categoria: 'limpeza_de_pele',
-  },
 ];
 
 const ORDEM_SERVICOS = new Map(
   SERVICOS_REAIS_CATALOGO.map((servico, indice) => [servico.nome.toLowerCase().trim(), indice]),
 );
 
-function ordenarServicos(servicos: Servico[]): Servico[] {
+export function ordenarServicos(servicos: any[]): any[] {
   return [...servicos].sort((a, b) => {
-    const ordemA = ORDEM_SERVICOS.get(a.nome.toLowerCase().trim()) ?? Number.MAX_SAFE_INTEGER;
-    const ordemB = ORDEM_SERVICOS.get(b.nome.toLowerCase().trim()) ?? Number.MAX_SAFE_INTEGER;
-    return ordemA - ordemB || a.nome.localeCompare(b.nome, 'pt-BR');
+    const nomeA = (a.nome || '').toLowerCase().trim();
+    const nomeB = (b.nome || '').toLowerCase().trim();
+    const isComboA = (a.categoria || deduzirCategoria(a.nome)) === 'combos' || nomeA.includes('combo');
+    const isComboB = (b.categoria || deduzirCategoria(b.nome)) === 'combos' || nomeB.includes('combo');
+    const ordemA = ORDEM_SERVICOS.get(nomeA) ?? (isComboA ? 9000 : 500);
+    const ordemB = ORDEM_SERVICOS.get(nomeB) ?? (isComboB ? 9000 : 500);
+    return ordemA - ordemB || nomeA.localeCompare(nomeB, 'pt-BR');
   });
 }
 

@@ -16,9 +16,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import {
+  AlertTriangle,
   ArrowLeft,
   Camera,
   Check,
+  ChevronLeft,
   ChevronRight,
   Globe,
   Image as ImageIcon,
@@ -29,6 +31,7 @@ import {
   Scissors,
   Search,
   Shield,
+  ShieldCheck,
   Sparkles,
   Trash2,
   UserCheck,
@@ -40,6 +43,8 @@ import {
   CheckCircle,
   Gift,
   Bell,
+  Play,
+  Star,
 } from 'lucide-react-native';
 import { useBarbearia, PALETAS_PREDEFINIDAS, type TemaTenant } from '@/contexts/BarbeariaContext';
 import { useMembrosBarbearia, type PapelMembro, type MembroBarbearia } from '@/hooks/useMembrosBarbearia';
@@ -49,6 +54,11 @@ import { IlustracaoServico, Botao } from '@/components';
 import { Colors, FontFamily, FontSize, Radii, Spacing, Shadows, type ThemePalette } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { BarbeariaPublica } from '@/hooks/useBarbearias';
+
+export function isMidiaVideo(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /\.(mp4|mov|webm|m4v|3gp|mkv)(\?|$)/i.test(url);
+}
 
 type AbaGestao = 'dados' | 'midia' | 'tema' | 'equipe' | 'regras';
 
@@ -94,6 +104,7 @@ export default function GestaoBarbearia() {
   const [whatsapp, setWhatsapp] = useState('');
   const [publicada, setPublicada] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [excluindoUnidade, setExcluindoUnidade] = useState(false);
 
   // Estados de mídia
   const [enviandoMidia, setEnviandoMidia] = useState<'logo' | 'banner' | 'fotos' | null>(null);
@@ -154,14 +165,59 @@ export default function GestaoBarbearia() {
 
   useEffect(() => {
     if (!barbearia) return;
-    setNome(barbearia.nome ?? '');
-    setDescricao(barbearia.descricao ?? '');
-    setCidade(barbearia.cidade ?? '');
-    setBairro(barbearia.bairro ?? '');
-    setEndereco(barbearia.endereco ?? '');
-    setTelefone(barbearia.telefone ?? '');
-    setWhatsapp(barbearia.whatsapp ?? '');
-    setPublicada(barbearia.publicada === true);
+    const isVieira = barbearia.slug === 'barbearia-vieira' || barbearia.id === '7917fb7a-e118-4928-b16b-94e4f26f8591';
+
+    const descReal = isVieira && (!barbearia.descricao || barbearia.descricao.includes('tenant legado'))
+      ? 'Tradição, estilo e o melhor atendimento para o seu visual. Cortes modernos, barba na navalha e cuidados masculinos de alto nível.'
+      : (barbearia.descricao ?? '');
+
+    const cidadeReal = isVieira && (!barbearia.cidade || barbearia.cidade === 'Teresina')
+      ? 'São José do Divino'
+      : (barbearia.cidade ?? '');
+
+    const bairroReal = isVieira && (!barbearia.bairro || barbearia.bairro === 'Centro')
+      ? 'Brancas'
+      : (barbearia.bairro ?? '');
+
+    const enderecoReal = isVieira && (!barbearia.endereco || barbearia.endereco.includes('Rua das Flores') || barbearia.endereco.includes('Povoado Brancas'))
+      ? 'Rua Jeova Monte, 120'
+      : (barbearia.endereco ?? '');
+
+    const telReal = barbearia.telefone || '(86) 98190-7478';
+    const zapReal = barbearia.whatsapp || '(86) 98190-7478';
+
+    setNome(barbearia.nome ?? (isVieira ? 'Barbearia Vieira' : ''));
+    setDescricao(descReal);
+    setCidade(cidadeReal);
+    setBairro(bairroReal);
+    setEndereco(enderecoReal);
+    setTelefone(telReal);
+    setWhatsapp(zapReal);
+    setPublicada(true);
+
+    // Se a Barbearia Vieira ainda tiver os dados provisórios no banco, atualiza automaticamente
+    if (isVieira && (barbearia.cidade === 'Teresina' || barbearia.endereco?.includes('Rua das Flores') || barbearia.descricao?.includes('tenant legado'))) {
+      const dadosAtualizados = {
+        nome: 'Barbearia Vieira',
+        descricao: descReal,
+        cidade: cidadeReal,
+        bairro: bairroReal,
+        endereco: enderecoReal,
+        telefone: telReal,
+        whatsapp: zapReal,
+        publicada: true,
+        status: 'ativa',
+      };
+      supabase
+        .from('barbearias')
+        .update(dadosAtualizados)
+        .eq('id', barbearia.id)
+        .then(({ error }: { error: any }) => {
+          if (!error) {
+            selecionarBarbearia({ ...barbearia, ...dadosAtualizados });
+          }
+        });
+    }
 
     if (barbearia.tema) {
       const t = barbearia.tema as Record<string, string>;
@@ -434,19 +490,20 @@ export default function GestaoBarbearia() {
 
   async function escolherEEnviarFotos() {
     if (!barbearia) return;
-    const limiteDisponivel = Math.max(0, 6 - fotosArray.length);
+    const limiteDisponivel = Math.max(0, 30 - fotosArray.length);
     if (limiteDisponivel === 0) {
-      Alert.alert('Limite atingido', 'A galeria suporta no máximo 6 fotos. Remova alguma para adicionar novas.');
+      Alert.alert('Limite atingido', 'A galeria suporta no máximo 30 mídias (fotos e vídeos). Remova alguma para adicionar novas.');
       return;
     }
 
     setEnviandoMidia('fotos');
     try {
       const resultado = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ['images', 'videos'],
         allowsMultipleSelection: true,
         selectionLimit: limiteDisponivel,
         quality: 0.85,
+        videoMaxDuration: 60,
       });
 
       if (resultado.canceled || !resultado.assets?.length) return;
@@ -466,10 +523,10 @@ export default function GestaoBarbearia() {
       if (erroUpdate) throw erroUpdate;
 
       await selecionarBarbearia({ ...barbearia, fotos: fotosAtualizadas });
-      Alert.alert('Galeria atualizada! 📸', `${novasUrls.length} foto(s) adicionada(s) com sucesso.`);
+      Alert.alert('Galeria atualizada! 📸🎬', `${novasUrls.length} mídia(s) adicionada(s) com sucesso.`);
     } catch (err: any) {
-      console.error('[GestaoBarbearia] Falha ao enviar fotos:', err);
-      Alert.alert('Falha no upload', err.message || 'Não foi possível adicionar as fotos.');
+      console.error('[GestaoBarbearia] Falha ao enviar mídias:', err);
+      Alert.alert('Falha no upload', err.message || 'Não foi possível adicionar as mídias.');
     } finally {
       setEnviandoMidia(null);
     }
@@ -502,6 +559,46 @@ export default function GestaoBarbearia() {
         },
       },
     ]);
+  }
+
+  async function moverMidia(indiceOrigem: number, direcao: 'esquerda' | 'direita') {
+    if (!barbearia || fotosArray.length <= 1) return;
+    const indiceDestino = direcao === 'esquerda' ? indiceOrigem - 1 : indiceOrigem + 1;
+    if (indiceDestino < 0 || indiceDestino >= fotosArray.length) return;
+
+    const novasFotos = [...fotosArray];
+    const [item] = novasFotos.splice(indiceOrigem, 1);
+    novasFotos.splice(indiceDestino, 0, item);
+
+    // Atualização otimista imediata
+    await selecionarBarbearia({ ...barbearia, fotos: novasFotos });
+
+    // Persistência no Supabase
+    const { error } = await supabase
+      .from('barbearias')
+      .update({ fotos: novasFotos, atualizado_em: new Date().toISOString() })
+      .eq('id', barbearia.id);
+
+    if (error) {
+      console.warn('[GestaoBarbearia] Falha ao persistir reordenação:', error);
+    }
+  }
+
+  async function moverParaDestaque(indiceOrigem: number) {
+    if (!barbearia || indiceOrigem === 0 || fotosArray.length <= 1) return;
+
+    const novasFotos = [...fotosArray];
+    const [item] = novasFotos.splice(indiceOrigem, 1);
+    novasFotos.unshift(item);
+
+    // Atualização otimista imediata
+    await selecionarBarbearia({ ...barbearia, fotos: novasFotos });
+
+    // Persistência no Supabase
+    await supabase
+      .from('barbearias')
+      .update({ fotos: novasFotos, atualizado_em: new Date().toISOString() })
+      .eq('id', barbearia.id);
   }
 
   // ─── AÇÕES: TEMA & IDENTIDADE VISUAL ───
@@ -541,6 +638,73 @@ export default function GestaoBarbearia() {
     } finally {
       setSalvandoTema(false);
     }
+  }
+
+  // ─── AÇÕES: EXCLUIR ESTABELECIMENTO (ZONA DE SEGURANÇA) ───
+  async function confirmarExcluirUnidade() {
+    if (!barbearia) return;
+
+    if (barbearia.slug === 'barbearia-vieira' || barbearia.id === '7917fb7a-e118-4928-b16b-94e4f26f8591') {
+      Alert.alert(
+        'Operação Bloqueada 🔒',
+        'A Barbearia Vieira é a matriz principal do sistema e está permanentemente protegida contra exclusão.'
+      );
+      return;
+    }
+
+    Alert.alert(
+      `Excluir ${barbearia.nome}?`,
+      `Você tem certeza de que deseja excluir permanentemente esta unidade de teste?\n\n` +
+      `• Todos os dados desta unidade serão apagados.\n` +
+      `• A Barbearia Vieira, seus 14 serviços e todas as configurações principais permanecerão 100% intactos.\n\n` +
+      `Esta ação não pode ser desfeita.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sim, Excluir Unidade',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setExcluindoUnidade(true);
+              const nomeRemovido = barbearia.nome;
+              const idRemovido = barbearia.id;
+
+              // 1. Remove vínculos e serviços desta barbearia
+              await supabase.from('barbearia_membros').delete().eq('barbearia_id', idRemovido);
+              await supabase.from('servicos').delete().eq('barbearia_id', idRemovido);
+              await supabase.from('horarios_atendimento').delete().eq('barbearia_id', idRemovido);
+              await supabase.from('reajustes_precos').delete().eq('barbearia_id', idRemovido);
+              
+              // 2. Remove o registro da barbearia
+              const { error } = await supabase.from('barbearias').delete().eq('id', idRemovido);
+              if (error) throw error;
+
+              // 3. Busca a Barbearia Vieira oficial e seleciona ela no contexto
+              const { data: vieira } = await supabase
+                .from('barbearias')
+                .select('id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status, modo_agenda, dias_janela_agendamento, comissao_padrao, regras_fidelidade, mimo_ativo')
+                .eq('slug', 'barbearia-vieira')
+                .maybeSingle();
+
+              if (vieira) {
+                await selecionarBarbearia(vieira as BarbeariaPublica);
+              }
+
+              Alert.alert(
+                'Unidade Excluída com Sucesso',
+                `A barbearia "${nomeRemovido}" foi removida permanentemente. O aplicativo retornou automaticamente para a Barbearia Vieira.`
+              );
+              router.replace('/(app)/(barbeiro)/hoje');
+            } catch (err: any) {
+              console.error('[GestaoBarbearia] Falha ao excluir barbearia:', err);
+              Alert.alert('Erro ao excluir', err?.message || 'Tente novamente.');
+            } finally {
+              setExcluindoUnidade(false);
+            }
+          },
+        },
+      ]
+    );
   }
 
   // ─── AÇÕES: GESTÃO DE MEMBROS ───
@@ -838,6 +1002,50 @@ export default function GestaoBarbearia() {
                 </>
               )}
             </TouchableOpacity>
+
+            {/* ─── ZONA DE SEGURANÇA & EXCLUSÃO DE UNIDADE ─── */}
+            {barbearia.slug === 'barbearia-vieira' || barbearia.id === '7917fb7a-e118-4928-b16b-94e4f26f8591' ? (
+              <View style={[styles.cardProtecaoMatriz, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                <ShieldCheck size={22} color={theme.ouroTexto} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[styles.cardProtecaoTitulo, { color: theme.textoPrimario }]}>
+                    Unidade Matriz Protegida
+                  </Text>
+                  <Text style={[styles.cardProtecaoSub, { color: theme.textoSecundario }]}>
+                    A Barbearia Vieira é o estabelecimento principal e está blindada contra exclusão acidental.
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View style={[styles.cardExcluirUnidade, { backgroundColor: 'rgba(239, 68, 68, 0.08)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <AlertTriangle size={20} color={theme.erro} />
+                  <Text style={[styles.cardExcluirTitulo, { color: theme.erro }]}>
+                    Zona de Exclusão: {barbearia.nome}
+                  </Text>
+                </View>
+                <Text style={[styles.cardExcluirSub, { color: theme.textoSecundario }]}>
+                  Esta ação excluirá permanentemente apenas esta unidade de teste ({barbearia.nome}). A Barbearia Vieira e seus 14 serviços principais permanecerão 100% intactos.
+                </Text>
+                <TouchableOpacity
+                  style={[styles.botaoExcluirUnidade, { backgroundColor: theme.erro }]}
+                  onPress={confirmarExcluirUnidade}
+                  disabled={excluindoUnidade}
+                  activeOpacity={0.8}
+                >
+                  {excluindoUnidade ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Trash2 size={16} color="#FFFFFF" />
+                      <Text style={styles.botaoExcluirUnidadeTexto}>
+                        Excluir Esta Unidade ({barbearia.nome})
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
 
@@ -861,6 +1069,8 @@ export default function GestaoBarbearia() {
                 <View style={styles.logoPreview}>
                   {barbearia.logo_url ? (
                     <Image source={{ uri: barbearia.logo_url }} style={styles.logoImagem} resizeMode="cover" />
+                  ) : (barbearia.slug === 'barbearia-vieira' || barbearia.id === '7917fb7a-e118-4928-b16b-94e4f26f8591') ? (
+                    <Image source={require('@/assets/barbearia-vieira-logo.png')} style={styles.logoImagem} resizeMode="cover" />
                   ) : (
                     <View style={styles.logoPlaceholder}>
                       <Text style={styles.logoPlaceholderTexto}>{barbearia.nome.slice(0, 1).toUpperCase()}</Text>
@@ -880,7 +1090,7 @@ export default function GestaoBarbearia() {
                       <>
                         <Camera size={16} color={Colors.fundo} />
                         <Text style={styles.botaoMidiaPrincipalTexto}>
-                          {barbearia.logo_url ? 'Alterar Logo' : 'Escolher Logo'}
+                          {barbearia.logo_url || (barbearia.slug === 'barbearia-vieira') ? 'Alterar Logo' : 'Escolher Logo'}
                         </Text>
                       </>
                     )}
@@ -912,6 +1122,8 @@ export default function GestaoBarbearia() {
               <View style={styles.bannerPreviewContainer}>
                 {barbearia.banner_url ? (
                   <Image source={{ uri: barbearia.banner_url }} style={styles.bannerImagem} resizeMode="cover" />
+                ) : (barbearia.slug === 'barbearia-vieira' || barbearia.id === '7917fb7a-e118-4928-b16b-94e4f26f8591') ? (
+                  <Image source={require('@/assets/barbearia-vieira-banner.png')} style={styles.bannerImagem} resizeMode="cover" />
                 ) : (
                   <View style={styles.bannerPlaceholder}>
                     <ImageIcon size={32} color={Colors.ouro} />
@@ -951,34 +1163,109 @@ export default function GestaoBarbearia() {
               </View>
             </View>
 
-            {/* CARD GALERIA DE FOTOS */}
+            {/* CARD GALERIA DE MÍDIAS (FOTOS & VÍDEOS) */}
             <View style={styles.cardMidia}>
               <View style={styles.cardMidiaTopo}>
                 <View style={styles.cardMidiaInfo}>
-                  <Text style={styles.cardMidiaTitulo}>Galeria do Espaço ({fotosArray.length}/6 fotos)</Text>
-                  <Text style={styles.cardMidiaSub}>Fotos do ambiente e cortes para encantar os clientes.</Text>
+                  <Text style={styles.cardMidiaTitulo}>Galeria do Espaço ({fotosArray.length}/30 mídias)</Text>
+                  <Text style={styles.cardMidiaSub}>Fotos e vídeos dos cortes e do ambiente para encantar os clientes. Use as setas para definir a ordem de exibição.</Text>
                 </View>
               </View>
 
               <View style={styles.fotosGrid}>
-                {fotosArray.map((fotoUrl, idx) => (
-                  <View key={`${fotoUrl}-${idx}`} style={styles.fotoItem}>
-                    <Image source={{ uri: fotoUrl }} style={styles.fotoImagem} resizeMode="cover" />
-                    <TouchableOpacity
-                      style={styles.fotoBotaoExcluir}
-                      onPress={() => excluirFotoIndividual(fotoUrl)}
-                      disabled={removendoFoto === fotoUrl}
-                    >
-                      {removendoFoto === fotoUrl ? (
-                        <ActivityIndicator size="small" color={Colors.branco} />
-                      ) : (
-                        <Trash2 size={14} color={Colors.branco} />
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                ))}
+                {fotosArray.map((fotoUrl, idx) => {
+                  const ehVideo = isMidiaVideo(fotoUrl);
+                  const ehPrimeiro = idx === 0;
+                  const ehUltimo = idx === fotosArray.length - 1;
 
-                {fotosArray.length < 6 && (
+                  return (
+                    <View key={`${fotoUrl}-${idx}`} style={styles.fotoItem}>
+                      {ehVideo ? (
+                        <View style={styles.videoPreviewCaixa}>
+                          <View style={styles.videoPosterFundo}>
+                            <Camera size={20} color="rgba(255, 255, 255, 0.2)" />
+                          </View>
+                          {/* Play central no preview */}
+                          <View style={styles.playCentralOverlay} pointerEvents="none">
+                            <View style={styles.playCentralCirculoPequeno}>
+                              <Play size={14} color="#FFFFFF" fill="#FFFFFF" style={{ marginLeft: 2 }} />
+                            </View>
+                          </View>
+                          <View style={styles.badgeVideoPreviewPequeno}>
+                            <Text style={styles.badgeVideoPreviewTexto}>VÍDEO</Text>
+                          </View>
+                        </View>
+                      ) : (
+                        <Image source={{ uri: fotoUrl }} style={styles.fotoImagem} resizeMode="cover" />
+                      )}
+
+                      {/* Badge de Ordem (#1, #2...) */}
+                      <View style={[styles.badgeOrdem, ehPrimeiro && styles.badgeOrdemDestaque]}>
+                        <Text style={[styles.badgeOrdemTexto, ehPrimeiro && styles.badgeOrdemTextoDestaque]}>
+                          #{idx + 1}
+                        </Text>
+                      </View>
+
+                      {/* Botão Excluir */}
+                      <TouchableOpacity
+                        style={styles.fotoBotaoExcluir}
+                        onPress={() => excluirFotoIndividual(fotoUrl)}
+                        disabled={removendoFoto === fotoUrl}
+                      >
+                        {removendoFoto === fotoUrl ? (
+                          <ActivityIndicator size="small" color={Colors.branco} />
+                        ) : (
+                          <Trash2 size={12} color={Colors.branco} />
+                        )}
+                      </TouchableOpacity>
+
+                      {/* Barra de Reordenação Rápida (Setas ◀ ▶ e Destaque ⭐️) */}
+                      {fotosArray.length > 1 && (
+                        <View style={styles.reordenarBarra}>
+                          {!ehPrimeiro ? (
+                            <TouchableOpacity
+                              style={styles.botaoMover}
+                              onPress={() => moverMidia(idx, 'esquerda')}
+                              activeOpacity={0.7}
+                            >
+                              <ChevronLeft size={13} color="#FFFFFF" />
+                            </TouchableOpacity>
+                          ) : (
+                            <View style={[styles.botaoMover, { opacity: 0.15 }]}>
+                              <ChevronLeft size={13} color="#FFFFFF" />
+                            </View>
+                          )}
+
+                          {!ehPrimeiro && (
+                            <TouchableOpacity
+                              style={styles.botaoDestaque}
+                              onPress={() => moverParaDestaque(idx)}
+                              activeOpacity={0.7}
+                            >
+                              <Star size={10} color={theme.ouro} fill={theme.ouro} />
+                            </TouchableOpacity>
+                          )}
+
+                          {!ehUltimo ? (
+                            <TouchableOpacity
+                              style={styles.botaoMover}
+                              onPress={() => moverMidia(idx, 'direita')}
+                              activeOpacity={0.7}
+                            >
+                              <ChevronRight size={13} color="#FFFFFF" />
+                            </TouchableOpacity>
+                          ) : (
+                            <View style={[styles.botaoMover, { opacity: 0.15 }]}>
+                              <ChevronRight size={13} color="#FFFFFF" />
+                            </View>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+
+                {fotosArray.length < 30 && (
                   <TouchableOpacity
                     style={styles.fotoAddBotao}
                     onPress={escolherEEnviarFotos}
@@ -995,6 +1282,14 @@ export default function GestaoBarbearia() {
                   </TouchableOpacity>
                 )}
               </View>
+
+              {fotosArray.length > 1 && (
+                <View style={[styles.dicaReordenar, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                  <Text style={[styles.dicaReordenarTexto, { color: theme.textoSecundario }]}>
+                    💡 <Text style={{ fontFamily: FontFamily.bold, color: theme.ouroTexto }}>Dica:</Text> Use as setas <Text style={{ fontFamily: FontFamily.bold }}>◀ ▶</Text> em cada item para reordenar, ou toque na estrela <Text style={{ fontFamily: FontFamily.bold }}>⭐</Text> para torná-lo o 1º destaque da vitrine.
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         )}
@@ -1361,13 +1656,13 @@ export default function GestaoBarbearia() {
               )}
             </View>
 
-            {/* 4. Mimos & Ofertas para Clientes Ausentes (+20 dias) */}
+            {/* 4. Mimos & Ofertas para Clientes Ausentes (+40 dias) */}
             <View style={styles.blocoRegra}>
               <View style={styles.fidelidadeHeader}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.blocoRegraTitulo}>Mimo VIP para Clientes Ausentes (+20d)</Text>
+                  <Text style={styles.blocoRegraTitulo}>Mimo VIP para Clientes Ausentes (+40d)</Text>
                   <Text style={styles.blocoRegraDesc}>
-                    Envie presentes exclusivos por notificação in-app em vez de cobranças.
+                    Envie presentes exclusivos por notificação in-app antes do contato via WhatsApp.
                   </Text>
                 </View>
                 <Switch
@@ -1446,7 +1741,7 @@ export default function GestaoBarbearia() {
                   >
                     <Bell size={16} color={Colors.fundo} />
                     <Text style={styles.botaoDisparoPushTexto}>
-                      {disparandoPush ? 'Disparando...' : 'Disparar Notificações In-App (+20d)'}
+                      {disparandoPush ? 'Disparando...' : 'Disparar Notificações In-App (+40d)'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1748,6 +2043,57 @@ const createStyles = (theme: ThemePalette) =>
     },
     botaoSalvarTexto: { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
 
+    /* Zona de Proteção e Exclusão */
+    cardProtecaoMatriz: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      padding: Spacing.md,
+      borderRadius: Radii.lg,
+      borderWidth: 1,
+      marginTop: Spacing.sm,
+    },
+    cardProtecaoTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: 14.5,
+    },
+    cardProtecaoSub: {
+      fontFamily: FontFamily.regular,
+      fontSize: 12,
+      lineHeight: 16,
+    },
+    cardExcluirUnidade: {
+      padding: Spacing.md,
+      borderRadius: Radii.lg,
+      borderWidth: 1,
+      gap: Spacing.xs,
+      marginTop: Spacing.md,
+    },
+    cardExcluirTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: 14.5,
+    },
+    cardExcluirSub: {
+      fontFamily: FontFamily.regular,
+      fontSize: 12,
+      lineHeight: 16,
+      marginBottom: 4,
+    },
+    botaoExcluirUnidade: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 12,
+      borderRadius: Radii.md,
+      marginTop: 2,
+    },
+    botaoExcluirUnidadeTexto: {
+      color: '#FFFFFF',
+      fontFamily: FontFamily.bold,
+      fontSize: 13.5,
+    },
+
     // Mídia
     cardMidia: {
       borderWidth: 1,
@@ -1816,6 +2162,115 @@ const createStyles = (theme: ThemePalette) =>
       backgroundColor: 'rgba(211, 47, 47, 0.85)',
       borderRadius: Radii.full,
       padding: 5,
+    },
+    badgeVideo: {
+      position: 'absolute',
+      bottom: 24,
+      left: 4,
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      borderRadius: Radii.full,
+      padding: 3,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    badgeOrdem: {
+      position: 'absolute',
+      top: 4,
+      left: 4,
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      borderRadius: Radii.xs,
+      paddingHorizontal: 5,
+      paddingVertical: 1.5,
+    },
+    badgeOrdemDestaque: {
+      backgroundColor: theme.ouro,
+    },
+    badgeOrdemTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 9.5,
+      color: '#FFFFFF',
+    },
+    badgeOrdemTextoDestaque: {
+      color: theme.textoEscuroSobreOuro,
+    },
+    videoPreviewCaixa: {
+      width: '100%',
+      height: '100%',
+      backgroundColor: '#151518',
+      position: 'relative',
+      overflow: 'hidden',
+    },
+    videoPosterFundo: {
+      width: '100%',
+      height: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#1E1E24',
+    },
+    badgeVideoPreviewPequeno: {
+      position: 'absolute',
+      bottom: 22,
+      left: 4,
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      borderRadius: Radii.xs,
+      paddingHorizontal: 4,
+      paddingVertical: 1,
+    },
+    badgeVideoPreviewTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 8.5,
+      color: '#FFFFFF',
+      letterSpacing: 0.5,
+    },
+    playCentralOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    },
+    playCentralCirculoPequeno: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      borderWidth: 1.5,
+      borderColor: 'rgba(255, 255, 255, 0.9)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    reordenarBarra: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 4,
+      paddingVertical: 2.5,
+    },
+    botaoMover: {
+      padding: 2,
+      borderRadius: Radii.xs,
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    botaoDestaque: {
+      padding: 2,
+      borderRadius: Radii.xs,
+      backgroundColor: 'rgba(203, 161, 74, 0.35)',
+    },
+    dicaReordenar: {
+      marginTop: Spacing.sm,
+      padding: Spacing.sm,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+    },
+    dicaReordenarTexto: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+      lineHeight: 18,
     },
     fotoAddBotao: {
       width: '30.5%',
@@ -1988,69 +2443,70 @@ const createStyles = (theme: ThemePalette) =>
     botaoExcluirMembroModalTexto: { color: theme.erro, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
 
     // Estilos da Aba Tema & Molduras
-    paletasGrid: { gap: Spacing.sm, marginTop: 4 },
+    paletasGrid: { gap: Spacing.sm, marginTop: 6 },
     paletaCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: Spacing.sm,
-      borderRadius: Radii.md,
+      padding: Spacing.md,
+      borderRadius: Radii.lg,
       backgroundColor: theme.superficie,
       borderWidth: 1,
       borderColor: theme.borda,
-      gap: Spacing.sm,
+      gap: Spacing.md,
     },
     paletaCardAtiva: {
       borderColor: theme.ouro,
       backgroundColor: theme.ouroTranslucido,
     },
-    paletaCoresLinha: { flexDirection: 'row', gap: 4, alignItems: 'center' },
-    paletaCirculo: { width: 14, height: 14, borderRadius: Radii.full },
+    paletaCoresLinha: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+    paletaCirculo: { width: 16, height: 16, borderRadius: 8 },
     paletaInfo: { flex: 1 },
-    paletaNome: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
-    paletaDesc: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: 11, marginTop: 1 },
+    paletaNome: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: 14 },
+    paletaDesc: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: 12, marginTop: 2 },
     badgePaletaAtiva: {
-      width: 22,
-      height: 22,
+      width: 24,
+      height: 24,
       borderRadius: Radii.full,
       backgroundColor: theme.ouro,
       alignItems: 'center',
       justifyContent: 'center',
     },
 
-    campoCorContainer: { gap: 6, marginTop: Spacing.xs },
+    campoCorContainer: { gap: 8, marginTop: Spacing.sm },
     campoCorLabel: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
     campoCorLinha: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-    previewCorCaixa: { width: 44, height: 44, borderRadius: Radii.md, borderWidth: 1, borderColor: theme.borda },
+    previewCorCaixa: { width: 48, height: 48, borderRadius: Radii.md, borderWidth: 1.5, borderColor: theme.borda },
     inputCorHex: {
       flex: 1,
-      height: 44,
+      height: 48,
       borderRadius: Radii.md,
       borderWidth: 1,
       borderColor: theme.borda,
-      backgroundColor: theme.superficie,
+      backgroundColor: theme.superficie2,
       color: theme.textoPrimario,
       paddingHorizontal: Spacing.md,
       fontFamily: FontFamily.bold,
+      fontSize: 15,
       letterSpacing: 1,
     },
-    amostrasCores: { flexDirection: 'row', gap: 10, marginTop: 4, paddingVertical: 2 },
-    amostraCirculo: { width: 28, height: 28, borderRadius: Radii.full, borderWidth: 1, borderColor: theme.borda },
-    amostraCirculoAtivo: { borderWidth: 2.5, borderColor: theme.ouro, transform: [{ scale: 1.15 }] },
+    amostrasCores: { flexDirection: 'row', gap: 12, marginTop: 4, paddingVertical: 2 },
+    amostraCirculo: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: theme.borda },
+    amostraCirculoAtivo: { borderWidth: 3, borderColor: theme.ouro, transform: [{ scale: 1.15 }] },
 
     demoCardServico: {
       flexDirection: 'row',
       alignItems: 'center',
       padding: Spacing.md,
-      borderRadius: Radii.md,
+      borderRadius: Radii.lg,
       backgroundColor: theme.superficie,
       borderWidth: 1,
       borderColor: theme.borda,
       gap: Spacing.md,
-      marginTop: 4,
+      marginTop: 6,
     },
-    demoServicoTitulo: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
-    demoServicoSub: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: FontSize.bodySm },
-    demoServicoPreco: { fontFamily: FontFamily.bold, fontSize: FontSize.bodySm, marginTop: 2 },
+    demoServicoTitulo: { color: theme.textoPrimario, fontFamily: FontFamily.bold, fontSize: 15 },
+    demoServicoSub: { color: theme.textoSecundario, fontFamily: FontFamily.regular, fontSize: 12.5 },
+    demoServicoPreco: { fontFamily: FontFamily.bold, fontSize: 13.5, marginTop: 2 },
 
     demoBotao: {
       flexDirection: 'row',
@@ -2059,7 +2515,7 @@ const createStyles = (theme: ThemePalette) =>
       gap: 8,
       borderRadius: Radii.md,
       paddingVertical: 12,
-      marginTop: 4,
+      marginTop: 8,
     },
     demoBotaoTexto: { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold, fontSize: FontSize.bodySm },
 
@@ -2072,6 +2528,7 @@ const createStyles = (theme: ThemePalette) =>
       borderRadius: Radii.md,
       paddingVertical: 14,
       marginTop: Spacing.sm,
+      marginBottom: Spacing.xl,
     },
     botaoSalvarTemaTexto: { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold, fontSize: FontSize.bodyMd },
 

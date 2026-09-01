@@ -436,14 +436,14 @@ export default function PrepararAgenda() {
 
           {/* Barra de Presets Rápidos */}
           <View style={styles.presetsContainer}>
-            <Text style={[styles.presetsTitulo, { color: theme.textoSecundario }]}>⚡ PRÉ-CONFIGURAÇÕES RÁPIDAS</Text>
+            <Text style={[styles.presetsTitulo, { color: theme.ouroTexto }]}>⚡ PRÉ-CONFIGURAÇÕES RÁPIDAS</Text>
             <View style={styles.presetsLinha}>
               <TouchableOpacity
                 style={[styles.presetChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
                 onPress={() => aplicarPreset('seg_sab')}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.presetChipTexto, { color: theme.textoPrimario }]}>Seg a Sáb</Text>
+                <Text style={[styles.presetChipTexto, { color: theme.textoPrimario }]}>Seg - Sáb</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -451,15 +451,15 @@ export default function PrepararAgenda() {
                 onPress={() => aplicarPreset('ter_sab')}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.presetChipTexto, { color: theme.textoPrimario }]}>Ter a Sáb</Text>
+                <Text style={[styles.presetChipTexto, { color: theme.textoPrimario }]}>Ter - Sáb</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.presetChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
+                style={[styles.presetChip, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}
                 onPress={() => aplicarPreset('todos')}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.presetChipTexto, { color: theme.ouroTexto }]}>Todos (7 Dias)</Text>
+                <Text style={[styles.presetChipTexto, { color: theme.ouroTexto, fontFamily: FontFamily.bold }]}>Todos (7D)</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -467,7 +467,7 @@ export default function PrepararAgenda() {
                 onPress={() => aplicarPreset('nenhum')}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.presetChipTexto, { color: theme.textoDesabilitado }]}>Limpar</Text>
+                <Text style={[styles.presetChipTexto, { color: theme.textoSecundario }]}>Limpar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -494,8 +494,8 @@ export default function PrepararAgenda() {
             <Switch
               value={abrirImediatamente}
               onValueChange={setAbrirImediatamente}
-              trackColor={{ false: theme.superficie2, true: theme.verde }}
-              thumbColor="#FFFFFF"
+              trackColor={{ false: isEscuro ? '#27272A' : '#E4E4E7', true: theme.verde }}
+              thumbColor={abrirImediatamente ? '#FFFFFF' : (isEscuro ? '#71717A' : '#A1A1AA')}
             />
           </View>
 
@@ -507,7 +507,7 @@ export default function PrepararAgenda() {
             return (
               <View key={`semana-${semIdx}`} style={styles.blocoSemana}>
                 {isModoMes && (
-                  <View style={styles.semanaTituloContainer}>
+                  <View style={[styles.semanaTituloContainer, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
                     <Text style={[styles.semanaTituloTexto, { color: theme.ouroTexto }]}>
                       SEMANA {semIdx + 1} ({semanaDatas[0].toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} a {semanaDatas[6].toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })})
                     </Text>
@@ -532,7 +532,7 @@ export default function PrepararAgenda() {
                             <Text style={[styles.diaData, { color: theme.textoSecundario }]}>
                               {data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                               {' · '}
-                              <Text style={{ color: qtdVagasDia > 0 ? theme.verde : theme.textoDesabilitado }}>
+                              <Text style={{ color: qtdVagasDia > 0 ? theme.verde : theme.textoSecundario, fontFamily: qtdVagasDia > 0 ? FontFamily.semiBold : FontFamily.regular }}>
                                 {qtdVagasDia > 0 ? `${qtdVagasDia} vaga(s) ativa(s)` : 'Dia fechado / folga'}
                               </Text>
                             </Text>
@@ -541,12 +541,12 @@ export default function PrepararAgenda() {
                           <Switch
                             value={diaAberto}
                             onValueChange={(valor) => handleToggleDia(strData, valor)}
-                            trackColor={{ false: theme.superficie2, true: theme.ouro }}
-                            thumbColor="#FFFFFF"
+                            trackColor={{ false: isEscuro ? '#27272A' : '#E4E4E7', true: theme.ouro }}
+                            thumbColor={diaAberto ? (isEscuro ? '#09090B' : '#FFFFFF') : (isEscuro ? '#71717A' : '#A1A1AA')}
                           />
                         </View>
 
-                        {/* Grade de Horários Granulares do Dia */}
+                        {/* Grade de Horários Granulares do Dia (3x3 Simétrico) */}
                         {diaAberto && (
                           <View style={styles.horariosGranularesGrid}>
                             {HORARIOS_DISPONIVEIS.map((hora) => {
@@ -569,7 +569,6 @@ export default function PrepararAgenda() {
                                   ]}>
                                     {hora}
                                   </Text>
-                                  {ativo && <Check size={12} color={theme.textoEscuroSobreOuro} />}
                                 </TouchableOpacity>
                               );
                             })}
@@ -749,18 +748,21 @@ const createStyles = (theme: ThemePalette) =>
     },
     presetsLinha: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
+      alignItems: 'center',
       gap: 8,
     },
     presetChip: {
-      paddingHorizontal: 12,
-      paddingVertical: 7,
+      flex: 1,
+      paddingVertical: 8,
       borderRadius: Radii.md,
       borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     presetChipTexto: {
       fontFamily: FontFamily.semiBold,
       fontSize: 12,
+      textAlign: 'center',
     },
     boxAberturaImediata: {
       flexDirection: 'row',
@@ -785,33 +787,39 @@ const createStyles = (theme: ThemePalette) =>
     },
     secaoTitulo: {
       fontFamily: FontFamily.bold,
-      fontSize: FontSize.labelXs,
-      color: theme.textoSecundario,
-      letterSpacing: 0.5,
+      fontSize: 11.5,
+      color: theme.ouroTexto,
+      letterSpacing: 1.1,
       marginTop: Spacing.xs,
+      marginBottom: 6,
     },
     blocoSemana: {
       gap: Spacing.xs,
     },
     semanaTituloContainer: {
-      paddingVertical: 4,
-      paddingHorizontal: 2,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      marginBottom: 4,
     },
     semanaTituloTexto: {
       fontFamily: FontFamily.bold,
       fontSize: 12,
-      letterSpacing: 0.5,
+      letterSpacing: 0.8,
+      textAlign: 'center',
     },
     diasLista: {
       gap: Spacing.sm,
     },
     diaContainer: {
       backgroundColor: theme.superficie,
-      borderRadius: Radii.md,
+      borderRadius: Radii.lg,
       padding: Spacing.md,
       borderWidth: 1,
       borderColor: theme.borda,
       gap: Spacing.sm,
+      ...Shadows.card,
     },
     diaCabecalho: {
       flexDirection: 'row',
@@ -822,38 +830,38 @@ const createStyles = (theme: ThemePalette) =>
       gap: 2,
     },
     diaNome: {
-      fontFamily: FontFamily.semiBold,
-      fontSize: FontSize.bodyMd,
+      fontFamily: FontFamily.bold,
+      fontSize: 15,
       color: theme.textoPrimario,
     },
     diaData: {
       fontFamily: FontFamily.regular,
-      fontSize: FontSize.labelXs,
+      fontSize: 12,
       color: theme.textoSecundario,
     },
     horariosGranularesGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 8,
-      paddingTop: Spacing.xs,
+      justifyContent: 'space-between',
+      rowGap: 8,
+      paddingTop: Spacing.sm,
       borderTopWidth: 1,
       borderTopColor: theme.borda,
     },
     chipHorario: {
-      flexDirection: 'row',
+      width: '31.8%',
+      height: 38,
       alignItems: 'center',
-      gap: 4,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: Radii.sm,
+      justifyContent: 'center',
+      borderRadius: Radii.md,
       backgroundColor: theme.superficie2,
       borderWidth: 1,
       borderColor: theme.borda,
     },
     chipHorarioTexto: {
-      fontFamily: FontFamily.medium,
-      fontSize: FontSize.labelXs,
-      color: theme.textoSecundario,
+      fontFamily: FontFamily.bold,
+      fontSize: 13,
+      textAlign: 'center',
     },
     horariosContainer: {
       flexDirection: 'row',

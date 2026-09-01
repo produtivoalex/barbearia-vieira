@@ -138,27 +138,7 @@ export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
       const uid = usuario.user.id;
       const storageKeyUsuario = getStorageKey(uid);
 
-      // 2. Verifica se é membro da equipe (barbeiro / gestor / proprietário)
-      const { data: membro } = await supabase
-        .from('barbearia_membros')
-        .select(
-          'barbearia:barbearia_id(id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status, modo_agenda, dias_janela_agendamento, comissao_padrao, regras_fidelidade, mimo_ativo)'
-        )
-        .eq('usuario_id', uid)
-        .eq('ativo', true)
-        .limit(1)
-        .maybeSingle();
-
-      const relacaoMembro = (membro as { barbearia?: BarbeariaPublica | BarbeariaPublica[] } | null)?.barbearia;
-      const estabMembro = Array.isArray(relacaoMembro) ? relacaoMembro[0] : relacaoMembro;
-      if (estabMembro && estabMembro.id) {
-        setBarbearia(estabMembro);
-        await AsyncStorage.setItem(storageKeyUsuario, JSON.stringify(estabMembro));
-        setCarregando(false);
-        return;
-      }
-
-      // 3. Verifica a última barbearia registrada no perfil do cliente
+      // 2. Verifica a última barbearia registrada no perfil ou no cache local
       const { data: perfil } = await supabase
         .from('perfis')
         .select('role, ultima_barbearia_id')
@@ -167,77 +147,78 @@ export function BarbeariaProvider({ children }: { children: React.ReactNode }) {
 
       let barbeariaIdDesejada = perfil?.ultima_barbearia_id;
 
-      // 4. Se não estiver no perfil, tenta o cache local exclusivo deste usuário
       if (!barbeariaIdDesejada) {
         const valorLocal = await AsyncStorage.getItem(storageKeyUsuario);
         if (valorLocal) {
           try {
             const parsed = JSON.parse(valorLocal) as BarbeariaPublica;
             if (parsed && parsed.id) {
-              setBarbearia(parsed);
-              setCarregando(false);
-              return;
+              barbeariaIdDesejada = parsed.id;
             }
           } catch {}
         }
       }
 
-      // 5. Se não estiver no perfil nem no cache, busca no histórico de agendamentos do cliente
-      if (!barbeariaIdDesejada) {
-        const { data: ultimoAgendamento } = await supabase
-          .from('agendamentos')
-          .select('barbearia_id')
-          .eq('cliente_id', uid)
-          .not('barbearia_id', 'is', null)
-          .order('data_hora', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (ultimoAgendamento?.barbearia_id) {
-          barbeariaIdDesejada = ultimoAgendamento.barbearia_id;
-        }
-      }
-
-      // 6. Se encontrou uma barbearia vinculada ao cliente, carrega os dados completos
+      // 3. Se tiver uma barbearia desejada salva, carrega ela
       if (barbeariaIdDesejada) {
-        const { data: estabCliente } = await supabase
+        const { data: estabSalvo } = await supabase
           .from('barbearias')
           .select('id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status, modo_agenda, dias_janela_agendamento, comissao_padrao, regras_fidelidade, mimo_ativo')
           .eq('id', barbeariaIdDesejada)
           .maybeSingle();
 
-        if (estabCliente && estabCliente.id) {
-          setBarbearia(estabCliente as BarbeariaPublica);
-          await AsyncStorage.setItem(storageKeyUsuario, JSON.stringify(estabCliente));
-          // Atualiza perfil na nuvem se ainda não estava gravado
-          if (!perfil?.ultima_barbearia_id) {
-            await supabase.from('perfis').update({ ultima_barbearia_id: estabCliente.id }).eq('id', uid);
-          }
+        if (estabSalvo && estabSalvo.id) {
+          setBarbearia(estabSalvo as BarbeariaPublica);
+          await AsyncStorage.setItem(storageKeyUsuario, JSON.stringify(estabSalvo));
           setCarregando(false);
           return;
         }
       }
 
-      // 7. Para barbeiros/admins sem barbearia definida: associa à barbearia principal
-      if (perfil?.role === 'barbeiro' || perfil?.role === 'admin') {
-        const { data: barbeariaPadrao } = await supabase
-          .from('barbearias')
-          .select(
-            'id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status, modo_agenda, dias_janela_agendamento, comissao_padrao, regras_fidelidade, mimo_ativo'
-          )
-          .eq('status', 'ativa')
-          .order('criado_em', { ascending: true })
-          .limit(1)
-          .maybeSingle();
+      // 4. Se for barbeiro/proprietário, busca as barbearias onde é membro (priorizando a Vieira)
+      const { data: membros } = await supabase
+        .from('barbearia_membros')
+        .select(
+          'barbearia:barbearia_id(id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status, modo_agenda, dias_janela_agendamento, comissao_padrao, regras_fidelidade, mimo_ativo)'
+        )
+        .eq('usuario_id', uid)
+        .eq('ativo', true);
 
-        if (barbeariaPadrao && barbeariaPadrao.id) {
-          setBarbearia(barbeariaPadrao as BarbeariaPublica);
-          await AsyncStorage.setItem(storageKeyUsuario, JSON.stringify(barbeariaPadrao));
-          await supabase.from('perfis').update({ ultima_barbearia_id: barbeariaPadrao.id }).eq('id', uid);
+      if (membros && membros.length > 0) {
+        const listaMembros = membros
+          .map((m: any) => (Array.isArray(m.barbearia) ? m.barbearia[0] : m.barbearia))
+          .filter(Boolean);
+
+        // Prioriza a Barbearia Vieira se o usuário for membro dela
+        const vieiraMembro = listaMembros.find((b: any) => b.slug === 'barbearia-vieira');
+        const estabEscolhido = vieiraMembro || listaMembros[0];
+
+        if (estabEscolhido && estabEscolhido.id) {
+          setBarbearia(estabEscolhido);
+          await AsyncStorage.setItem(storageKeyUsuario, JSON.stringify(estabEscolhido));
           setCarregando(false);
           return;
         }
       }
+
+      // 5. Fallback geral: Sempre seleciona a Barbearia Vieira Matriz
+      const { data: barbeariaPadrao } = await supabase
+        .from('barbearias')
+        .select(
+          'id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status, modo_agenda, dias_janela_agendamento, comissao_padrao, regras_fidelidade, mimo_ativo'
+        )
+        .eq('slug', 'barbearia-vieira')
+        .maybeSingle();
+
+      if (barbeariaPadrao && barbeariaPadrao.id) {
+        setBarbearia(barbeariaPadrao as BarbeariaPublica);
+        await AsyncStorage.setItem(storageKeyUsuario, JSON.stringify(barbeariaPadrao));
+        await supabase.from('perfis').update({ ultima_barbearia_id: barbeariaPadrao.id }).eq('id', uid);
+        setCarregando(false);
+        return;
+      }
+
+      setBarbearia(null);
 
       // Cliente novo ou sem barbearia vinculada -> Permanece null para ser direcionado à vitrine
       setBarbearia(null);

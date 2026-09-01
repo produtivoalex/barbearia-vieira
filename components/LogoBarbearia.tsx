@@ -13,10 +13,11 @@ export type TipoLogo =
   | 'navalha'
   | 'borda_sf';
 
-interface LogoBarbeariaProps {
+export interface LogoBarbeariaProps {
   tamanho?: number;
   tipo?: TipoLogo;
   uri?: string | null;
+  slug?: string | null;
   mostrarTelefone?: boolean;
   telefoneClicavel?: boolean;
   numeroTelefone?: string;
@@ -28,6 +29,7 @@ export function LogoBarbearia({
   tamanho = 100,
   tipo = 'padrao',
   uri,
+  slug,
   mostrarTelefone = false,
   telefoneClicavel = true,
   numeroTelefone = '(86) 98190-7478',
@@ -36,14 +38,15 @@ export function LogoBarbearia({
 }: LogoBarbeariaProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const isVieira = !slug || slug === 'barbearia-vieira' || slug.includes('vieira');
   let sourceImg: ImageSourcePropType = require('@/assets/logo-na-regua.png');
   let ratio = 1;
 
   if (tipo === 'banner') {
-    sourceImg = require('@/assets/banner-na-regua.png');
+    sourceImg = isVieira ? require('@/assets/barbearia-vieira-banner.png') : require('@/assets/banner-na-regua.png');
     ratio = 1024 / 341; // ~3.003
   } else if (tipo === 'avatar') {
-    sourceImg = require('@/assets/avatar-na-regua.png');
+    sourceImg = isVieira ? require('@/assets/barbearia-vieira-logo.png') : require('@/assets/avatar-na-regua.png');
     ratio = 1;
   } else if (tipo === 'plataforma') {
     sourceImg = require('@/assets/banner-na-regua.png');
@@ -130,56 +133,37 @@ export function LogoBarbearia({
 
 const createStyles = (theme: ThemePalette) =>
   StyleSheet.create({
-    logoImagem: {
-      alignSelf: 'center',
-    },
-    logoRemota: {
-      borderRadius: Radii.md,
-    },
-    badgePlataforma: {
-      backgroundColor: theme.superficie,
-      borderWidth: 2,
-      borderColor: theme.ouro,
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: theme.ouro,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.25,
-      shadowRadius: 8,
-      elevation: 4,
-      position: 'relative',
-    },
-    badgePlataformaSparkle: {
-      position: 'absolute',
-      top: 6,
-      right: 8,
-    },
     containerVertical: {
       alignItems: 'center',
       justifyContent: 'center',
-      gap: Spacing.xs,
+      gap: Spacing.sm,
     },
     containerHorizontal: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: Spacing.sm,
+      justifyContent: 'center',
+      gap: Spacing.md,
+    },
+    logoImagem: {
+      borderRadius: Radii.md,
+    },
+    logoRemota: {
+      borderRadius: Radii.md,
     },
     telefoneBadge: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      backgroundColor: theme.ouroTranslucido,
+      backgroundColor: theme.superficie,
       borderWidth: 1,
-      borderColor: theme.bordaOuro,
-      paddingVertical: 5,
+      borderColor: theme.borda,
       paddingHorizontal: 12,
+      paddingVertical: 6,
       borderRadius: Radii.full,
-      marginTop: 4,
     },
     telefoneTexto: {
-      fontFamily: FontFamily.medium,
+      fontFamily: FontFamily.bold,
       fontSize: FontSize.bodySm,
-      color: theme.ouroTexto,
-      letterSpacing: 0.5,
+      color: theme.textoPrimario,
     },
   });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -31,10 +31,11 @@ import {
   Sun,
   Smartphone,
   Check,
+  MapPin,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Avatar, LogoBarbearia } from '@/components';
-import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows } from '@/theme';
+import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows, type ThemePalette } from '@/theme';
 import { usePerfil } from '@/hooks/usePerfil';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
@@ -46,31 +47,32 @@ type TipoModal = 'dados_conta' | 'notificacoes' | 'horarios' | 'privacidade' | '
 export default function TelaPerfil() {
   const router = useRouter();
   const { perfil, carregandoPerfil } = usePerfil();
-  const { barbearia } = useBarbearia();
   const { session } = useAuth();
+  const { barbearia } = useBarbearia();
   const { theme, isEscuro, modoTema, setModoTema } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [modalAtivo, setModalAtivo] = useState<TipoModal>(null);
-
-  async function handleConfirmarSair() {
-    setModalAtivo(null);
-    await supabase.auth.signOut();
-  }
-
-  function handleAbrirWhatsApp() {
-    const telefone = barbearia?.whatsapp?.replace(/\D/g, '') || barbearia?.telefone?.replace(/\D/g, '');
-    if (!telefone) {
-      Alert.alert('Contato indisponível', 'Este estabelecimento ainda não cadastrou um número de WhatsApp.');
-      return;
-    }
-    const numeroFinal = telefone.startsWith('55') ? telefone : `55${telefone}`;
-    const msg = encodeURIComponent(`Olá! Gostaria de tirar uma dúvida sobre ${barbearia?.nome || 'a barbearia'}.`);
-    Linking.openURL(`https://wa.me/${numeroFinal}?text=${msg}`).catch(() => {});
-  }
 
   const nomeExibicao = carregandoPerfil
     ? 'Carregando...'
     : perfil?.nome_completo || 'Cliente';
   const emailExibicao = session?.user?.email || '';
+
+  async function handleConfirmarSair() {
+    setModalAtivo(null);
+    await supabase.auth.signOut();
+  }
+  const handleSair = handleConfirmarSair;
+
+  function handleAbrirWhatsApp() {
+    const telefone = (barbearia?.whatsapp || barbearia?.telefone || '86981907478').replace(/\D/g, '');
+    const url = `https://wa.me/55${telefone}?text=Olá! Gostaria de tirar uma dúvida sobre meu agendamento na ${barbearia?.nome || 'barbearia'}.`;
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.');
+    });
+  }
+  const handleAbrirWhatsAppSuporte = handleAbrirWhatsApp;
 
   const labelAparencia =
     modoTema === 'escuro'
@@ -81,6 +83,7 @@ export default function TelaPerfil() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]} edges={['top']}>
+      {/* Header Apple Style */}
       <View style={[styles.header, { borderBottomColor: theme.borda }]}>
         <Text style={[styles.titulo, { color: theme.textoPrimario }]}>Perfil</Text>
       </View>
@@ -89,39 +92,54 @@ export default function TelaPerfil() {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* Card Principal de Identidade com Avatar */}
-        <View style={[styles.perfilCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
-          <View style={styles.avatarWrapper}>
-            <LogoBarbearia tamanho={64} tipo="avatar" variante="compacto" uri={barbearia?.logo_url} />
-          </View>
-
+        {/* ─── Card de Identidade com a Logo da Barbearia em Destaque ─── */}
+        <View style={[styles.perfilCardCliente, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
+          <TouchableOpacity
+            onPress={() => router.push({ pathname: '/(app)/barbearias/[slug]', params: { slug: barbearia?.slug || 'barbearia-vieira' } })}
+            activeOpacity={0.8}
+            style={styles.logoPerfilContainer}
+          >
+            <LogoBarbearia
+              tamanho={72}
+              tipo="avatar"
+              variante="compacto"
+              uri={barbearia?.logo_url}
+              slug={barbearia?.slug}
+            />
+          </TouchableOpacity>
           <View style={styles.perfilInfo}>
             <Text style={[styles.perfilNome, { color: theme.textoPrimario }]}>{nomeExibicao}</Text>
             <Text style={[styles.perfilContato, { color: theme.textoSecundario }]}>{perfil?.telefone || emailExibicao}</Text>
-            <View style={[styles.badgeCliente, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
-              <Sparkles size={11} color={theme.ouroTexto} />
-              <Text style={[styles.badgeClienteTexto, { color: theme.ouroTexto }]}>Cliente {barbearia?.nome || 'Na Régua'}</Text>
-            </View>
+            <TouchableOpacity
+              style={[styles.badgeCliente, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}
+              onPress={() => router.push({ pathname: '/(app)/barbearias/[slug]', params: { slug: barbearia?.slug || 'barbearia-vieira' } })}
+              activeOpacity={0.75}
+            >
+              <Sparkles size={10} color={theme.ouroTexto} />
+              <Text style={[styles.badgeClienteTexto, { color: theme.ouroTexto }]}>
+                {barbearia?.nome || 'Barbearia Vieira'} • Ver Vitrine ›
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
         {/* Seção 1: Minha Conta */}
         <View style={styles.secao}>
-          <Text style={[styles.secaoTitulo, { color: theme.textoSecundario }]}>MINHA CONTA</Text>
+          <Text style={[styles.secaoTitulo, { color: theme.ouroTexto }]}>MINHA CONTA</Text>
           <View style={[styles.cardGrupo, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
             <TouchableOpacity
               style={styles.itemLinha}
               activeOpacity={0.7}
               onPress={() => setModalAtivo('dados_conta')}
             >
-              <View style={[styles.itemIconeContainer, { backgroundColor: theme.ouroTranslucido }]}>
+              <View style={[styles.itemIconeContainer, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
                 <User size={18} color={theme.ouroTexto} />
               </View>
               <View style={styles.itemTextoContainer}>
                 <Text style={[styles.itemTitulo, { color: theme.textoPrimario }]}>Dados do perfil</Text>
                 <Text style={[styles.itemSubtitulo, { color: theme.textoSecundario }]}>Nome e informações de login</Text>
               </View>
-              <ChevronRight size={18} color={theme.textoDesabilitado} />
+              <ChevronRight size={18} color={theme.textoSecundario} />
             </TouchableOpacity>
 
             <View style={[styles.divisorItem, { backgroundColor: theme.borda }]} />
@@ -131,21 +149,21 @@ export default function TelaPerfil() {
               activeOpacity={0.7}
               onPress={() => setModalAtivo('notificacoes')}
             >
-              <View style={[styles.itemIconeContainer, { backgroundColor: theme.ouroTranslucido }]}>
+              <View style={[styles.itemIconeContainer, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
                 <Bell size={18} color={theme.ouroTexto} />
               </View>
               <View style={styles.itemTextoContainer}>
                 <Text style={[styles.itemTitulo, { color: theme.textoPrimario }]}>Notificações & Lembretes</Text>
                 <Text style={[styles.itemSubtitulo, { color: theme.textoSecundario }]}>Avisos de abertura de agenda e cortes</Text>
               </View>
-              <ChevronRight size={18} color={theme.textoDesabilitado} />
+              <ChevronRight size={18} color={theme.textoSecundario} />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Seção 2: Barbearia Ativa */}
         <View style={styles.secao}>
-          <Text style={[styles.secaoTitulo, { color: theme.textoSecundario }]}>{(barbearia?.nome || 'BARBEARIA').toUpperCase()}</Text>
+          <Text style={[styles.secaoTitulo, { color: theme.ouroTexto }]}>{(barbearia?.nome || 'BARBEARIA').toUpperCase()}</Text>
           <View style={[styles.cardGrupo, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
             <TouchableOpacity
               style={styles.itemLinha}
@@ -159,7 +177,7 @@ export default function TelaPerfil() {
                 <Text style={[styles.itemTitulo, { color: theme.textoPrimario }]}>WhatsApp Oficial</Text>
                 <Text style={[styles.itemSubtitulo, { color: theme.textoSecundario }]}>{barbearia?.whatsapp || barbearia?.telefone || 'Falar com o estabelecimento'}</Text>
               </View>
-              <ChevronRight size={18} color={theme.textoDesabilitado} />
+              <ChevronRight size={18} color={theme.textoSecundario} />
             </TouchableOpacity>
 
             <View style={[styles.divisorItem, { backgroundColor: theme.borda }]} />
@@ -169,21 +187,21 @@ export default function TelaPerfil() {
               activeOpacity={0.7}
               onPress={() => setModalAtivo('horarios')}
             >
-              <View style={[styles.itemIconeContainer, { backgroundColor: theme.ouroTranslucido }]}>
+              <View style={[styles.itemIconeContainer, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
                 <Clock size={18} color={theme.ouroTexto} />
               </View>
               <View style={styles.itemTextoContainer}>
                 <Text style={[styles.itemTitulo, { color: theme.textoPrimario }]}>Horários & Atendimento</Text>
                 <Text style={[styles.itemSubtitulo, { color: theme.textoSecundario }]}>Terça a Domingo (08:00 às 18:00)</Text>
               </View>
-              <ChevronRight size={18} color={theme.textoDesabilitado} />
+              <ChevronRight size={18} color={theme.textoSecundario} />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Seção 3: Informações & Aparência */}
         <View style={styles.secao}>
-          <Text style={[styles.secaoTitulo, { color: theme.textoSecundario }]}>INFORMAÇÕES & CONFIGURAÇÕES</Text>
+          <Text style={[styles.secaoTitulo, { color: theme.ouroTexto }]}>INFORMAÇÕES & CONFIGURAÇÕES</Text>
           <View style={[styles.cardGrupo, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
             {/* Seletor de Aparência / Modo Claro / Escuro */}
             <TouchableOpacity
@@ -191,7 +209,7 @@ export default function TelaPerfil() {
               activeOpacity={0.7}
               onPress={() => setModalAtivo('aparencia')}
             >
-              <View style={[styles.itemIconeContainer, { backgroundColor: theme.ouroTranslucido }]}>
+              <View style={[styles.itemIconeContainer, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
                 {isEscuro ? (
                   <Moon size={18} color={theme.ouroTexto} />
                 ) : (
@@ -202,7 +220,7 @@ export default function TelaPerfil() {
                 <Text style={[styles.itemTitulo, { color: theme.textoPrimario }]}>Aparência do App</Text>
                 <Text style={[styles.itemSubtitulo, { color: theme.textoSecundario }]}>{labelAparencia}</Text>
               </View>
-              <ChevronRight size={18} color={theme.textoDesabilitado} />
+              <ChevronRight size={18} color={theme.textoSecundario} />
             </TouchableOpacity>
 
             <View style={[styles.divisorItem, { backgroundColor: theme.borda }]} />
@@ -212,14 +230,14 @@ export default function TelaPerfil() {
               activeOpacity={0.7}
               onPress={() => setModalAtivo('privacidade')}
             >
-              <View style={[styles.itemIconeContainer, { backgroundColor: theme.superficie2 }]}>
-                <ShieldCheck size={18} color={theme.textoSecundario} />
+              <View style={[styles.itemIconeContainer, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                <ShieldCheck size={18} color={theme.ouroTexto} />
               </View>
               <View style={styles.itemTextoContainer}>
                 <Text style={[styles.itemTitulo, { color: theme.textoPrimario }]}>Privacidade e Segurança</Text>
                 <Text style={[styles.itemSubtitulo, { color: theme.textoSecundario }]}>Proteção e tratamento dos seus dados</Text>
               </View>
-              <ChevronRight size={18} color={theme.textoDesabilitado} />
+              <ChevronRight size={18} color={theme.textoSecundario} />
             </TouchableOpacity>
 
             <View style={[styles.divisorItem, { backgroundColor: theme.borda }]} />
@@ -230,8 +248,8 @@ export default function TelaPerfil() {
               activeOpacity={0.7}
               onPress={() => router.push('/(app)/barbearias')}
             >
-              <View style={[styles.itemIconeContainer, { backgroundColor: theme.superficie2 }]}>
-                <Store size={18} color={theme.textoSecundario} />
+              <View style={[styles.itemIconeContainer, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                <Store size={18} color={theme.ouroTexto} />
               </View>
               <View style={styles.itemTextoContainer}>
                 <Text style={[styles.itemTitulo, { color: theme.textoPrimario }]}>Unidade de Atendimento</Text>
@@ -239,7 +257,7 @@ export default function TelaPerfil() {
                   {barbearia?.nome ? `${barbearia.nome} • Alterar unidade` : 'Alterar unidade selecionada'}
                 </Text>
               </View>
-              <ChevronRight size={18} color={theme.textoDesabilitado} />
+              <ChevronRight size={18} color={theme.textoSecundario} />
             </TouchableOpacity>
 
             <View style={[styles.divisorItem, { backgroundColor: theme.borda }]} />
@@ -250,14 +268,14 @@ export default function TelaPerfil() {
               activeOpacity={0.7}
               onPress={() => router.push('/(app)/(barbeiro)/cadastrar-barbearia')}
             >
-              <View style={[styles.itemIconeContainer, { backgroundColor: theme.ouroTranslucido }]}>
+              <View style={[styles.itemIconeContainer, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
                 <Building2 size={18} color={theme.ouroTexto} />
               </View>
               <View style={styles.itemTextoContainer}>
                 <Text style={[styles.itemTitulo, { color: theme.textoPrimario }]}>É Dono de Barbearia?</Text>
                 <Text style={[styles.itemSubtitulo, { color: theme.textoSecundario }]}>Cadastre seu estabelecimento no Na Régua</Text>
               </View>
-              <ChevronRight size={18} color={theme.textoDesabilitado} />
+              <ChevronRight size={18} color={theme.textoSecundario} />
             </TouchableOpacity>
           </View>
         </View>
@@ -282,7 +300,7 @@ export default function TelaPerfil() {
         </View>
 
         {/* Versão do App */}
-        <Text style={[styles.versaoTexto, { color: theme.textoDesabilitado }]}>Na Régua App • v2.4.0 (Build 2026)</Text>
+        <Text style={[styles.versaoTexto, { color: theme.textoSecundario }]}>Na Régua App • v2.4.0 (Build 2026)</Text>
       </ScrollView>
 
       {/* ─── MODAL UNIFICADO ─── */}
@@ -497,72 +515,75 @@ export default function TelaPerfil() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1 },
-  header: {
-    paddingHorizontal: Spacing.telaH,
-    paddingTop: Spacing.md,
-    paddingBottom: Spacing.md,
-    borderBottomWidth: 1,
-  },
-  titulo: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.displayMd,
-  },
-  scroll: {
-    padding: Spacing.telaH,
-    gap: Spacing.lg,
-    paddingBottom: Spacing.giant,
-  },
-  perfilCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    borderRadius: Radii.lg,
-    padding: Spacing.lg,
-    borderWidth: 1,
-    ...Shadows.card,
-  },
-  avatarWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  perfilInfo: {
-    flex: 1,
-    gap: 3,
-  },
-  perfilNome: {
-    fontFamily: FontFamily.bold,
-    fontSize: FontSize.headingSm,
-  },
-  perfilContato: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.bodySm,
-  },
-  badgeCliente: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: Radii.full,
-    borderWidth: 1,
-    alignSelf: 'flex-start',
-    marginTop: 3,
-  },
-  badgeClienteTexto: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: 11,
-  },
+const createStyles = (theme: ThemePalette) =>
+  StyleSheet.create({
+    safe: { flex: 1 },
+    header: {
+      paddingHorizontal: Spacing.telaH,
+      paddingTop: Spacing.md,
+      paddingBottom: Spacing.md,
+      borderBottomWidth: 1,
+    },
+    titulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.displayMd,
+    },
+    scroll: {
+      padding: Spacing.telaH,
+      gap: Spacing.lg,
+      paddingBottom: Spacing.giant,
+    },
+    perfilCardCliente: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      borderRadius: Radii.xl,
+      padding: Spacing.md,
+      borderWidth: 1,
+      ...Shadows.card,
+    },
+    logoPerfilContainer: {
+      width: 72,
+      height: 72,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    perfilInfo: {
+      flex: 1,
+      gap: 3,
+    },
+    perfilNome: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.headingSm,
+    },
+    perfilContato: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+    },
+    badgeCliente: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 3.5,
+      borderRadius: Radii.full,
+      borderWidth: 1,
+      alignSelf: 'flex-start',
+      marginTop: 3,
+    },
+    badgeClienteTexto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: 10.5,
+    },
   secao: {
     gap: Spacing.xs,
   },
   secaoTitulo: {
     fontFamily: FontFamily.bold,
-    fontSize: FontSize.labelXs,
-    letterSpacing: 0.8,
-    marginLeft: 4,
-    marginBottom: 4,
+    fontSize: 11.5,
+    letterSpacing: 1.1,
+    marginLeft: 6,
+    marginBottom: 6,
   },
   cardGrupo: {
     borderRadius: Radii.lg,
@@ -578,17 +599,21 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   itemIconeContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: Radii.md,
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconeWhatsapp: {
     backgroundColor: 'rgba(48, 209, 88, 0.12)',
+    borderColor: 'rgba(48, 209, 88, 0.25)',
   },
   iconeSair: {
     backgroundColor: 'rgba(255, 69, 58, 0.12)',
+    borderColor: 'rgba(255, 69, 58, 0.25)',
   },
   itemTextoContainer: {
     flex: 1,
@@ -596,24 +621,27 @@ const styles = StyleSheet.create({
   },
   itemTitulo: {
     fontFamily: FontFamily.semiBold,
-    fontSize: FontSize.bodyMd,
+    fontSize: 15,
   },
   textoSair: {
     color: '#FF453A',
   },
   itemSubtitulo: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.labelXs,
+    fontSize: 12.5,
+    lineHeight: 16,
   },
   divisorItem: {
     height: 1,
-    marginLeft: 56,
+    marginLeft: 58,
   },
   versaoTexto: {
-    fontFamily: FontFamily.regular,
-    fontSize: FontSize.labelXs,
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
     textAlign: 'center',
-    marginTop: Spacing.xs,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.lg,
+    letterSpacing: 0.3,
   },
 
   /* Modal */

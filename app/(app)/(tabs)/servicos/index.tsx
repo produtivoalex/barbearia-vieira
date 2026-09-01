@@ -26,6 +26,7 @@ import {
   type CategoriaServico,
   CATEGORIAS_CONFIG,
   deduzirCategoria,
+  ordenarServicos,
 } from '@/hooks/useServicos';
 import { IndicadorEtapas, IlustracaoServico } from '@/components';
 import { identificarTipoServico } from '@/components/IlustracaoServico';
@@ -35,12 +36,18 @@ import { useTheme } from '@/contexts/ThemeContext';
 
 export default function TelaServicos() {
   const router = useRouter();
+  const { barbearia, tema } = useBarbearia();
   const { theme, isEscuro } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [categoriaAtiva, setCategoriaAtiva] = useState<CategoriaServico>('todos');
   const [busca, setBusca] = useState('');
-  const { barbearia, tema } = useBarbearia();
-  const { todosServicos, carregando, recarregar } = useServicos('todos', barbearia?.id);
+
+  const {
+    servicos: todosServicos,
+    carregando,
+    erro,
+    recarregar,
+  } = useServicos('todos', barbearia?.id);
 
   function handleSelecionarServico(servico: Servico) {
     router.push({
@@ -55,7 +62,7 @@ export default function TelaServicos() {
     });
   }
 
-  // Contagem por categoria
+  // Contagem de serviços por categoria
   const contagemPorCategoria = useMemo(() => {
     const mapa: Record<CategoriaServico, number> = {
       todos: todosServicos.length,
@@ -74,9 +81,9 @@ export default function TelaServicos() {
     return mapa;
   }, [todosServicos]);
 
-  // Filtro composto: Categoria + Busca
+  // Filtro composto: Categoria + Busca com ordenação estável idêntica
   const servicosFiltrados = useMemo(() => {
-    return todosServicos.filter((servico) => {
+    const lista = todosServicos.filter((servico) => {
       const cat = servico.categoria || deduzirCategoria(servico.nome);
       const bateCategoria = categoriaAtiva === 'todos' || cat === categoriaAtiva;
 
@@ -88,6 +95,8 @@ export default function TelaServicos() {
       const descMatch = (servico.descricao || '').toLowerCase().includes(termo);
       return nomeMatch || descMatch;
     });
+
+    return ordenarServicos(lista);
   }, [todosServicos, categoriaAtiva, busca]);
 
   function renderServico({ item }: { item: Servico }) {

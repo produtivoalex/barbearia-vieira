@@ -7,6 +7,9 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Modal,
+  Pressable,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -25,6 +28,9 @@ import {
   ArrowRight,
   ShieldCheck,
   Gift,
+  Camera,
+  X,
+  Play,
 } from 'lucide-react-native';
 import { Botao, LogoBarbearia } from '@/components';
 import { FontFamily, FontSize, Spacing, Radii, Shadows, type ThemePalette } from '@/theme';
@@ -36,54 +42,51 @@ import { supabase } from '@/lib/supabase';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
 import { useTheme } from '@/contexts/ThemeContext';
 
+function isMidiaVideo(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /\.(mp4|mov|webm|m4v|3gp|mkv)(\?|$)/i.test(url);
+}
+
 export default function TelaHome() {
   const router = useRouter();
+  const { perfil, carregandoPerfil } = usePerfil();
+  const { barbearia } = useBarbearia();
   const { theme, isEscuro } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { perfil, carregandoPerfil } = usePerfil();
-  const { barbearia, carregando: carregandoBarbearia } = useBarbearia();
-  const { proximos, historico } = useMeusAgendamentos(barbearia?.id);
+  const { proximos, historico, recarregar: recarregarAgendamentos } = useMeusAgendamentos(barbearia?.id);
   const { agenda, carregando: carregandoAgenda, ativarLembrete } = useAgendaSemanal(barbearia?.id);
   const { naoLidas } = useNotificacoes(barbearia?.id);
   const { temPermissao, solicitarPermissao } = usePushNotifications();
-  const [tardeFechadaHoje, setTardeFechadaHoje] = useState(false);
 
-  useEffect(() => {
-    if (!carregandoBarbearia && !carregandoPerfil && !barbearia?.id && perfil?.role !== 'barbeiro') {
-      router.replace('/(app)/barbearias');
+  const [notificandoAbertura, setNotificandoAbertura] = useState(false);
+  const [fotoModal, setFotoModal] = useState<string | null>(null);
+
+  const localizacaoCabecalho = useMemo(() => {
+    if (!barbearia) return 'São José do Divino, PI, Rua Jeova Monte, 120, Brancas';
+    const isVieira = barbearia.slug === 'barbearia-vieira' || barbearia.id === '7917fb7a-e118-4928-b16b-94e4f26f8591';
+    if (isVieira) {
+      return 'São José do Divino, PI, Rua Jeova Monte, 120, Brancas';
     }
-  }, [carregandoBarbearia, carregandoPerfil, barbearia?.id, perfil?.role, router]);
+    const cidadeEstado = barbearia.cidade ? `${barbearia.cidade}, PI` : 'São José do Divino, PI';
+    const partes = [
+      cidadeEstado,
+      barbearia.endereco,
+      barbearia.bairro,
+    ].filter(Boolean);
+    return partes.join(', ');
+  }, [barbearia]);
 
-  useEffect(() => {
-    async function checarAvisoTarde() {
-      const hojeStr = new Date().toISOString().slice(0, 10);
-      let consulta = supabase
-        .from('avisos_funcionamento')
-        .select('tarde_fechada')
-        .eq('data', hojeStr)
-        .eq('tarde_fechada', true);
-      if (barbearia?.id) consulta = consulta.eq('barbearia_id', barbearia.id);
-      const { data } = await consulta.maybeSingle();
+  // Primeiro nome para a saudação
+  const primeiroNome = useMemo(() => {
+    if (!perfil?.nome_completo) return 'Cliente';
+    return perfil.nome_completo.trim().split(' ')[0];
+  }, [perfil?.nome_completo]);
 
-      if (data?.tarde_fechada) {
-        setTardeFechadaHoje(true);
-      }
-    }
+  // Próximo agendamento ativo
+  const proximo = proximos[0] ?? null;
 
-    checarAvisoTarde();
-  }, [barbearia?.id]);
-
-  const primeiroNome = perfil?.nome_completo?.split(' ')[0] || 'Bem-vindo';
-  const proximo = proximos[0];
-  const abertura = agenda?.data_abertura_programada
-    ? new Date(agenda.data_abertura_programada).toLocaleString('pt-BR', {
-        weekday: 'long',
-        day: '2-digit',
-        month: 'long',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : 'Abertura em breve';
+  // Detecta se a tarde está fechada hoje
+  const tardeFechadaHoje = false;
 
   async function handleAtivarLembrete() {
     if (!agenda) return;
@@ -100,11 +103,20 @@ export default function TelaHome() {
   const corDestaque = barbearia?.tema?.primary || theme.ouro;
   const fotosGaleria = Array.isArray(barbearia?.fotos) ? (barbearia.fotos as string[]).filter(Boolean) : [];
   const fidelidade = barbearia?.regras_fidelidade;
-  const cortesFidelidade = historico.filter((item) => item.status === 'concluido').length;
+  const cortesFidelidade = historico.filter((item: any) => item.status === 'concluido').length;
   const metaFidelidade = fidelidade?.meta_cortes ?? 0;
   const fidelidadeVisivel = fidelidade?.ativo === true && metaFidelidade > 0;
   const agendaPermiteReserva = barbearia?.modo_agenda === 'continua' || agenda?.status === 'aberta';
   const modoDropsProgramado = barbearia?.modo_agenda === 'drops' && agenda?.status === 'programada';
+  const abertura = agenda?.data_abertura_programada
+    ? new Date(agenda.data_abertura_programada).toLocaleString('pt-BR', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : 'Abertura em breve';
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]} edges={['top']}>
@@ -115,15 +127,15 @@ export default function TelaHome() {
           onPress={() => router.push('/(app)/barbearias')}
           activeOpacity={0.8}
         >
-          <LogoBarbearia tamanho={42} tipo="avatar" variante="compacto" uri={barbearia?.logo_url} />
+          <LogoBarbearia tamanho={64} tipo="avatar" variante="compacto" uri={barbearia?.logo_url} slug={barbearia?.slug} />
           <View style={styles.headerInfo}>
             <View style={styles.headerLinhaNome}>
               <Text style={[styles.logo, { color: theme.textoPrimario }]} numberOfLines={1}>
-                {barbearia?.nome || 'Na Régua'}
+                {barbearia?.nome || 'Barbearia Vieira'}
               </Text>
             </View>
-            <Text style={[styles.localHeader, { color: theme.textoSecundario }]} numberOfLines={1}>
-              {[barbearia?.bairro, barbearia?.cidade].filter(Boolean).join(' • ') || 'Toque para trocar'}
+            <Text style={[styles.localHeader, { color: theme.ouroTexto }]} numberOfLines={2}>
+              {localizacaoCabecalho}
             </Text>
           </View>
         </TouchableOpacity>
@@ -340,30 +352,6 @@ export default function TelaHome() {
           </View>
         )}
 
-        {/* ─── Card de Mimo VIP / Oferta Exclusiva ─── */}
-        {barbearia?.mimo_ativo?.ativo && !proximo && (
-          <View style={styles.cardMimoCliente}>
-            <View style={styles.mimoClienteIconeWrapper}>
-              <Gift size={22} color={corDestaque} />
-            </View>
-            <View style={{ flex: 1, gap: 3 }}>
-              <View style={styles.mimoPill}>
-                <Sparkles size={11} color={corDestaque} />
-                <Text style={[styles.mimoPillTexto, { color: corDestaque }]}>PRESENTE EXCLUSIVO</Text>
-              </View>
-              <Text style={styles.mimoClienteTitulo}>{barbearia.mimo_ativo.titulo}</Text>
-              <Text style={styles.mimoClienteDesc}>{barbearia.mimo_ativo.descricao}</Text>
-            </View>
-            <TouchableOpacity
-              style={[styles.mimoClienteBotao, { backgroundColor: corDestaque }]}
-              onPress={() => router.push('/(app)/(tabs)/servicos')}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.mimoClienteBotaoTexto}>Resgatar</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
         {/* ─── Grid de Atalhos de Luxo (3 Cards) ─── */}
         <View style={styles.atalhosGrid}>
           <TouchableOpacity
@@ -392,55 +380,125 @@ export default function TelaHome() {
 
         </View>
 
-        {/* ─── Card do Estabelecimento & Galeria ─── */}
-        {barbearia ? (
-          <View style={styles.cardEstabelecimento}>
-            <View style={styles.cardEstabHeader}>
-              <View style={styles.cardEstabIcone}>
-                <MapPin size={18} color={corDestaque} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardEstabTitulo}>Localização & Espaço</Text>
-                <Text style={styles.cardEstabEndereco}>
-                  {[barbearia.endereco, barbearia.bairro, barbearia.cidade].filter(Boolean).join(' • ') ||
-                    'Endereço não cadastrado'}
-                </Text>
-              </View>
+        {/* ─── Vitrine do Espaço & Fotos (Galeria de Mídias) ─── */}
+        <View style={styles.secaoVitrine}>
+          <View style={styles.secaoVitrineHeader}>
+            <View style={styles.secaoVitrineTituloLinha}>
+              <Camera size={16} color={theme.ouroTexto} />
+              <Text style={[styles.secaoVitrineTitulo, { color: theme.textoPrimario }]}>Espaço & Cortes</Text>
             </View>
-
-            {fotosGaleria.length > 0 && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.galeriaMini}
-              >
-                {fotosGaleria.slice(0, 4).map((foto, idx) => (
-                  <Image key={`mini-${idx}`} source={{ uri: foto }} style={styles.fotoMini} resizeMode="cover" />
-                ))}
-              </ScrollView>
-            )}
+            <TouchableOpacity
+              onPress={() => router.push({ pathname: '/(app)/barbearias/[slug]', params: { slug: barbearia?.slug || 'barbearia-vieira' } })}
+              activeOpacity={0.7}
+              style={styles.btnVerTudoVitrine}
+            >
+              <Text style={[styles.btnVerTudoTexto, { color: theme.ouroTexto }]}>Ver Vitrine</Text>
+              <ChevronRight size={13} color={theme.ouroTexto} />
+            </TouchableOpacity>
           </View>
-        ) : (
-          <TouchableOpacity
-            style={[styles.cardEstabelecimento, { borderColor: theme.ouro }]}
-            onPress={() => router.push('/(app)/barbearias')}
-            activeOpacity={0.8}
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.vitrineScroll}
           >
-            <View style={styles.cardEstabHeader}>
-              <View style={[styles.cardEstabIcone, { backgroundColor: theme.ouroTranslucido }]}>
-                <Sparkles size={18} color={theme.ouroTexto} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.cardEstabTitulo, { color: theme.textoPrimario }]}>Conheça as Barbearias</Text>
-                <Text style={[styles.cardEstabEndereco, { color: theme.textoSecundario }]}>
-                  Toque aqui para escolher a barbearia e agendar seu horário.
-                </Text>
-              </View>
-              <ChevronRight size={18} color={theme.ouroTexto} />
-            </View>
-          </TouchableOpacity>
-        )}
+            {fotosGaleria.length > 0 ? (
+              fotosGaleria.map((foto, idx) => {
+                const ehVideo = isMidiaVideo(foto);
+                return (
+                  <TouchableOpacity
+                    key={`foto-vitrine-${idx}`}
+                    style={[styles.vitrineCardFoto, { backgroundColor: theme.superficie, borderColor: theme.borda }]}
+                    onPress={() => setFotoModal(foto)}
+                    activeOpacity={0.85}
+                  >
+                    {ehVideo ? (
+                      <View style={styles.galeriaVideoCaixa}>
+                        <View style={styles.galeriaVideoPoster}>
+                          <Camera size={30} color="rgba(255, 255, 255, 0.2)" />
+                        </View>
+                        {/* Play central no preview */}
+                        <View style={styles.playCentralOverlay} pointerEvents="none">
+                          <View style={styles.playCentralCirculo}>
+                            <Play size={24} color="#FFFFFF" fill="#FFFFFF" style={{ marginLeft: 3 }} />
+                          </View>
+                        </View>
+                        <View style={styles.badgeVideoGaleria}>
+                          <Play size={11} color="#FFFFFF" fill="#FFFFFF" />
+                          <Text style={styles.badgeVideoGaleriaTexto}>Vídeo</Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <Image source={{ uri: foto }} style={styles.vitrineFotoImagem} resizeMode="cover" />
+                    )}
+                  </TouchableOpacity>
+                );
+              })
+            ) : (
+              <TouchableOpacity
+                style={[styles.vitrineCardBanner, { backgroundColor: theme.superficie, borderColor: theme.bordaOuro }]}
+                onPress={() => router.push({ pathname: '/(app)/barbearias/[slug]', params: { slug: barbearia?.slug || 'barbearia-vieira' } })}
+                activeOpacity={0.85}
+              >
+                <Image
+                  source={
+                    barbearia?.banner_url
+                      ? { uri: barbearia.banner_url }
+                      : (barbearia?.slug === 'barbearia-vieira' || !barbearia?.slug)
+                      ? require('@/assets/barbearia-vieira-banner.png')
+                      : require('@/assets/banner-na-regua.png')
+                  }
+                  style={styles.vitrineFotoBanner}
+                  resizeMode="cover"
+                />
+                <View style={styles.vitrineBannerGradiente}>
+                  <Text style={[styles.vitrineBannerTitulo, { color: '#FFFFFF' }]}>{barbearia?.nome || 'Barbearia Vieira'}</Text>
+                  <Text style={[styles.vitrineBannerSub, { color: 'rgba(255, 255, 255, 0.8)' }]}>Ambiente climatizado, estilo e cortes modernos • Toque para ver</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          </ScrollView>
+        </View>
       </ScrollView>
+
+      {/* Modal de Visualização de Foto em Tela Cheia */}
+      <Modal
+        visible={fotoModal !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFotoModal(null)}
+      >
+        <Pressable style={styles.modalFotoOverlay} onPress={() => setFotoModal(null)}>
+          <SafeAreaView style={styles.modalFotoSafeArea}>
+            <TouchableOpacity style={styles.modalFotoFechar} onPress={() => setFotoModal(null)}>
+              <X size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            {fotoModal && isMidiaVideo(fotoModal) ? (
+              <View style={styles.modalVideoCard}>
+                <View style={styles.modalVideoIconeCaixa}>
+                  <Play size={36} color={theme.ouro} fill={theme.ouro} style={{ marginLeft: 4 }} />
+                </View>
+                <Text style={styles.modalVideoTitulo}>Vídeo da Barbearia</Text>
+                <Text style={styles.modalVideoSub}>Assista ao vídeo dos cortes e ambiente</Text>
+                <TouchableOpacity
+                  style={[styles.botaoAssistirVideo, { backgroundColor: theme.ouro }]}
+                  onPress={() => Linking.openURL(fotoModal)}
+                  activeOpacity={0.8}
+                >
+                  <Play size={16} color={theme.textoEscuroSobreOuro} fill={theme.textoEscuroSobreOuro} />
+                  <Text style={styles.botaoAssistirVideoTexto}>Assistir Vídeo no Player</Text>
+                </TouchableOpacity>
+              </View>
+            ) : fotoModal ? (
+              <Image
+                source={{ uri: fotoModal }}
+                style={styles.modalFotoImagem}
+                resizeMode="contain"
+              />
+            ) : null}
+          </SafeAreaView>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -955,6 +1013,221 @@ const createStyles = (theme: ThemePalette) => StyleSheet.create({
   mimoClienteBotaoTexto: {
     fontFamily: FontFamily.bold,
     fontSize: 11,
+    color: theme.textoEscuroSobreOuro,
+  },
+
+  /* ─── Vitrine do Espaço & Fotos (Horizontal Gallery) ─── */
+  secaoVitrine: {
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  secaoVitrineHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 2,
+  },
+  secaoVitrineTituloLinha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  secaoVitrineTitulo: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodyMd,
+    letterSpacing: 0.3,
+  },
+  btnVerTudoVitrine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  btnVerTudoTexto: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodySm,
+  },
+  vitrineScroll: {
+    gap: 12,
+    paddingVertical: 4,
+  },
+  vitrineCardFoto: {
+    width: 195,
+    height: 260,
+    borderRadius: Radii.xl,
+    borderWidth: 1,
+    overflow: 'hidden',
+    position: 'relative',
+    ...Shadows.card,
+  },
+  vitrineFotoImagem: {
+    width: '100%',
+    height: '100%',
+  },
+  playCentralOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+  },
+  playCentralCirculo: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.card,
+  },
+  badgeVideoGaleria: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    borderRadius: Radii.full,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  badgeVideoGaleriaTexto: {
+    color: '#FFFFFF',
+    fontFamily: FontFamily.bold,
+    fontSize: 10.5,
+  },
+  vitrineCardBanner: {
+    width: 320,
+    height: 180,
+    borderRadius: Radii.xl,
+    borderWidth: 1,
+    overflow: 'hidden',
+    position: 'relative',
+    ...Shadows.card,
+  },
+  vitrineFotoBanner: {
+    width: '100%',
+    height: '100%',
+  },
+  vitrineBannerGradiente: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 2,
+  },
+  vitrineBannerTitulo: {
+    fontFamily: FontFamily.bold,
+    fontSize: 14,
+  },
+  vitrineBannerSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: 11,
+  },
+
+  /* ─── Modal de Foto em Tela Cheia ─── */
+  modalFotoOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.94)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalFotoSafeArea: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  modalFotoFechar: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+  },
+  galeriaVideoCaixa: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#151518',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  galeriaVideoPoster: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1C1C22',
+  },
+  modalFotoImagem: {
+    width: '92%',
+    height: '80%',
+  },
+  modalVideoLoopContainer: {
+    width: '92%',
+    height: '75%',
+    borderRadius: Radii.xl,
+    overflow: 'hidden',
+    backgroundColor: '#000000',
+  },
+  modalVideoCard: {
+    width: '85%',
+    backgroundColor: '#1C1C22',
+    borderRadius: Radii.xl,
+    borderWidth: 1,
+    borderColor: theme.bordaOuro,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    gap: Spacing.sm,
+    ...Shadows.card,
+  },
+  modalVideoIconeCaixa: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: theme.ouroTranslucido,
+    borderWidth: 1.5,
+    borderColor: theme.bordaOuro,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.xs,
+  },
+  modalVideoTitulo: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodyLg,
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  modalVideoSub: {
+    fontFamily: FontFamily.regular,
+    fontSize: FontSize.bodySm,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  botaoAssistirVideo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    paddingVertical: 13,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: Radii.full,
+    width: '100%',
+  },
+  botaoAssistirVideoTexto: {
+    fontFamily: FontFamily.bold,
+    fontSize: FontSize.bodyMd,
     color: theme.textoEscuroSobreOuro,
   },
 });

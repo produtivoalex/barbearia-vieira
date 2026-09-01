@@ -653,13 +653,13 @@ export default function TelaOpcoesAvancadas() {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* ─── CARD 1: MENSAGEM EM GRUPO ─── */}
-        <View style={[styles.secaoCard, { backgroundColor: theme.superficie, borderColor: theme.borda, borderWidth: 1 }]}>
+        <View style={[styles.secaoCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
           <View style={styles.secaoHeaderLinha}>
-            <View style={[styles.secaoIconeBadge, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
-              <MessageSquare size={20} color="#3B82F6" />
+            <View style={[styles.secaoIconeBadge, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
+              <MessageSquare size={20} color={theme.ouroTexto} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.secaoCardTitulo, { color: theme.textoPrimario }]}>Mensagem em Grupo</Text>
+              <Text style={[styles.secaoCardTitulo, { color: theme.textoPrimario }]}>Mensagens em Grupo</Text>
               <Text style={[styles.secaoCardSubtitulo, { color: theme.textoSecundario }]}>
                 Envie notificações diretas para grupos: hoje, semana, fila de espera ou todos os clientes, com opção de desmarcar pessoas específicas.
               </Text>
@@ -667,23 +667,23 @@ export default function TelaOpcoesAvancadas() {
           </View>
 
           <TouchableOpacity
-            style={[styles.botaoAcaoPrincipal, { backgroundColor: '#3B82F6' }]}
+            style={[styles.botaoAcaoPrincipal, { backgroundColor: theme.ouro }]}
             onPress={abrirModalMensagemGrupo}
             activeOpacity={0.8}
           >
-            <Send size={16} color="#FFFFFF" />
-            <Text style={[styles.botaoAcaoPrincipalTexto, { color: '#FFFFFF' }]}>Disparar Mensagem em Grupo</Text>
+            <Send size={16} color={theme.textoEscuroSobreOuro} />
+            <Text style={[styles.botaoAcaoPrincipalTexto, { color: theme.textoEscuroSobreOuro }]}>Disparar Mensagem em Grupo</Text>
           </TouchableOpacity>
         </View>
 
         {/* ─── CARD 2: RESERVA & ENCAIXE MANUAL ─── */}
-        <View style={[styles.secaoCard, { backgroundColor: theme.superficie, borderColor: theme.borda, borderWidth: 1 }]}>
+        <View style={[styles.secaoCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
           <View style={styles.secaoHeaderLinha}>
-            <View style={[styles.secaoIconeBadge, { backgroundColor: theme.ouroTranslucido }]}>
+            <View style={[styles.secaoIconeBadge, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
               <CalendarPlus size={20} color={theme.ouroTexto} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.secaoCardTitulo, { color: theme.textoPrimario }]}>Reserva / Encaixe de Clientes</Text>
+              <Text style={[styles.secaoCardTitulo, { color: theme.textoPrimario }]}>Encaixe Rápido de Clientes</Text>
               <Text style={[styles.secaoCardSubtitulo, { color: theme.textoSecundario }]}>
                 Pesquise clientes cadastrados por nome, e-mail ou telefone, ou preencha manualmente com colinha discreta dos combos.
               </Text>
@@ -704,125 +704,129 @@ export default function TelaOpcoesAvancadas() {
         </View>
 
         {/* ─── CARD 3: LISTA NEGRA (BLOQUEIO) ─── */}
-        <View style={[styles.secaoCard, { backgroundColor: theme.superficie, borderColor: theme.borda, borderWidth: 1 }]}>
+        <View style={[styles.secaoCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
           <View style={styles.secaoHeaderLinha}>
-            <View style={[styles.secaoIconeBadge, styles.iconeBadgeVermelho]}>
-              <Ban size={20} color={Colors.erro} />
+            <View style={[styles.secaoIconeBadge, { backgroundColor: 'rgba(239, 68, 68, 0.12)', borderColor: 'rgba(239, 68, 68, 0.25)' }]}>
+              <Ban size={20} color={theme.erro} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.secaoCardTitulo}>Lista Negra & Bloqueio</Text>
-              <Text style={styles.secaoCardSubtitulo}>
+              <Text style={[styles.secaoCardTitulo, { color: theme.textoPrimario }]}>Clientes Restritos (Bloqueio)</Text>
+              <Text style={[styles.secaoCardSubtitulo, { color: theme.textoSecundario }]}>
                 Bloqueie o acesso de clientes ao app pesquisando por nome, e-mail ou telefone. Eles verão a tela de manutenção.
               </Text>
             </View>
           </View>
 
           {bloqueados.length > 0 ? (
-            <View style={styles.listaBloqueados}>
+            <View style={[styles.listaBloqueados, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
               {bloqueados.map((b) => (
-                <View key={b.id} style={styles.itemBloqueado}>
+                <View key={b.id} style={[styles.itemBloqueado, { borderBottomColor: theme.borda }]}>
                   <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={styles.itemBloqueadoIdent}>
+                    <Text style={[styles.itemBloqueadoIdent, { color: theme.textoPrimario }]}>
                       {b.email || b.telefone || 'Cliente Bloqueado'}
                     </Text>
-                    <Text style={styles.itemBloqueadoMotivo} numberOfLines={1}>
+                    <Text style={[styles.itemBloqueadoMotivo, { color: theme.textoSecundario }]} numberOfLines={1}>
                       {b.motivo || 'Bloqueado pelo barbeiro'}
                     </Text>
                   </View>
                   <TouchableOpacity
-                    style={styles.botaoDesbloquear}
+                    style={[styles.botaoDesbloquear, { backgroundColor: theme.verdeClaro, borderColor: theme.verde }]}
                     onPress={() => handleDesbloquear(b.id)}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.botaoDesbloquearTexto}>Desbloquear</Text>
+                    <Text style={[styles.botaoDesbloquearTexto, { color: theme.verde }]}>Desbloquear</Text>
                   </TouchableOpacity>
                 </View>
               ))}
             </View>
           ) : (
-            <Text style={styles.textoVazioSecao}>Nenhum cliente bloqueado no momento.</Text>
+            <View style={[styles.statusVazioPill, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+              <Text style={[styles.statusVazioTexto, { color: theme.textoSecundario }]}>Nenhum cliente restrito no momento.</Text>
+            </View>
           )}
 
           <TouchableOpacity
-            style={[styles.botaoAcaoSecundario, { borderColor: 'rgba(229, 57, 53, 0.4)' }]}
+            style={[styles.botaoAcaoSecundario, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}
             onPress={() => {
               limparSelecaoClienteBloqueio();
               setModalBloqueioAberto(true);
             }}
             activeOpacity={0.8}
           >
-            <Ban size={16} color={Colors.erro} />
-            <Text style={[styles.botaoAcaoSecundarioTexto, { color: Colors.erro }]}>
-              Bloquear Novo Cliente
+            <Ban size={16} color={theme.erro} />
+            <Text style={[styles.botaoAcaoSecundarioTexto, { color: theme.erro }]}>
+              + Bloquear Novo Cliente
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* ─── CARD 4: ADICIONAR FUNCIONÁRIO ─── */}
-        <View style={styles.secaoCard}>
+        <View style={[styles.secaoCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
           <View style={styles.secaoHeaderLinha}>
-            <View style={styles.secaoIconeBadge}>
-              <Users size={20} color={Colors.ouro} />
+            <View style={[styles.secaoIconeBadge, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
+              <Users size={20} color={theme.ouroTexto} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.secaoCardTitulo}>Equipe da Barbearia</Text>
-              <Text style={styles.secaoCardSubtitulo}>
+              <Text style={[styles.secaoCardTitulo, { color: theme.textoPrimario }]}>Equipe da Barbearia</Text>
+              <Text style={[styles.secaoCardSubtitulo, { color: theme.textoSecundario }]}>
                 Cadastre outros barbeiros ou funcionários para a {barbearia?.nome || 'sua barbearia'}.
               </Text>
             </View>
           </View>
 
           {equipe.length > 0 ? (
-            <View style={styles.listaBloqueados}>
+            <View style={[styles.listaBloqueados, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
               {equipe.map((f) => (
-                <View key={f.id} style={styles.itemBloqueado}>
+                <View key={f.id} style={[styles.itemBloqueado, { borderBottomColor: theme.borda }]}>
                   <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={styles.itemBloqueadoIdent}>{f.nome}</Text>
-                    <Text style={styles.itemBloqueadoMotivo}>
+                    <Text style={[styles.itemBloqueadoIdent, { color: theme.textoPrimario }]}>{f.nome}</Text>
+                    <Text style={[styles.itemBloqueadoMotivo, { color: theme.textoSecundario }]}>
                       {f.cargo} · {f.telefone || f.email || 'Sem contato'}
                     </Text>
                   </View>
-                  <View style={styles.badgeAtivo}>
-                    <Text style={styles.badgeAtivoTexto}>{f.ativo ? 'Ativo' : 'Inativo'}</Text>
+                  <View style={[styles.badgeAtivo, { backgroundColor: theme.ouroTranslucido }]}>
+                    <Text style={[styles.badgeAtivoTexto, { color: theme.ouroTexto }]}>{f.ativo ? 'Ativo' : 'Inativo'}</Text>
                   </View>
                 </View>
               ))}
             </View>
           ) : (
-            <Text style={styles.textoVazioSecao}>Apenas você está cadastrado na equipe.</Text>
+            <View style={[styles.statusVazioPill, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+              <Text style={[styles.statusVazioTexto, { color: theme.textoSecundario }]}>Apenas você está cadastrado na equipe.</Text>
+            </View>
           )}
 
           <TouchableOpacity
-            style={styles.botaoAcaoPrincipal}
+            style={[styles.botaoAcaoPrincipal, { backgroundColor: theme.ouro }]}
             onPress={() => setModalFuncionarioAberto(true)}
             activeOpacity={0.8}
           >
-            <UserPlus size={16} color="#FFFFFF" />
-            <Text style={styles.botaoAcaoPrincipalTexto}>+ Adicionar Novo Funcionário</Text>
+            <UserPlus size={16} color={theme.textoEscuroSobreOuro} />
+            <Text style={[styles.botaoAcaoPrincipalTexto, { color: theme.textoEscuroSobreOuro }]}>+ Adicionar Novo Funcionário</Text>
           </TouchableOpacity>
         </View>
 
         {/* ─── CARD 5: AGENDAMENTO À TARDE (DIMINUIR FILA DE ESPERA) ─── */}
-        <View style={styles.secaoCard}>
+        <View style={[styles.secaoCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
           <View style={styles.secaoHeaderLinha}>
-            <View style={styles.secaoIconeBadge}>
-              <Clock size={20} color={Colors.ouro} />
+            <View style={[styles.secaoIconeBadge, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
+              <Clock size={20} color={theme.ouroTexto} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.secaoCardTitulo}>Agendamentos à Tarde</Text>
-              <Text style={styles.secaoCardSubtitulo}>
+              <Text style={[styles.secaoCardTitulo, { color: theme.textoPrimario }]}>Agendamentos à Tarde</Text>
+              <Text style={[styles.secaoCardSubtitulo, { color: theme.textoSecundario }]}>
                 Abra vagas agendáveis na tarde para diminuir a lista de espera. Avisa automaticamente que a ordem de chegada estará suspensa para garantir justiça.
               </Text>
             </View>
           </View>
 
           <TouchableOpacity
-            style={styles.botaoAcaoPrincipal}
+            style={[styles.botaoAcaoPrincipal, { backgroundColor: theme.ouro }]}
             onPress={() => setModalVagasTardeAberto(true)}
             activeOpacity={0.8}
           >
-            <Clock size={16} color="#FFFFFF" />
-            <Text style={styles.botaoAcaoPrincipalTexto}>Liberar Vagas da Tarde Hoje</Text>
+            <Clock size={16} color={theme.textoEscuroSobreOuro} />
+            <Text style={[styles.botaoAcaoPrincipalTexto, { color: theme.textoEscuroSobreOuro }]}>Liberar Vagas da Tarde Hoje</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -1457,86 +1461,97 @@ const createStyles = (theme: ThemePalette) =>
     },
     secaoCard: {
       backgroundColor: theme.superficie,
-      borderRadius: Radii.lg,
-      padding: Spacing.md,
+      borderRadius: Radii.xl,
+      padding: Spacing.lg,
       borderWidth: 1,
       borderColor: theme.borda,
-      gap: Spacing.sm,
+      gap: Spacing.md,
       ...Shadows.card,
     },
     secaoHeaderLinha: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: Spacing.sm,
+      gap: Spacing.md,
     },
     secaoIconeBadge: {
-      width: 36,
-      height: 36,
-      borderRadius: Radii.sm,
-      backgroundColor: theme.ouroTranslucido,
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: 'transparent',
       alignItems: 'center',
       justifyContent: 'center',
     },
     iconeBadgeVermelho: {
-      backgroundColor: theme.erroClaro,
+      backgroundColor: 'rgba(239, 68, 68, 0.12)',
+      borderColor: 'rgba(239, 68, 68, 0.25)',
     },
     secaoCardTitulo: {
       fontFamily: FontFamily.bold,
-      fontSize: FontSize.bodyMd,
+      fontSize: 15.5,
       color: theme.textoPrimario,
     },
     secaoCardSubtitulo: {
       fontFamily: FontFamily.regular,
-      fontSize: FontSize.labelXs,
+      fontSize: 12.5,
       color: theme.textoSecundario,
-      lineHeight: 16,
+      lineHeight: 17,
       marginTop: 2,
     },
     botaoAcaoPrincipal: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 6,
-      backgroundColor: theme.vermelho,
-      paddingVertical: 12,
+      gap: 8,
+      backgroundColor: theme.ouro,
+      paddingVertical: 13,
       borderRadius: Radii.md,
-      marginTop: 4,
+      marginTop: 2,
     },
     botaoAcaoPrincipalTexto: {
       fontFamily: FontFamily.bold,
-      fontSize: FontSize.bodySm,
-      color: '#FFFFFF',
+      fontSize: 13.5,
+      color: theme.textoEscuroSobreOuro,
     },
     botaoAcaoSecundario: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       gap: 6,
-      backgroundColor: theme.erroClaro,
       paddingVertical: 12,
       borderRadius: Radii.md,
       borderWidth: 1,
-      borderColor: theme.erro,
-      marginTop: 4,
+      marginTop: 2,
     },
     botaoAcaoSecundarioTexto: {
       fontFamily: FontFamily.bold,
-      fontSize: FontSize.bodySm,
-      color: theme.erro,
+      fontSize: 13.5,
+    },
+    statusVazioPill: {
+      paddingVertical: 10,
+      paddingHorizontal: Spacing.md,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginVertical: 2,
+    },
+    statusVazioTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: 12.5,
     },
     listaBloqueados: {
-      backgroundColor: theme.superficie2,
       borderRadius: Radii.md,
       padding: Spacing.xs,
       gap: 4,
+      borderWidth: 1,
     },
     itemBloqueado: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      padding: Spacing.xs,
+      padding: Spacing.sm,
       borderBottomWidth: 1,
-      borderBottomColor: theme.borda,
     },
     itemBloqueadoIdent: {
       fontFamily: FontFamily.semiBold,
@@ -1549,34 +1564,28 @@ const createStyles = (theme: ThemePalette) =>
       color: theme.textoSecundario,
     },
     botaoDesbloquear: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
       borderRadius: Radii.sm,
-      backgroundColor: theme.verdeClaro,
       borderWidth: 1,
-      borderColor: theme.verde,
     },
     botaoDesbloquearTexto: {
       fontFamily: FontFamily.bold,
       fontSize: FontSize.labelXs,
-      color: theme.verde,
     },
     badgeAtivo: {
       paddingHorizontal: 8,
       paddingVertical: 2,
       borderRadius: Radii.sm,
-      backgroundColor: theme.ouroTranslucido,
     },
     badgeAtivoTexto: {
       fontFamily: FontFamily.semiBold,
       fontSize: FontSize.labelXs,
-      color: theme.ouroTexto,
     },
     textoVazioSecao: {
       fontFamily: FontFamily.regular,
       fontSize: FontSize.labelXs,
-      color: theme.textoDesabilitado,
-      fontStyle: 'italic',
+      color: theme.textoSecundario,
       paddingVertical: 2,
     },
     listaDestinatarios: {

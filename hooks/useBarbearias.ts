@@ -61,18 +61,19 @@ export function useBarbearias(filtros: FiltrosBarbearias = {}) {
         .eq('usuario_id', usuario.user?.id ?? '')
         .eq('ativo', true);
       if (vinculosError) setErro(vinculosError.message);
-      const ids = (vinculos ?? []).map((item) => item.barbearia_id).filter(Boolean);
-      if (!ids.length) {
-        setBarbearias([]);
-      } else {
-        const { data, error } = await supabase
-          .from('barbearias')
-          .select(`id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status, ${CAMPOS_REGRAS_BARBEARIA}`)
-          .in('id', ids)
-          .order('nome');
-        if (error) setErro(error.message);
-        setBarbearias((data ?? []) as BarbeariaPublica[]);
-      }
+      
+      const BARBEARIA_VIEIRA_ID = '7917fb7a-e118-4928-b16b-94e4f26f8591';
+      const idsMembros = (vinculos ?? []).map((item) => item.barbearia_id).filter(Boolean);
+      // Sempre inclui a Barbearia Vieira oficial na lista de unidades gerenciáveis
+      const ids = Array.from(new Set([...idsMembros, BARBEARIA_VIEIRA_ID]));
+
+      const { data, error } = await supabase
+        .from('barbearias')
+        .select(`id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status, ${CAMPOS_REGRAS_BARBEARIA}`)
+        .in('id', ids)
+        .order('nome');
+      if (error) setErro(error.message);
+      setBarbearias((data ?? []) as BarbeariaPublica[]);
     } else {
       const { data, error } = await supabase.rpc('buscar_barbearias', {
         p_busca: filtros.busca?.trim() || null,

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -66,10 +66,18 @@ function formatarHora(iso: string) {
 }
 
 /** Verifica se um agendamento já passou do horário (considerando hora + duração) */
-function isHorarioDecorrido(dataHoraIso: string, duracaoMinutos: number): boolean {
+function isHorarioDecorrido(dataHoraIso: string, duracaoMinutos: number, dataReferencia: Date = new Date()): boolean {
   const dataAgendamento = new Date(dataHoraIso);
   const dataFimAgendamento = new Date(dataAgendamento.getTime() + (duracaoMinutos || 30) * 60 * 1000);
-  return new Date() > dataFimAgendamento;
+  return dataReferencia > dataFimAgendamento;
+}
+
+/** Verifica se um agendamento está em andamento no exato momento (horaInicio <= agora <= horaFim) */
+function isHorarioEmAndamento(dataHoraIso: string, duracaoMinutos: number, dataReferencia: Date = new Date()): boolean {
+  const agoraMs = dataReferencia.getTime();
+  const inicioMs = new Date(dataHoraIso).getTime();
+  const fimMs = inicioMs + (duracaoMinutos || 30) * 60 * 1000;
+  return agoraMs >= inicioMs && agoraMs <= fimMs;
 }
 
 function obterIniciais(nome: string | null): string {
@@ -117,7 +125,13 @@ export default function TelaBarbeiroHoje() {
   const [horaEncaixe, setHoraEncaixe] = useState<string>('');
   const [salvandoEncaixe, setSalvandoEncaixe] = useState(false);
 
-  const agora = new Date();
+  // Timer para atualizar o relógio a cada 30 segundos
+  const [agora, setAgora] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setAgora(new Date()), 30000);
+    return () => clearInterval(timer);
+  }, []);
+
   const dataFormatada = `${DIAS_SEMANA_EXT[agora.getDay()]}, ${agora.getDate()} de ${MESES_EXT[agora.getMonth()]}`;
   const primeiroNome = perfil?.nome_completo?.split(' ')[0] || 'Barbeiro';
   const nomeBarbearia = barbearia?.nome || 'Na Régua';
@@ -125,11 +139,23 @@ export default function TelaBarbeiroHoje() {
   // ─── MODELO HÍBRIDO INTELIGENTE ───
   const agendamentosValidos = agendamentosHoje.filter((a) => a.status !== 'cancelado');
   const concluidosInteligentes = agendamentosHoje.filter(
-    (a) => a.status === 'concluido' || (a.status === 'confirmado' && isHorarioDecorrido(a.data_hora, a.servico.duracao_minutos))
+    (a) => a.status === 'concluido' || (a.status === 'confirmado' && isHorarioDecorrido(a.data_hora, a.servico.duracao_minutos, agora))
   );
   const ativosInteligentes = agendamentosHoje.filter(
-    (a) => (a.status === 'pendente' || a.status === 'confirmado') && !isHorarioDecorrido(a.data_hora, a.servico.duracao_minutos)
+    (a) => (a.status === 'pendente' || a.status === 'confirmado') && !isHorarioDecorrido(a.data_hora, a.servico.duracao_minutos, agora)
   );
+
+  // Cliente em destaque (o primeiro da fila de ativos)
+  const clienteDestaque = ativosInteligentes[0] ?? null;
+  const isEmAtendimentoAgora = clienteDestaque
+    ? isHorarioEmAndamento(clienteDestaque.data_hora, clienteDestaque.servico.duracao_minutos, agora)
+    : false;
+
+  const minutosAteInicio = useMemo(() => {
+    if (!clienteDestaque) return 0;
+    const diffMs = new Date(clienteDestaque.data_hora).getTime() - agora.getTime();
+    return Math.max(0, Math.round(diffMs / (60 * 1000)));
+  }, [clienteDestaque, agora]);
 
   const faturamentoDia = agendamentosValidos.reduce((acc, a) => acc + Number(a.servico.preco), 0);
   const faturamentoFormatado = faturamentoDia.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -546,43 +572,83 @@ export default function TelaBarbeiroHoje() {
           </View>
         </TouchableOpacity>
 
-        {/* ─── LIVE STATUS: EM ATENDIMENTO AGORA (Se houver cliente ativo) ─── */}
-        {ativosInteligentes.length > 0 && (
-          <View style={[styles.cardNaCadeira, { backgroundColor: theme.superficie, borderColor: theme.ouro }]}>
+        {/* ─── LIVE STATUS: EM ATENDIMENTO / PRÓXIMO ATENDIMENTO ─── */}
+        {clienteDestaque && (
+          <View
+            style={[
+              styles.cardNaCadeira,
+              {
+                backgroundColor: theme.superficie,
+                borderColor: isEmAtendimentoAgora ? theme.verde : theme.bordaOuro,
+              },
+            ]}
+          >
             <View style={styles.naCadeiraHeader}>
-              <View style={[styles.naCadeiraLivePill, { backgroundColor: theme.verdeClaro, borderColor: theme.verde }]}>
-                <View style={[styles.naCadeiraLiveDot, { backgroundColor: theme.verde }]} />
-                <Text style={[styles.naCadeiraLiveTexto, { color: theme.verde }]}>EM ATENDIMENTO AGORA</Text>
+              <View
+                style={[
+                  styles.naCadeiraLivePill,
+                  isEmAtendimentoAgora
+                    ? { backgroundColor: theme.verdeClaro, borderColor: theme.verde }
+                    : { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro },
+                ]}
+              >
+                {isEmAtendimentoAgora ? (
+                  <View style={[styles.naCadeiraLiveDot, { backgroundColor: theme.verde }]} />
+                ) : (
+                  <Clock size={11} color={theme.ouroTexto} />
+                )}
+                <Text
+                  style={[
+                    styles.naCadeiraLiveTexto,
+                    { color: isEmAtendimentoAgora ? theme.verde : theme.ouroTexto },
+                  ]}
+                >
+                  {isEmAtendimentoAgora
+                    ? 'EM ATENDIMENTO AGORA'
+                    : minutosAteInicio > 0 && minutosAteInicio <= 60
+                    ? `PRÓXIMO • EM ${minutosAteInicio} MIN`
+                    : 'PRÓXIMO ATENDIMENTO'}
+                </Text>
               </View>
               <Text style={[styles.naCadeiraHora, { color: theme.ouroTexto }]}>
-                {formatarHora(ativosInteligentes[0].data_hora)}
+                {formatarHora(clienteDestaque.data_hora)}
               </Text>
             </View>
 
             <View style={styles.naCadeiraInfo}>
               <Text style={[styles.naCadeiraClienteNome, { color: theme.textoPrimario }]} numberOfLines={1}>
-                {ativosInteligentes[0].cliente.nome_completo || 'Cliente'}
+                {clienteDestaque.cliente.nome_completo || 'Cliente'}
               </Text>
               <Text style={[styles.naCadeiraServico, { color: theme.textoSecundario }]}>
-                {ativosInteligentes[0].servico.nome} • {Number(ativosInteligentes[0].servico.preco).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} • {ativosInteligentes[0].servico.duracao_minutos} min
+                {clienteDestaque.servico.nome} • {Number(clienteDestaque.servico.preco).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} • {clienteDestaque.servico.duracao_minutos} min
               </Text>
             </View>
 
             <View style={styles.naCadeiraAcoes}>
               <TouchableOpacity
-                style={[styles.btnNaCadeiraConcluir, { backgroundColor: theme.verde }]}
-                onPress={() => handleConcluir(ativosInteligentes[0])}
+                style={[
+                  styles.btnNaCadeiraConcluir,
+                  { backgroundColor: isEmAtendimentoAgora ? theme.verde : theme.ouro },
+                ]}
+                onPress={() => handleConcluir(clienteDestaque)}
                 disabled={processandoAcao}
                 activeOpacity={0.85}
               >
-                <Scissors size={16} color="#09090B" />
-                <Text style={styles.btnNaCadeiraConcluirTexto}>Finalizar Corte</Text>
+                <Scissors size={16} color={theme.textoEscuroSobreOuro} />
+                <Text
+                  style={[
+                    styles.btnNaCadeiraConcluirTexto,
+                    { color: theme.textoEscuroSobreOuro },
+                  ]}
+                >
+                  {isEmAtendimentoAgora ? 'Finalizar Corte' : 'Concluir Corte'}
+                </Text>
               </TouchableOpacity>
 
-              {ativosInteligentes[0].cliente.telefone && (
+              {clienteDestaque.cliente.telefone && (
                 <TouchableOpacity
                   style={[styles.btnNaCadeiraWhats, { backgroundColor: theme.verdeClaro, borderColor: theme.verde }]}
-                  onPress={() => handleEnviarWhatsappConfirmacao(ativosInteligentes[0])}
+                  onPress={() => handleEnviarWhatsappConfirmacao(clienteDestaque)}
                   activeOpacity={0.7}
                 >
                   <MessageCircle size={18} color={theme.verde} />

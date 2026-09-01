@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   Alert,
   ActivityIndicator,
   Share,
+  Platform,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -65,10 +67,30 @@ export default function TelaBarbeiroMais() {
   const { perfil, carregandoPerfil } = usePerfil();
   const { session } = useAuth();
   const barbeiroId = session?.user?.id;
-  const { barbearia } = useBarbearia();
+  const { barbearia, selecionarBarbearia } = useBarbearia();
   const { theme, isEscuro, modoTema, setModoTema } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { servicos, recarregar: recarregarServicos } = useServicos('todos', barbearia?.id);
+  const [enviandoLogoHero, setEnviandoLogoHero] = useState(false);
+
+  // Controle de Teclado e Edição Dinâmica
+  const [alturaTeclado, setAlturaTeclado] = useState(0);
+  const [servicoEditandoLoteId, setServicoEditandoLoteId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => setAlturaTeclado(e.endCoordinates.height)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setAlturaTeclado(0)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const [modalAtivo, setModalAtivo] = useState<TipoModal>(null);
 
@@ -346,6 +368,36 @@ export default function TelaBarbeiroMais() {
     await supabase.auth.signOut();
   }
 
+  async function handleAlterarLogoDireto() {
+    if (!barbearia) return;
+    try {
+      const resultado = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.9,
+      });
+
+      if (resultado.canceled || !resultado.assets?.length) return;
+      const asset = resultado.assets[0];
+
+      setEnviandoLogoHero(true);
+      const { publicUrl } = await uploadImagemTenant(barbearia.id, 'logo', asset.uri, asset.mimeType);
+
+      await supabase
+        .from('barbearias')
+        .update({ logo_url: publicUrl, atualizado_em: new Date().toISOString() })
+        .eq('id', barbearia.id);
+
+      await selecionarBarbearia({ ...barbearia, logo_url: publicUrl });
+      Alert.alert('Logo Atualizada! ✨', 'A logo da sua barbearia foi alterada com sucesso.');
+    } catch (err: any) {
+      Alert.alert('Erro ao enviar logo', err?.message || 'Tente novamente.');
+    } finally {
+      setEnviandoLogoHero(false);
+    }
+  }
+
   function handleCompartilharLink() {
     const slug = barbearia?.slug || barbearia?.id || 'barbearia';
     const nome = barbearia?.nome || 'nossa barbearia';
@@ -386,9 +438,30 @@ export default function TelaBarbeiroMais() {
         {/* ─── HERO CARD DO ESTABELECIMENTO (Orgulho & Ação Rápida) ─── */}
         <View style={[styles.heroBarbeariaCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
           <View style={styles.heroTopo}>
-            <View style={styles.heroLogoWrapper}>
-              <LogoBarbearia tamanho={60} tipo="avatar" variante="compacto" uri={barbearia?.logo_url} />
-            </View>
+            <TouchableOpacity
+              style={styles.heroLogoWrapper}
+              onPress={handleAlterarLogoDireto}
+              activeOpacity={0.75}
+            >
+              {enviandoLogoHero ? (
+                <View style={[styles.heroLogoLoading, { backgroundColor: theme.superficie2 }]}>
+                  <ActivityIndicator size="small" color={theme.ouro} />
+                </View>
+              ) : (
+                <>
+                  <LogoBarbearia
+                    tamanho={60}
+                    tipo="avatar"
+                    variante="compacto"
+                    uri={barbearia?.logo_url}
+                    slug={barbearia?.slug}
+                  />
+                  <View style={[styles.badgeCameraHero, { backgroundColor: theme.ouro, borderColor: theme.superficie }]}>
+                    <Camera size={10} color={theme.textoEscuroSobreOuro} />
+                  </View>
+                </>
+              )}
+            </TouchableOpacity>
 
             <View style={styles.heroInfo}>
               <Text style={[styles.heroNomeBarbearia, { color: theme.textoPrimario }]} numberOfLines={1}>
@@ -581,7 +654,6 @@ export default function TelaBarbeiroMais() {
           <LogOut size={16} color={theme.erro} />
           <Text style={[styles.btnSairIosTexto, { color: theme.erro }]}>Sair da Conta</Text>
         </TouchableOpacity>
-
         <View style={{ height: Spacing.giant }} />
       </ScrollView>
 
@@ -592,8 +664,9 @@ export default function TelaBarbeiroMais() {
         animationType="fade"
         onRequestClose={() => setModalAtivo(null)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setModalAtivo(null)}>
-          <Pressable style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setModalAtivo(null)} />
+          <View style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda, maxHeight: '88%' }]}>
             <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
 
             <View style={styles.modalHeader}>
@@ -633,7 +706,17 @@ export default function TelaBarbeiroMais() {
               Toque na paleta para editar fotos e moldura, ou no preço para reajustar valores.
             </Text>
 
-            <ScrollView style={styles.servicosLista} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={styles.servicosLista}
+              contentContainerStyle={{ paddingBottom: Spacing.xl }}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              automaticallyAdjustKeyboardInsets={true}
+              bounces={true}
+              scrollEventThrottle={16}
+            >
               {servicos.map((s) => (
                 <View key={s.id} style={[styles.servicoItem, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
                   <IlustracaoServico
@@ -656,6 +739,7 @@ export default function TelaBarbeiroMais() {
                     <TouchableOpacity
                       onPress={() => abrirReajusteIndividual(s)}
                       activeOpacity={0.7}
+                      delayPressIn={50}
                     >
                       <Text style={[styles.servicoPreco, { color: theme.ouroTexto }]}>
                         {Number(s.preco).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -667,6 +751,7 @@ export default function TelaBarbeiroMais() {
                         style={[styles.btnEditarServicoIcone, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}
                         onPress={() => abrirEditarServicoCompleto(s)}
                         activeOpacity={0.7}
+                        delayPressIn={50}
                       >
                         <Palette size={13} color={theme.ouroTexto} />
                       </TouchableOpacity>
@@ -675,6 +760,7 @@ export default function TelaBarbeiroMais() {
                         style={[styles.badgeEditarPreco, { backgroundColor: theme.ouroTranslucido }]}
                         onPress={() => abrirReajusteIndividual(s)}
                         activeOpacity={0.7}
+                        delayPressIn={50}
                       >
                         <Edit3 size={11} color={theme.ouroTexto} />
                         <Text style={[styles.badgeEditarPrecoTexto, { color: theme.ouroTexto }]}>Reajustar</Text>
@@ -684,8 +770,8 @@ export default function TelaBarbeiroMais() {
                 </View>
               ))}
             </ScrollView>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
       {/* ─── Modal de Edição Completa de Serviço ─── */}
@@ -695,8 +781,9 @@ export default function TelaBarbeiroMais() {
         animationType="slide"
         onRequestClose={() => setModalEditorServico(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setModalEditorServico(false)}>
-          <Pressable style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
+        <View style={[styles.modalOverlay, alturaTeclado > 0 && { paddingBottom: alturaTeclado }]}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setModalEditorServico(false)} />
+          <View style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda, maxHeight: alturaTeclado > 0 ? '70%' : '88%' }]}>
             <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
 
             <View style={styles.modalHeader}>
@@ -708,7 +795,14 @@ export default function TelaBarbeiroMais() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 480 }}>
+            <ScrollView
+              showsVerticalScrollIndicator={true}
+              style={{ maxHeight: 480, flexShrink: 1 }}
+              contentContainerStyle={{ paddingBottom: Spacing.xl }}
+              nestedScrollEnabled={true}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+            >
               <Text style={[styles.labelCampo, { color: theme.textoSecundario }]}>NOME DO SERVIÇO</Text>
               <TextInput
                 style={[styles.inputModal, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
@@ -754,7 +848,7 @@ export default function TelaBarbeiroMais() {
               />
 
               <TouchableOpacity
-                style={[styles.botaoConfirmarModal, { backgroundColor: theme.ouro }]}
+                style={[styles.botaoConfirmarModal, { backgroundColor: theme.ouro, marginTop: Spacing.md }]}
                 onPress={handleSalvarServicoCompleto}
                 disabled={salvandoServico}
                 activeOpacity={0.8}
@@ -768,8 +862,8 @@ export default function TelaBarbeiroMais() {
                 )}
               </TouchableOpacity>
             </ScrollView>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
       {/* ─── Modal de Reajuste Individual ─── */}
@@ -779,8 +873,9 @@ export default function TelaBarbeiroMais() {
         animationType="fade"
         onRequestClose={() => setServicoParaReajuste(null)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setServicoParaReajuste(null)}>
-          <Pressable style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
+        <View style={[styles.modalOverlay, alturaTeclado > 0 && { paddingBottom: alturaTeclado }]}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setServicoParaReajuste(null)} />
+          <View style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
             <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
 
             <View style={styles.modalHeader}>
@@ -824,8 +919,8 @@ export default function TelaBarbeiroMais() {
                 </TouchableOpacity>
               </View>
             )}
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
       {/* ─── Modal de Reajuste em Lote ─── */}
@@ -833,38 +928,90 @@ export default function TelaBarbeiroMais() {
         visible={modalLoteAberto}
         transparent
         animationType="fade"
-        onRequestClose={() => setModalLoteAberto(false)}
+        onRequestClose={() => {
+          setServicoEditandoLoteId(null);
+          setModalLoteAberto(false);
+        }}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setModalLoteAberto(false)}>
-          <Pressable style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
+        <View style={[styles.modalOverlay, alturaTeclado > 0 && { paddingBottom: alturaTeclado }]}>
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => {
+              setServicoEditandoLoteId(null);
+              setModalLoteAberto(false);
+            }}
+          />
+          <View style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda, maxHeight: alturaTeclado > 0 ? '70%' : '88%' }]}>
             <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
 
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitulo, { color: theme.textoPrimario }]}>Reajuste em Lote</Text>
-              <TouchableOpacity onPress={() => setModalLoteAberto(false)}>
+              <TouchableOpacity onPress={() => {
+                setServicoEditandoLoteId(null);
+                setModalLoteAberto(false);
+              }}>
                 <X size={20} color={theme.textoSecundario} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.servicosLoteLista} showsVerticalScrollIndicator={false}>
-              {servicos.map((s) => (
-                <View key={s.id} style={[styles.linhaLoteServico, { borderBottomColor: theme.borda }]}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.linhaLoteNome, { color: theme.textoPrimario }]}>{s.nome}</Text>
-                    <Text style={[styles.linhaLoteAtual, { color: theme.textoSecundario }]}>
-                      Atual: R$ {Number(s.preco).toFixed(2)}
-                    </Text>
+            <ScrollView
+              style={styles.servicosLoteLista}
+              contentContainerStyle={{ paddingBottom: 24 }}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+              keyboardShouldPersistTaps="always"
+              keyboardDismissMode="on-drag"
+              bounces={true}
+              scrollEventThrottle={16}
+            >
+              {servicos.map((s) => {
+                const focado = servicoEditandoLoteId === s.id;
+                const valorAtualOuEditado = precosLote[s.id] !== undefined ? precosLote[s.id] : String(s.preco);
+
+                return (
+                  <View key={s.id} style={[styles.linhaLoteServico, { borderBottomColor: theme.borda }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.linhaLoteNome, { color: theme.textoPrimario }]}>{s.nome}</Text>
+                      <Text style={[styles.linhaLoteAtual, { color: theme.textoSecundario }]}>
+                        Atual: R$ {Number(s.preco).toFixed(2)}
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.inputLote,
+                        {
+                          backgroundColor: theme.superficie2,
+                          borderColor: focado ? theme.ouro : theme.borda,
+                        },
+                        focado && { backgroundColor: theme.ouroTranslucido },
+                      ]}
+                      onPress={() => setServicoEditandoLoteId(s.id)}
+                      activeOpacity={0.7}
+                      delayPressIn={40}
+                    >
+                      {focado ? (
+                        <TextInput
+                          style={[styles.inputLoteCampo, { color: theme.ouroTexto }]}
+                          value={precosLote[s.id] ?? ''}
+                          onChangeText={(val) => setPrecosLote((prev) => ({ ...prev, [s.id]: val }))}
+                          keyboardType="numeric"
+                          placeholder="0.00"
+                          placeholderTextColor={theme.textoDesabilitado}
+                          autoFocus
+                          onBlur={() => setServicoEditandoLoteId(null)}
+                          selectTextOnFocus
+                          returnKeyType="done"
+                        />
+                      ) : (
+                        <Text style={[styles.inputLoteTexto, { color: precosLote[s.id] && precosLote[s.id] !== String(s.preco) ? theme.ouroTexto : theme.textoPrimario }]}>
+                          {precosLote[s.id] ? precosLote[s.id] : Number(s.preco).toFixed(2)}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
                   </View>
-                  <TextInput
-                    style={[styles.inputLote, { backgroundColor: theme.superficie, borderColor: theme.borda, color: theme.ouroTexto }]}
-                    value={precosLote[s.id] || ''}
-                    onChangeText={(val) => setPrecosLote((prev) => ({ ...prev, [s.id]: val }))}
-                    keyboardType="numeric"
-                    placeholder="0.00"
-                    placeholderTextColor={theme.textoDesabilitado}
-                  />
-                </View>
-              ))}
+                );
+              })}
             </ScrollView>
 
             <TouchableOpacity
@@ -879,8 +1026,8 @@ export default function TelaBarbeiroMais() {
                 <Text style={styles.botaoConfirmarReajusteTexto}>Salvar Todos os Reajustes</Text>
               )}
             </TouchableOpacity>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
       {/* ─── Modal de Aparência ─── */}
@@ -890,8 +1037,9 @@ export default function TelaBarbeiroMais() {
         animationType="fade"
         onRequestClose={() => setModalAtivo(null)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setModalAtivo(null)}>
-          <Pressable style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setModalAtivo(null)} />
+          <View style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
             <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
 
             <View style={styles.modalHeader}>
@@ -953,8 +1101,8 @@ export default function TelaBarbeiroMais() {
                 {modoTema === 'sistema' && <Check size={18} color={theme.ouroTexto} />}
               </TouchableOpacity>
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
       {/* ─── Modal de Privacidade ─── */}
@@ -964,8 +1112,9 @@ export default function TelaBarbeiroMais() {
         animationType="fade"
         onRequestClose={() => setModalAtivo(null)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setModalAtivo(null)}>
-          <Pressable style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setModalAtivo(null)} />
+          <View style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
             <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
 
             <View style={styles.modalHeader}>
@@ -990,8 +1139,8 @@ export default function TelaBarbeiroMais() {
                 </Text>
               </View>
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
       {/* ─── Modal de Sair da Conta ─── */}
@@ -1001,8 +1150,9 @@ export default function TelaBarbeiroMais() {
         animationType="fade"
         onRequestClose={() => setModalAtivo(null)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setModalAtivo(null)}>
-          <Pressable style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setModalAtivo(null)} />
+          <View style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
             <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
 
             <View style={styles.modalHeader}>
@@ -1033,8 +1183,8 @@ export default function TelaBarbeiroMais() {
                 <Text style={styles.modalBotaoSairTexto}>Sair</Text>
               </TouchableOpacity>
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -1096,7 +1246,27 @@ const createStyles = (theme: ThemePalette) =>
       width: 60,
       height: 60,
       borderRadius: Radii.md,
-      overflow: 'hidden',
+      position: 'relative',
+    },
+    heroLogoLoading: {
+      width: 60,
+      height: 60,
+      borderRadius: Radii.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    badgeCameraHero: {
+      position: 'absolute',
+      bottom: -3,
+      right: -3,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     heroInfo: {
       flex: 1,
@@ -1327,6 +1497,7 @@ const createStyles = (theme: ThemePalette) =>
     },
     servicosLista: {
       maxHeight: 380,
+      flexGrow: 0,
     },
     servicoItem: {
       flexDirection: 'row',
@@ -1419,7 +1590,8 @@ const createStyles = (theme: ThemePalette) =>
       color: '#09090B',
     },
     servicosLoteLista: {
-      maxHeight: 250,
+      maxHeight: 380,
+      flexGrow: 0,
     },
     linhaLoteServico: {
       flexDirection: 'row',
@@ -1438,13 +1610,27 @@ const createStyles = (theme: ThemePalette) =>
       fontSize: FontSize.labelXs,
     },
     inputLote: {
-      width: 80,
+      width: 84,
+      height: 38,
       borderRadius: Radii.sm,
       borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 4,
+    },
+    inputLoteCampo: {
+      width: '100%',
+      height: '100%',
       fontFamily: FontFamily.bold,
       fontSize: FontSize.bodyMd,
       textAlign: 'center',
-      paddingVertical: 4,
+      paddingVertical: 0,
+      paddingHorizontal: 0,
+    },
+    inputLoteTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+      textAlign: 'center',
     },
     botaoConfirmarModal: {
       borderRadius: Radii.md,

@@ -407,7 +407,7 @@ export default function TelaBarbeiroSemana() {
                         rx={4}
                         fill={
                           isFiltrado
-                            ? '#FFFFFF'
+                            ? theme.ouroVibrante
                             : d.isHoje
                             ? 'url(#gradBarraSemanalHoje)'
                             : d.faturamento > 0
@@ -441,7 +441,7 @@ export default function TelaBarbeiroSemana() {
                           styles.semanalRotuloSigla,
                           { color: theme.textoSecundario },
                           d.isHoje && { color: theme.ouroTexto, fontFamily: FontFamily.bold },
-                          isFiltrado && { color: '#09090B', fontFamily: FontFamily.bold },
+                          isFiltrado && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
                         ]}
                       >
                         {d.sigla}
@@ -451,7 +451,7 @@ export default function TelaBarbeiroSemana() {
                           styles.semanalRotuloDia,
                           { color: theme.textoPrimario },
                           d.isHoje && { color: theme.ouroTexto, fontFamily: FontFamily.bold },
-                          isFiltrado && { color: '#09090B', fontFamily: FontFamily.bold },
+                          isFiltrado && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
                         ]}
                       >
                         {d.diaNumero}
@@ -791,7 +791,7 @@ export default function TelaBarbeiroSemana() {
                           rx={2.5}
                           fill={
                             isSelecionado
-                              ? '#FFFFFF'
+                              ? theme.ouroVibrante
                               : d.isHoje
                               ? 'url(#gradBarraHoje)'
                               : d.faturamento > 0
@@ -870,7 +870,7 @@ export default function TelaBarbeiroSemana() {
                           rx={4}
                           fill={
                             isSelecionado
-                              ? '#FFFFFF'
+                              ? theme.ouroVibrante
                               : d.isHoje
                               ? theme.ouroVibrante
                               : d.faturamento > 0
@@ -904,7 +904,7 @@ export default function TelaBarbeiroSemana() {
                             styles.semanalRotuloSigla,
                             { color: theme.textoSecundario },
                             d.isHoje && { color: theme.ouroTexto, fontFamily: FontFamily.bold },
-                            isSelecionado && { color: '#09090B', fontFamily: FontFamily.bold },
+                            isSelecionado && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
                           ]}
                         >
                           {d.diaSemana}
@@ -914,7 +914,7 @@ export default function TelaBarbeiroSemana() {
                             styles.semanalRotuloDia,
                             { color: theme.textoPrimario },
                             d.isHoje && { color: theme.ouroTexto, fontFamily: FontFamily.bold },
-                            isSelecionado && { color: '#09090B', fontFamily: FontFamily.bold },
+                            isSelecionado && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
                           ]}
                         >
                           {d.dia}

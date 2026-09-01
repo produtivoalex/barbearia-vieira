@@ -25,6 +25,11 @@ export interface ClienteResumo {
   telefone: string | null;
   totalAgendamentos: number;
   ultimoAtendimento: string | null;
+  mimoNotificacao?: {
+    id: string;
+    criada_em: string;
+    lida_em: string | null;
+  } | null;
 }
 
 /** Retorna início e fim do dia local como ISO strings. */
@@ -136,6 +141,27 @@ export function usePainelBarbeiro(barbeariaId?: string) {
     if (barbeariaId) consultaAviso = consultaAviso.eq('barbearia_id', barbeariaId);
     const { data: avisoData } = await consultaAviso.maybeSingle();
 
+    // 7. Notificações de mimo de reativação para cruzar com clientes
+    let consultaMimos = supabase
+      .from('notifications')
+      .select('id, usuario_id, criada_em, lida_em')
+      .eq('tipo', 'mimo_reativacao')
+      .order('criada_em', { ascending: false });
+    if (barbeariaId) consultaMimos = consultaMimos.eq('barbearia_id', barbeariaId);
+    const { data: dataMimos } = await consultaMimos;
+    const mimosPorCliente = new Map<string, { id: string; criada_em: string; lida_em: string | null }>();
+    if (dataMimos) {
+      for (const m of dataMimos) {
+        if (!mimosPorCliente.has(m.usuario_id)) {
+          mimosPorCliente.set(m.usuario_id, {
+            id: m.id,
+            criada_em: m.criada_em,
+            lida_em: m.lida_em,
+          });
+        }
+      }
+    }
+
     setAgendamentosHoje((dataHoje ?? []) as unknown as AgendamentoBarbeiro[]);
     setAgendamentosSemana((dataSemana ?? []) as unknown as AgendamentoBarbeiro[]);
     setTotalNaFila(filaCount ?? 0);
@@ -160,6 +186,7 @@ export function usePainelBarbeiro(barbeariaId?: string) {
             telefone: c.telefone,
             totalAgendamentos: 0,
             ultimoAtendimento: null,
+            mimoNotificacao: mimosPorCliente.get(c.id) ?? null,
           });
         }
         const entrada = mapa.get(c.id)!;
@@ -292,6 +319,42 @@ export function usePainelBarbeiro(barbeariaId?: string) {
     return data;
   }, [barbeiroId, barbeariaId, carregar]);
 
+  const enviarMimoCliente = useCallback(async (clienteId: string, titulo?: string, mensagem?: string) => {
+    if (!barbeariaId) throw new Error('Barbearia não selecionada.');
+
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert({
+        usuario_id: clienteId,
+        barbearia_id: barbeariaId,
+        tipo: 'mimo_reativacao',
+        titulo: titulo || 'Mimo Especial 🎁',
+        mensagem: mensagem || 'Você ganhou um presente exclusivo para seu próximo corte!',
+        dados: { barbeariaId, validadeDias: 7 },
+      })
+      .select('id, criada_em, lida_em')
+      .single();
+
+    if (error) throw error;
+
+    setClientes((prev) =>
+      prev.map((cli) =>
+        cli.id === clienteId
+          ? {
+              ...cli,
+              mimoNotificacao: {
+                id: data.id,
+                criada_em: data.criada_em,
+                lida_em: null,
+              },
+            }
+          : cli
+      )
+    );
+
+    return data;
+  }, [barbeariaId]);
+
   useEffect(() => {
     carregar();
   }, [carregar]);
@@ -310,5 +373,6 @@ export function usePainelBarbeiro(barbeariaId?: string) {
     definirAtraso,
     alternarTardeFechada,
     criarReservaManual,
+    enviarMimoCliente,
   };
 }

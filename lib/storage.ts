@@ -55,7 +55,7 @@ export async function removerMidiaStorage(
 }
 
 /**
- * Faz upload de imagem para o bucket do tenant com caminho estritamente no padrão:
+ * Faz upload de mídia (fotos ou vídeos) para o bucket do tenant com caminho estritamente no padrão:
  * <barbearia_id>/<logo|banner|fotos>/<timestamp>-<indice>.<extensao>
  */
 export async function uploadImagemTenant(
@@ -75,11 +75,33 @@ export async function uploadImagemTenant(
   }
 
   const arquivo = await resposta.arrayBuffer();
-  const extensaoMime = mimeType?.split('/')[1]?.toLowerCase();
-  const extensao = extensaoMime === 'jpeg' ? 'jpg' : extensaoMime || 'jpg';
-  const caminho = `${barbeariaId}/${tipo}/${Date.now()}-${indice}.${extensao}`;
 
-  const contentTypeFinal = mimeType || (extensao === 'png' ? 'image/png' : extensao === 'webp' ? 'image/webp' : 'image/jpeg');
+  let extensao = 'jpg';
+  let contentTypeFinal = mimeType || 'image/jpeg';
+
+  if (mimeType?.startsWith('video/')) {
+    const ext = mimeType.split('/')[1]?.toLowerCase();
+    extensao = ext === 'quicktime' ? 'mov' : ext || 'mp4';
+    contentTypeFinal = mimeType;
+  } else if (mimeType?.startsWith('image/')) {
+    const ext = mimeType.split('/')[1]?.toLowerCase();
+    extensao = ext === 'jpeg' ? 'jpg' : ext || 'jpg';
+    contentTypeFinal = mimeType;
+  } else {
+    const match = assetUri.match(/\.([a-zA-Z0-9]+)(\?|$)/);
+    if (match) {
+      const ext = match[1].toLowerCase();
+      if (['mp4', 'mov', 'webm', 'm4v', '3gp'].includes(ext)) {
+        extensao = ext;
+        contentTypeFinal = ext === 'mov' ? 'video/quicktime' : `video/${ext}`;
+      } else {
+        extensao = ext === 'jpeg' ? 'jpg' : ext;
+        contentTypeFinal = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+      }
+    }
+  }
+
+  const caminho = `${barbeariaId}/${tipo}/${Date.now()}-${indice}.${extensao}`;
 
   const { error: erroUpload } = await supabase.storage
     .from(BUCKET_MIDIA_TENANT)
