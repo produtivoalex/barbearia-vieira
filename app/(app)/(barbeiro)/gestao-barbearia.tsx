@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Modal,
   ScrollView,
   StyleSheet,
   Switch,
@@ -16,7 +15,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import {
-  AlertTriangle,
   ArrowLeft,
   Camera,
   Check,
@@ -24,30 +22,19 @@ import {
   ChevronRight,
   Globe,
   Image as ImageIcon,
-  Lock,
   Palette,
   Plus,
   Save,
-  Scissors,
-  Search,
-  Shield,
-  ShieldCheck,
-  Sparkles,
   Trash2,
-  UserCheck,
-  UserPlus,
-  Users,
-  UserX,
-  X,
-  Sliders,
-  CheckCircle,
-  Gift,
-  Bell,
   Play,
   Star,
+  Sparkles,
+  Lock,
+  ShieldCheck,
+  AlertTriangle,
+  Scissors,
 } from 'lucide-react-native';
 import { useBarbearia, PALETAS_PREDEFINIDAS, type TemaTenant } from '@/contexts/BarbeariaContext';
-import { useMembrosBarbearia, type PapelMembro, type MembroBarbearia } from '@/hooks/useMembrosBarbearia';
 import { extrairCaminhoStorage, removerMidiaStorage, uploadImagemTenant } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 import { IlustracaoServico, Botao } from '@/components';
@@ -60,38 +47,15 @@ export function isMidiaVideo(url: string | null | undefined): boolean {
   return /\.(mp4|mov|webm|m4v|3gp|mkv)(\?|$)/i.test(url);
 }
 
-type AbaGestao = 'dados' | 'midia' | 'tema' | 'equipe' | 'regras';
-
-interface UsuarioBusca {
-  id: string;
-  nome_completo: string | null;
-  email: string | null;
-  telefone: string | null;
-  role: string;
-}
-
-const PAPEL_ROTULOS: Record<PapelMembro, { rotulo: string; cor: string; desc: string }> = {
-  proprietario: { rotulo: 'Proprietário', cor: Colors.ouro, desc: 'Acesso total, gestão comercial e membros' },
-  gestor: { rotulo: 'Gestor', cor: '#4EA8DE', desc: 'Gerenciamento de agenda, dados e equipe' },
-  barbeiro: { rotulo: 'Barbeiro', cor: Colors.verde, desc: 'Atendimentos, agenda própria e clientes' },
-  atendente: { rotulo: 'Atendente', cor: '#B5838D', desc: 'Agendamentos e recepção' },
-};
+type AbaGestao = 'dados' | 'midia' | 'tema';
 
 export default function GestaoBarbearia() {
   const router = useRouter();
   const { theme, isEscuro } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { barbearia, selecionarBarbearia, atualizarTemaLocal } = useBarbearia();
-  const {
-    membros,
-    carregando: carregandoMembros,
-    adicionarMembro,
-    alterarPapel,
-    alternarStatus,
-    removerMembro,
-  } = useMembrosBarbearia(barbearia?.id);
 
-  // Aba ativa
+  // Aba ativa (3 abas visuais do espaço)
   const [abaAtiva, setAbaAtiva] = useState<AbaGestao>('dados');
 
   // Estados dos dados comerciais
@@ -117,20 +81,8 @@ export default function GestaoBarbearia() {
   const [corCard, setCorCard] = useState(theme.superficie);
   const [nomeTema, setNomeTema] = useState('Ouro Imperial');
   const [salvandoTema, setSalvandoTema] = useState(false);
-
-  // Estados de membros & busca
-  const [modalNovoMembro, setModalNovoMembro] = useState(false);
-  const [modalEditarMembro, setModalEditarMembro] = useState<MembroBarbearia | null>(null);
-  const [buscaUsuario, setBuscaUsuario] = useState('');
-  const [usuariosEncontrados, setUsuariosEncontrados] = useState<UsuarioBusca[]>([]);
-  const [buscandoUsuarios, setBuscandoUsuarios] = useState(false);
-  const [usuarioSelecionado, setUsuarioSelecionado] = useState<UsuarioBusca | null>(null);
-  const [papelNovoMembro, setPapelNovoMembro] = useState<PapelMembro>('barbeiro');
-  const [salvandoMembro, setSalvandoMembro] = useState(false);
-
-  // Estados de Regras e Comissões
-  const [modoAgenda, setModoAgenda] = useState<'continua' | 'drops'>(
-    (barbearia?.modo_agenda as 'continua' | 'drops') || 'continua'
+  const [intervaloDescanso, setIntervaloDescanso] = useState<number>(
+    barbearia?.intervalo_descanso_min || 0
   );
   const [diasJanela, setDiasJanela] = useState<number>(barbearia?.dias_janela_agendamento || 7);
   const [comissaoPadrao, setComissaoPadrao] = useState<string>(
@@ -227,94 +179,12 @@ export default function GestaoBarbearia() {
       setCorCard(t.card || theme.superficie);
       setNomeTema(t.nomeTema || 'Ouro Imperial');
     }
-
-    if (barbearia.modo_agenda) setModoAgenda(barbearia.modo_agenda);
-    if (barbearia.dias_janela_agendamento) setDiasJanela(barbearia.dias_janela_agendamento);
-    if (barbearia.comissao_padrao !== undefined) setComissaoPadrao(String(barbearia.comissao_padrao));
-    if (barbearia.regras_fidelidade) {
-      setFidelidadeAtiva(barbearia.regras_fidelidade.ativo);
-      setMetaCortesFidelidade(String(barbearia.regras_fidelidade.meta_cortes));
-      setRecompensaFidelidade(barbearia.regras_fidelidade.recompensa);
-    }
-    if (barbearia.mimo_ativo) {
-      setMimoAtivo(barbearia.mimo_ativo.ativo);
-      setMimoTipo(barbearia.mimo_ativo.tipo);
-      setMimoTitulo(barbearia.mimo_ativo.titulo);
-      setMimoDescricao(barbearia.mimo_ativo.descricao);
-      setMimoValidade(String(barbearia.mimo_ativo.validade_dias));
-    }
   }, [barbearia]);
 
   const fotosArray = useMemo(() => {
     if (!barbearia?.fotos || !Array.isArray(barbearia.fotos)) return [];
     return barbearia.fotos.filter((f): f is string => typeof f === 'string');
   }, [barbearia?.fotos]);
-
-  async function handleDispararPushMimo() {
-    if (!barbearia?.id) return;
-    setDisparandoPush(true);
-    try {
-      const { data, error } = await supabase.rpc('disparar_mimos_reativacao', {
-        p_barbearia_id: barbearia.id,
-      });
-      if (error) throw error;
-      Alert.alert('Notificações Enviadas! 🔔', `${data ?? 0} cliente(s) recebeu(ram) o mimo por notificação in-app.`);
-    } catch (error) {
-      Alert.alert('Erro ao disparar mimo', error instanceof Error ? error.message : 'Tente novamente.');
-    } finally {
-      setDisparandoPush(false);
-    }
-  }
-
-  async function salvarRegras() {
-    if (!barbearia) return;
-    setSalvandoRegras(true);
-
-    const comissaoNum = Number(comissaoPadrao.replace(',', '.')) || 50;
-    const metaCortesNum = Number(metaCortesFidelidade) || 10;
-    const validadeNum = Number(mimoValidade) || 7;
-
-    const dadosAtualizacao: Partial<BarbeariaPublica> = {
-      modo_agenda: modoAgenda,
-      dias_janela_agendamento: diasJanela,
-      comissao_padrao: comissaoNum,
-      regras_fidelidade: {
-        ativo: fidelidadeAtiva,
-        meta_cortes: metaCortesNum,
-        recompensa: recompensaFidelidade.trim() || 'Corte Grátis',
-      },
-      mimo_ativo: {
-        ativo: mimoAtivo,
-        tipo: mimoTipo,
-        titulo: mimoTitulo.trim() || 'Mimo Especial',
-        descricao: mimoDescricao.trim() || 'Resgate seu mimo no próximo agendamento.',
-        validade_dias: validadeNum,
-      },
-    };
-
-    try {
-      const { error } = await supabase
-        .from('barbearias')
-        .update({
-          ...dadosAtualizacao,
-          atualizado_em: new Date().toISOString(),
-        } as any)
-        .eq('id', barbearia.id);
-      if (error) throw error;
-    } catch (error) {
-      setSalvandoRegras(false);
-      Alert.alert('Erro ao salvar regras', error instanceof Error ? error.message : 'Tente novamente.');
-      return;
-    }
-
-    await selecionarBarbearia({
-      ...barbearia,
-      ...dadosAtualizacao,
-    });
-
-    setSalvandoRegras(false);
-    Alert.alert('Regras Atualizadas! 💈', 'O modo de funcionamento, comissões e fidelidade foram salvos.');
-  }
 
   // ─── AÇÕES: DADOS COMERCIAIS ───
   async function salvarDados() {
@@ -707,113 +577,6 @@ export default function GestaoBarbearia() {
     );
   }
 
-  // ─── AÇÕES: GESTÃO DE MEMBROS ───
-  async function buscarUsuariosParaMembro(termo: string) {
-    setBuscaUsuario(termo);
-    const termoLimpo = termo.trim().toLowerCase();
-    if (!termoLimpo || termoLimpo.length < 2) {
-      setUsuariosEncontrados([]);
-      return;
-    }
-
-    setBuscandoUsuarios(true);
-    try {
-      const { data } = await supabase
-        .from('perfis')
-        .select('id, nome_completo, email, telefone, role')
-        .or(`nome_completo.ilike.%${termoLimpo}%,email.ilike.%${termoLimpo}%`)
-        .limit(10);
-
-      const membrosIds = new Set(membros.map((m) => m.usuario_id));
-      const filtrados = (data ?? []).filter((u) => !membrosIds.has(u.id));
-      setUsuariosEncontrados(filtrados as UsuarioBusca[]);
-    } catch {
-      setUsuariosEncontrados([]);
-    } finally {
-      setBuscandoUsuarios(false);
-    }
-  }
-
-  async function handleConfirmarNovoMembro() {
-    if (!usuarioSelecionado) {
-      Alert.alert('Selecione um usuário', 'Escolha um perfil para vincular à barbearia.');
-      return;
-    }
-
-    setSalvandoMembro(true);
-    try {
-      await adicionarMembro(usuarioSelecionado.id, papelNovoMembro);
-      setModalNovoMembro(false);
-      setUsuarioSelecionado(null);
-      setBuscaUsuario('');
-      setUsuariosEncontrados([]);
-      Alert.alert('Membro Adicionado! 👥', `${usuarioSelecionado.nome_completo || 'O usuário'} agora faz parte da equipe.`);
-    } catch (err: any) {
-      Alert.alert('Erro ao adicionar membro', err.message || 'Tente novamente.');
-    } finally {
-      setSalvandoMembro(false);
-    }
-  }
-
-  async function handleAlterarPapelMembro(novoPapel: PapelMembro) {
-    if (!modalEditarMembro) return;
-    try {
-      await alterarPapel(modalEditarMembro.id, novoPapel);
-      setModalEditarMembro(null);
-      Alert.alert('Papel Atualizado', `O papel foi alterado para ${PAPEL_ROTULOS[novoPapel].rotulo}.`);
-    } catch (err: any) {
-      Alert.alert('Ação bloqueada ⚠️', err.message);
-    }
-  }
-
-  async function handleAlternarStatusMembro(membro: MembroBarbearia) {
-    const novoStatus = !membro.ativo;
-    const acaoTexto = novoStatus ? 'reativar' : 'desativar';
-
-    Alert.alert(
-      `${novoStatus ? 'Reativar' : 'Desativar'} Membro`,
-      `Deseja ${acaoTexto} o acesso de ${membro.perfil?.nome_completo || 'deste profissional'} neste estabelecimento?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: novoStatus ? 'Reativar' : 'Desativar',
-          style: novoStatus ? 'default' : 'destructive',
-          onPress: async () => {
-            try {
-              await alternarStatus(membro.id, novoStatus);
-              Alert.alert('Sucesso', `Membro ${novoStatus ? 'reativado' : 'desativado'} com sucesso.`);
-            } catch (err: any) {
-              Alert.alert('Ação bloqueada ⚠️', err.message);
-            }
-          },
-        },
-      ]
-    );
-  }
-
-  async function handleRemoverMembro(membro: MembroBarbearia) {
-    Alert.alert(
-      'Remover Vínculo',
-      `Tem certeza que deseja remover ${membro.perfil?.nome_completo || 'este membro'} permanentemente da barbearia?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Remover',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removerMembro(membro.id);
-              setModalEditarMembro(null);
-              Alert.alert('Vínculo Removido', 'O profissional foi desvinculado com sucesso.');
-            } catch (err: any) {
-              Alert.alert('Ação bloqueada ⚠️', err.message);
-            }
-          },
-        },
-      ]
-    );
-  }
-
   if (!barbearia) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]}>
@@ -835,7 +598,7 @@ export default function GestaoBarbearia() {
           <ArrowLeft color={theme.textoPrimario} size={22} />
         </TouchableOpacity>
         <View style={styles.headerCentro}>
-          <Text style={[styles.headerTitulo, { color: theme.textoPrimario }]}>Gestão do Estabelecimento</Text>
+          <Text style={[styles.headerTitulo, { color: theme.textoPrimario }]}>Espaço & Fotos</Text>
           <Text style={[styles.headerSubtitulo, { color: theme.textoSecundario }]} numberOfLines={1}>
             {barbearia.nome}
           </Text>
@@ -843,13 +606,9 @@ export default function GestaoBarbearia() {
         <View style={{ width: 22 }} />
       </View>
 
-      {/* Segmented Tabs em Scroll Horizontal */}
+      {/* Segmented Tabs (3 Abas Visuais) */}
       <View style={[styles.segmentosWrapper, { backgroundColor: theme.superficie, borderBottomColor: theme.borda }]}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.segmentosScroll}
-        >
+        <View style={styles.segmentosScroll}>
           <TouchableOpacity
             style={[
               styles.segmento,
@@ -897,41 +656,7 @@ export default function GestaoBarbearia() {
               abaAtiva === 'tema' && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
             ]}>Tema & Cores</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.segmento,
-              { backgroundColor: theme.superficie2, borderColor: theme.borda },
-              abaAtiva === 'equipe' && { backgroundColor: theme.ouro, borderColor: theme.ouro },
-            ]}
-            onPress={() => setAbaAtiva('equipe')}
-          >
-            <Users size={15} color={abaAtiva === 'equipe' ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
-            <Text style={[
-              styles.segmentoTexto,
-              { color: theme.textoSecundario },
-              abaAtiva === 'equipe' && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
-            ]}>
-              Equipe ({membros.length})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.segmento,
-              { backgroundColor: theme.superficie2, borderColor: theme.borda },
-              abaAtiva === 'regras' && { backgroundColor: theme.ouro, borderColor: theme.ouro },
-            ]}
-            onPress={() => setAbaAtiva('regras')}
-          >
-            <Sliders size={15} color={abaAtiva === 'regras' ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
-            <Text style={[
-              styles.segmentoTexto,
-              { color: theme.textoSecundario },
-              abaAtiva === 'regras' && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
-            ]}>Regras</Text>
-          </TouchableOpacity>
-        </ScrollView>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -1440,488 +1165,7 @@ export default function GestaoBarbearia() {
             </TouchableOpacity>
           </View>
         )}
-
-        {/* ─── ABA 4: GESTÃO DE EQUIPE & MEMBROS ─── */}
-        {abaAtiva === 'equipe' && (
-          <View style={styles.secao}>
-            <View style={styles.equipeTopo}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.ajuda}>
-                  Gerencie os profissionais vinculados a este estabelecimento e defina seus papéis de acesso.
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.botaoAdicionarMembro}
-                onPress={() => {
-                  setUsuarioSelecionado(null);
-                  setBuscaUsuario('');
-                  setUsuariosEncontrados([]);
-                  setPapelNovoMembro('barbeiro');
-                  setModalNovoMembro(true);
-                }}
-              >
-                <UserPlus size={16} color={Colors.fundo} />
-                <Text style={styles.botaoAdicionarMembroTexto}>Novo Membro</Text>
-              </TouchableOpacity>
-            </View>
-
-            {carregandoMembros ? (
-              <ActivityIndicator color={Colors.ouro} style={{ marginTop: 24 }} />
-            ) : membros.length === 0 ? (
-              <View style={styles.membrosVazio}>
-                <Users size={36} color={Colors.textoDesabilitado} />
-                <Text style={styles.membrosVazioTitulo}>Nenhum membro cadastrado</Text>
-                <Text style={styles.membrosVazioSub}>Vincule barbeiros ou atendentes para gerenciar a agenda.</Text>
-              </View>
-            ) : (
-              <View style={styles.membrosLista}>
-                {membros.map((membro) => {
-                  const papelInfo = PAPEL_ROTULOS[membro.papel] || PAPEL_ROTULOS.barbeiro;
-                  return (
-                    <View key={membro.id} style={[styles.membroCard, !membro.ativo && styles.membroCardInativo]}>
-                      <View style={styles.membroAvatar}>
-                        <Text style={styles.membroAvatarTexto}>
-                          {(membro.perfil?.nome_completo || 'M').slice(0, 1).toUpperCase()}
-                        </Text>
-                      </View>
-
-                      <View style={styles.membroInfo}>
-                        <View style={styles.membroNomeLinha}>
-                          <Text style={[styles.membroNome, !membro.ativo && styles.membroNomeInativo]}>
-                            {membro.perfil?.nome_completo || 'Profissional'}
-                          </Text>
-                          <View style={[styles.badgePapel, { borderColor: papelInfo.cor }]}>
-                            <Text style={[styles.badgePapelTexto, { color: papelInfo.cor }]}>{papelInfo.rotulo}</Text>
-                          </View>
-                        </View>
-
-                        <Text style={styles.membroContato}>
-                          {membro.perfil?.email || membro.perfil?.telefone || 'Sem contato cadastrado'}
-                        </Text>
-
-                        <View style={styles.membroStatusLinha}>
-                          <View
-                            style={[
-                              styles.statusPonto,
-                              { backgroundColor: membro.ativo ? Colors.verde : Colors.textoDesabilitado },
-                            ]}
-                          />
-                          <Text style={styles.membroStatusTexto}>
-                            {membro.ativo ? 'Vínculo Ativo' : 'Vínculo Desativado'}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.membroAcoes}>
-                        <TouchableOpacity
-                          style={styles.membroAcaoBotao}
-                          onPress={() => setModalEditarMembro(membro)}
-                        >
-                          <Shield size={16} color={Colors.ouro} />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={styles.membroAcaoBotao}
-                          onPress={() => handleAlternarStatusMembro(membro)}
-                        >
-                          {membro.ativo ? (
-                            <UserX size={16} color={Colors.vermelho} />
-                          ) : (
-                            <UserCheck size={16} color={Colors.verde} />
-                          )}
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* ─── ABA 5: REGRAS, MODO DE AGENDA & COMISSÕES ─── */}
-        {abaAtiva === 'regras' && (
-          <View style={styles.secao}>
-            <Text style={styles.ajuda}>
-              Configure o modelo de funcionamento da sua barbearia, comissões da equipe e programa de fidelidade.
-            </Text>
-
-            {/* 1. Modo de Agendamento */}
-            <View style={styles.blocoRegra}>
-              <Text style={styles.blocoRegraTitulo}>Modo de Agendamento</Text>
-              <Text style={styles.blocoRegraDesc}>Escolha como seus clientes marcam horário no seu espaço.</Text>
-
-              <TouchableOpacity
-                style={[styles.opcaoModoCard, modoAgenda === 'continua' && styles.opcaoModoCardAtivo]}
-                onPress={() => setModoAgenda('continua')}
-                activeOpacity={0.8}
-              >
-                <View style={styles.opcaoModoHeader}>
-                  <Text style={[styles.opcaoModoTitulo, modoAgenda === 'continua' && styles.opcaoModoTituloAtivo]}>
-                    📅 Agenda Aberta Contínua (Recomendado)
-                  </Text>
-                  {modoAgenda === 'continua' && <CheckCircle size={18} color={Colors.ouro} />}
-                </View>
-                <Text style={styles.opcaoModoSub}>
-                  Seus clientes podem agendar para qualquer dia disponível dentro da sua janela de dias livres.
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.opcaoModoCard, modoAgenda === 'drops' && styles.opcaoModoCardAtivo]}
-                onPress={() => setModoAgenda('drops')}
-                activeOpacity={0.8}
-              >
-                <View style={styles.opcaoModoHeader}>
-                  <Text style={[styles.opcaoModoTitulo, modoAgenda === 'drops' && styles.opcaoModoTituloAtivo]}>
-                    🚀 Abertura Semanal Programada (Drops)
-                  </Text>
-                  {modoAgenda === 'drops' && <CheckCircle size={18} color={Colors.ouro} />}
-                </View>
-                <Text style={styles.opcaoModoSub}>
-                  A agenda abre em data/hora marcada com contagem regressiva e lista de espera quando lotada.
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Janela de Dias (se Contínua) */}
-            {modoAgenda === 'continua' && (
-              <View style={styles.blocoRegra}>
-                <Text style={styles.blocoRegraTitulo}>Janela de Antecedência</Text>
-                <Text style={styles.blocoRegraDesc}>Quantos dias à frente o cliente pode marcar horário?</Text>
-                <View style={styles.janelaDiasRow}>
-                  {[7, 14, 21, 30].map((dias) => (
-                    <TouchableOpacity
-                      key={dias}
-                      style={[styles.chipJanela, diasJanela === dias && styles.chipJanelaAtivo]}
-                      onPress={() => setDiasJanela(dias)}
-                    >
-                      <Text style={[styles.chipJanelaTexto, diasJanela === dias && styles.chipJanelaTextoAtivo]}>
-                        {dias} dias
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {/* 2. Comissão Padrão da Equipe */}
-            <View style={styles.blocoRegra}>
-              <Text style={styles.blocoRegraTitulo}>Comissão Padrão da Equipe (%)</Text>
-              <Text style={styles.blocoRegraDesc}>Percentual pago aos barbeiros nos relatórios de fechamento de caixa.</Text>
-              <View style={styles.inputComissaoWrapper}>
-                <TextInput
-                  style={styles.inputComissao}
-                  value={comissaoPadrao}
-                  onChangeText={setComissaoPadrao}
-                  keyboardType="numeric"
-                  placeholder="50"
-                  placeholderTextColor={Colors.textoDesabilitado}
-                />
-                <Text style={styles.inputComissaoSufixo}>% de comissão</Text>
-              </View>
-            </View>
-
-            {/* 3. Programa de Fidelidade */}
-            <View style={styles.blocoRegra}>
-              <View style={styles.fidelidadeHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.blocoRegraTitulo}>Programa de Fidelidade Digital</Text>
-                  <Text style={styles.blocoRegraDesc}>Incentive seus clientes a voltarem com frequência.</Text>
-                </View>
-                <Switch
-                  value={fidelidadeAtiva}
-                  onValueChange={setFidelidadeAtiva}
-                  trackColor={{ false: theme.borda, true: theme.ouro }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-
-              {fidelidadeAtiva && (
-                <View style={styles.fidelidadeCampos}>
-                  <Campo
-                    label="Meta de Cortes para Recompensa"
-                    value={metaCortesFidelidade}
-                    onChangeText={setMetaCortesFidelidade}
-                    placeholder="Ex: 10"
-                    keyboardType="numeric"
-                  />
-                  <Campo
-                    label="Recompensa do Cliente"
-                    value={recompensaFidelidade}
-                    onChangeText={setRecompensaFidelidade}
-                    placeholder="Ex: Corte ou Barba Grátis"
-                  />
-                </View>
-              )}
-            </View>
-
-            {/* 4. Mimos & Ofertas para Clientes Ausentes (+40 dias) */}
-            <View style={styles.blocoRegra}>
-              <View style={styles.fidelidadeHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.blocoRegraTitulo}>Mimo VIP para Clientes Ausentes (+40d)</Text>
-                  <Text style={styles.blocoRegraDesc}>
-                    Envie presentes exclusivos por notificação in-app antes do contato via WhatsApp.
-                  </Text>
-                </View>
-                <Switch
-                  value={mimoAtivo}
-                  onValueChange={setMimoAtivo}
-                  trackColor={{ false: theme.borda, true: theme.ouro }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-
-              {mimoAtivo && (
-                <View style={styles.fidelidadeCampos}>
-                  {/* Tipo de Mimo */}
-                  <Text style={styles.mimoTipoLabel}>Tipo de Mimo:</Text>
-                  <View style={styles.janelaDiasRow}>
-                    <TouchableOpacity
-                      style={[styles.chipJanela, mimoTipo === 'upgrade' && styles.chipJanelaAtivo]}
-                      onPress={() => {
-                        setMimoTipo('upgrade');
-                        setMimoTitulo('Corte Ganha Sobrancelha Grátis 🎁');
-                        setMimoDescricao('Agende seu corte e ganhe o design de sobrancelha como cortesia da barbearia.');
-                      }}
-                    >
-                      <Text style={[styles.chipJanelaTexto, mimoTipo === 'upgrade' && styles.chipJanelaTextoAtivo]}>
-                        🎁 Upgrade Grátis
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.chipJanela, mimoTipo === 'desconto' && styles.chipJanelaAtivo]}
-                      onPress={() => {
-                        setMimoTipo('desconto');
-                        setMimoTitulo('Voucher 15% OFF no Próximo Corte 🏷️');
-                        setMimoDescricao('Liberamos 15% de desconto exclusivo para você dar um tapa no visual esta semana.');
-                      }}
-                    >
-                      <Text style={[styles.chipJanelaTexto, mimoTipo === 'desconto' && styles.chipJanelaTextoAtivo]}>
-                        🏷️ Desconto
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.chipJanela, mimoTipo === 'brinde' && styles.chipJanelaAtivo]}
-                      onPress={() => {
-                        setMimoTipo('brinde');
-                        setMimoTitulo('Brinde Exclusivo no Atendimento 🧴');
-                        setMimoDescricao('Venha cortar esta semana e retire um brinde exclusivo direto na bancada.');
-                      }}
-                    >
-                      <Text style={[styles.chipJanelaTexto, mimoTipo === 'brinde' && styles.chipJanelaTextoAtivo]}>
-                        🧴 Brinde
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  <Campo
-                    label="Título da Oferta / Presente"
-                    value={mimoTitulo}
-                    onChangeText={setMimoTitulo}
-                    placeholder="Ex: Corte Ganha Sobrancelha Grátis 🎁"
-                  />
-                  <Campo
-                    label="Mensagem Explicativa"
-                    value={mimoDescricao}
-                    onChangeText={setMimoDescricao}
-                    multiline
-                    placeholder="Descreva o benefício e como o cliente resgata..."
-                  />
-
-                  {/* Botão de Disparo em Massa */}
-                  <TouchableOpacity
-                    style={styles.botaoDisparoPush}
-                    onPress={handleDispararPushMimo}
-                    disabled={disparandoPush}
-                    activeOpacity={0.8}
-                  >
-                    <Bell size={16} color={Colors.fundo} />
-                    <Text style={styles.botaoDisparoPushTexto}>
-                      {disparandoPush ? 'Disparando...' : 'Disparar Notificações In-App (+40d)'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-
-            <Botao
-              label={salvandoRegras ? 'Salvando regras...' : 'Salvar Regras & Comissões'}
-              onPress={salvarRegras}
-              desabilitado={salvandoRegras}
-              estiloContainer={{ marginTop: Spacing.md }}
-            />
-          </View>
-        )}
       </ScrollView>
-
-      {/* ─── MODAL: ADICIONAR NOVO MEMBRO ─── */}
-      <Modal visible={modalNovoMembro} transparent animationType="fade" onRequestClose={() => setModalNovoMembro(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalConteudo}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitulo}>Vincular Novo Membro</Text>
-              <TouchableOpacity onPress={() => setModalNovoMembro(false)}>
-                <X size={20} color={Colors.textoSecundario} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.modalSub}>
-              Busque um usuário cadastrado no aplicativo por nome ou e-mail para adicionar à equipe.
-            </Text>
-
-            {/* Campo de Busca */}
-            <View style={styles.buscaLinha}>
-              <Search size={18} color={Colors.textoSecundario} />
-              <TextInput
-                style={styles.buscaInput}
-                placeholder="Buscar por nome ou e-mail..."
-                placeholderTextColor={Colors.textoDesabilitado}
-                value={buscaUsuario}
-                onChangeText={buscarUsuariosParaMembro}
-              />
-              {buscandoUsuarios && <ActivityIndicator size="small" color={Colors.ouro} />}
-            </View>
-
-            {/* Lista de Resultados */}
-            {usuariosEncontrados.length > 0 && !usuarioSelecionado && (
-              <ScrollView style={styles.buscaResultados} nestedScrollEnabled>
-                {usuariosEncontrados.map((u) => (
-                  <TouchableOpacity
-                    key={u.id}
-                    style={styles.buscaItem}
-                    onPress={() => {
-                      setUsuarioSelecionado(u);
-                      setUsuariosEncontrados([]);
-                    }}
-                  >
-                    <View style={styles.buscaItemAvatar}>
-                      <Text style={styles.buscaItemAvatarTexto}>{(u.nome_completo || 'U').slice(0, 1).toUpperCase()}</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.buscaItemNome}>{u.nome_completo || 'Sem nome'}</Text>
-                      <Text style={styles.buscaItemEmail}>{u.email || u.telefone || 'Sem contato'}</Text>
-                    </View>
-                    <ChevronRight size={16} color={Colors.ouro} />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-
-            {/* Usuário Selecionado */}
-            {usuarioSelecionado && (
-              <View style={styles.usuarioCardSelecionado}>
-                <View style={styles.buscaItemAvatar}>
-                  <Text style={styles.buscaItemAvatarTexto}>
-                    {(usuarioSelecionado.nome_completo || 'U').slice(0, 1).toUpperCase()}
-                  </Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.usuarioCardNome}>{usuarioSelecionado.nome_completo}</Text>
-                  <Text style={styles.usuarioCardEmail}>{usuarioSelecionado.email || usuarioSelecionado.telefone}</Text>
-                </View>
-                <TouchableOpacity onPress={() => setUsuarioSelecionado(null)}>
-                  <X size={18} color={Colors.vermelho} />
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* Seleção do Papel */}
-            <Text style={[styles.campoLabel, { marginTop: 14 }]}>Papel no Estabelecimento:</Text>
-            <View style={styles.papeisOpcoes}>
-              {(['barbeiro', 'gestor', 'atendente', 'proprietario'] as PapelMembro[]).map((papel) => {
-                const info = PAPEL_ROTULOS[papel];
-                const selecionado = papelNovoMembro === papel;
-                return (
-                  <TouchableOpacity
-                    key={papel}
-                    style={[styles.papelChip, selecionado && { borderColor: info.cor, backgroundColor: theme.superficie2 }]}
-                    onPress={() => setPapelNovoMembro(papel)}
-                  >
-                    <View style={[styles.papelPonto, { backgroundColor: info.cor }]} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.papelChipTexto, selecionado && { color: info.cor, fontFamily: FontFamily.bold }]}>
-                        {info.rotulo}
-                      </Text>
-                      <Text style={styles.papelChipDesc}>{info.desc}</Text>
-                    </View>
-                    {selecionado && <Check size={16} color={info.cor} />}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <TouchableOpacity
-              style={styles.botaoConfirmarModal}
-              onPress={handleConfirmarNovoMembro}
-              disabled={salvandoMembro || !usuarioSelecionado}
-            >
-              {salvandoMembro ? (
-                <ActivityIndicator color={theme.textoEscuroSobreOuro} size="small" />
-              ) : (
-                <Text style={styles.botaoConfirmarModalTexto}>Confirmar Vínculo</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ─── MODAL: EDITAR PAPEL DO MEMBRO ─── */}
-      <Modal visible={modalEditarMembro !== null} transparent animationType="fade" onRequestClose={() => setModalEditarMembro(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalConteudo}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitulo}>Alterar Papel de Acesso</Text>
-              <TouchableOpacity onPress={() => setModalEditarMembro(null)}>
-                <X size={20} color={theme.textoSecundario} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.modalSub}>
-              Membro:{' '}
-              <Text style={{ color: theme.ouroTexto, fontFamily: FontFamily.bold }}>
-                {modalEditarMembro?.perfil?.nome_completo || 'Profissional'}
-              </Text>
-            </Text>
-
-            <View style={styles.papeisOpcoes}>
-              {(['proprietario', 'gestor', 'barbeiro', 'atendente'] as PapelMembro[]).map((papel) => {
-                const info = PAPEL_ROTULOS[papel];
-                const selecionado = modalEditarMembro?.papel === papel;
-                return (
-                  <TouchableOpacity
-                    key={papel}
-                    style={[styles.papelChip, selecionado && { borderColor: info.cor, backgroundColor: theme.superficie2 }]}
-                    onPress={() => handleAlterarPapelMembro(papel)}
-                  >
-                    <View style={[styles.papelPonto, { backgroundColor: info.cor }]} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.papelChipTexto, selecionado && { color: info.cor, fontFamily: FontFamily.bold }]}>
-                        {info.rotulo}
-                      </Text>
-                      <Text style={styles.papelChipDesc}>{info.desc}</Text>
-                    </View>
-                    {selecionado && <Check size={16} color={info.cor} />}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {modalEditarMembro && (
-              <TouchableOpacity
-                style={styles.botaoExcluirMembroModal}
-                onPress={() => handleRemoverMembro(modalEditarMembro)}
-              >
-                <Trash2 size={16} color={Colors.vermelho} />
-                <Text style={styles.botaoExcluirMembroModalTexto}>Remover Vínculo Permanentemente</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }

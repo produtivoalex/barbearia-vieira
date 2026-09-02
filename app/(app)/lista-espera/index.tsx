@@ -29,6 +29,7 @@ import { useBarbearia } from '@/contexts/BarbeariaContext';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const DIAS_CONFIG = [
+  { id: 1, nomeCurto: 'Seg', nomeCompleto: 'Segunda-feira' },
   { id: 2, nomeCurto: 'Ter', nomeCompleto: 'Terça-feira' },
   { id: 3, nomeCurto: 'Qua', nomeCompleto: 'Quarta-feira' },
   { id: 4, nomeCurto: 'Qui', nomeCompleto: 'Quinta-feira' },
@@ -37,7 +38,11 @@ const DIAS_CONFIG = [
   { id: 0, nomeCurto: 'Dom', nomeCompleto: 'Domingo' },
 ];
 
-const HORARIOS_CONFIG = ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+const HORARIOS_CONFIG = [
+  '07:00', '08:00', '09:00', '10:00', '11:00',
+  '13:00', '14:00', '15:00', '16:00', '17:00',
+  '18:00', '19:00', '20:00', '21:00', '22:00',
+];
 
 export default function TelaListaEspera() {
   const router = useRouter();

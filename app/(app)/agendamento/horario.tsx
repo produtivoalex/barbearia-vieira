@@ -166,22 +166,6 @@ export default function TelaHorario() {
       if (erroConsultaSlots) throw erroConsultaSlots;
       setErroSlots(null);
 
-      const mapaSlots: Record<string, string[]> = {};
-      const mapaIds: Record<string, Record<string, string>> = {};
-      if (slotsBanco && slotsBanco.length > 0) {
-        for (const s of slotsBanco) {
-          const d = new Date(s.data_hora);
-          const iso = toIsoDate(d);
-          const hora = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-          if (!mapaSlots[iso]) mapaSlots[iso] = [];
-          if (!mapaIds[iso]) mapaIds[iso] = {};
-          if (!mapaSlots[iso].includes(hora)) mapaSlots[iso].push(hora);
-          mapaIds[iso][hora] = s.id;
-        }
-      }
-      setSlotsPorDia(mapaSlots);
-      setSlotIdsPorDia(mapaIds);
-
       // 2. Busca agendamentos já ocupados para cada dia
       const resultados = await Promise.all(
         diasSemana.map(async (item) => {
@@ -195,6 +179,52 @@ export default function TelaHorario() {
         mapaOcupados[r.isoDate] = r.ocupados;
       }
       setOcupadosPorDia(mapaOcupados);
+
+      const mapaSlots: Record<string, string[]> = {};
+      const mapaIds: Record<string, Record<string, string>> = {};
+      const duracaoServicoMin = Number(params.servicoDuracao) || 30;
+      const isModoDinamico = barbearia.modo_duracao === 'tempo_servico' || (barbearia.regras_fidelidade as any)?.modo_duracao === 'tempo_servico';
+      const stepMin = barbearia.step_agendamento_min || (barbearia.regras_fidelidade as any)?.step_agendamento_min || 30;
+
+      if (slotsBanco && slotsBanco.length > 0) {
+        for (const s of slotsBanco) {
+          const d = new Date(s.data_hora);
+          const iso = toIsoDate(d);
+          const horaBase = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+          if (!mapaSlots[iso]) mapaSlots[iso] = [];
+          if (!mapaIds[iso]) mapaIds[iso] = {};
+
+          if (isModoDinamico) {
+            // Gera sub-horários dentro da janela de 1h de acordo com o step
+            const horaNum = d.getHours();
+            const minNum = d.getMinutes();
+            const stepsNoBloco = Math.floor(60 / stepMin);
+
+            for (let i = 0; i < stepsNoBloco; i++) {
+              const candMinTotal = minNum + i * stepMin;
+              const candH = horaNum + Math.floor(candMinTotal / 60);
+              const candM = candMinTotal % 60;
+              const horaCand = `${String(candH).padStart(2, '0')}:${String(candM).padStart(2, '0')}`;
+
+              if (!mapaSlots[iso].includes(horaCand)) {
+                mapaSlots[iso].push(horaCand);
+              }
+              mapaIds[iso][horaCand] = s.id;
+            }
+          } else {
+            if (!mapaSlots[iso].includes(horaBase)) mapaSlots[iso].push(horaBase);
+            mapaIds[iso][horaBase] = s.id;
+          }
+        }
+
+        // Ordena os horários de cada dia
+        for (const iso of Object.keys(mapaSlots)) {
+          mapaSlots[iso].sort();
+        }
+      }
+
+      setSlotsPorDia(mapaSlots);
+      setSlotIdsPorDia(mapaIds);
     } catch (e) {
       const mensagem = e instanceof Error ? e.message : 'Não foi possível carregar os horários.';
       setErroSlots(mensagem);
@@ -608,7 +638,9 @@ export default function TelaHorario() {
                   <View style={styles.turnoHeader}>
                     <Sun size={15} color={theme.ouroTexto} />
                     <Text style={[styles.turnoTitulo, { color: theme.textoPrimario }]}>Manhã</Text>
-                    <Text style={[styles.turnoPeriodo, { color: theme.textoSecundario }]}>08:00 às 12:00</Text>
+                    <Text style={[styles.turnoPeriodo, { color: theme.textoSecundario }]}>
+                      {`${slotsManha[0]} às ${String(Number(slotsManha[slotsManha.length - 1].split(':')[0]) + 1).padStart(2, '0')}:00`}
+                    </Text>
                   </View>
 
                   <View style={styles.slotsGrid}>
@@ -651,13 +683,15 @@ export default function TelaHorario() {
                 </View>
               )}
 
-              {/* TURNO DA TARDE */}
+              {/* TURNO DA TARDE / NOITE */}
               {slotsTarde.length > 0 && (
                 <View style={styles.turnoSecao}>
                   <View style={styles.turnoHeader}>
                     <Sunset size={15} color={theme.ouroTexto} />
-                    <Text style={[styles.turnoTitulo, { color: theme.textoPrimario }]}>Tarde</Text>
-                    <Text style={[styles.turnoPeriodo, { color: theme.textoSecundario }]}>14:00 às 18:00</Text>
+                    <Text style={[styles.turnoTitulo, { color: theme.textoPrimario }]}>Tarde / Noite</Text>
+                    <Text style={[styles.turnoPeriodo, { color: theme.textoSecundario }]}>
+                      {`${slotsTarde[0]} às ${String(Number(slotsTarde[slotsTarde.length - 1].split(':')[0]) + 1).padStart(2, '0')}:00`}
+                    </Text>
                   </View>
 
                   <View style={styles.slotsGrid}>

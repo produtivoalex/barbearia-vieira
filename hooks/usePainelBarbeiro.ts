@@ -19,6 +19,29 @@ export interface AgendamentoBarbeiro {
   };
 }
 
+export interface VagaDireta {
+  hora_inicio: string;
+  hora_fim: string;
+  data_hora: string;
+  duracao_min: number;
+  candidatos_fila: Array<{
+    id: string;
+    cliente_nome: string;
+    cliente_telefone: string;
+    servico_nome: string;
+  }>;
+}
+
+export interface OtimizacaoSugestao {
+  agendamento_id: string;
+  cliente_nome: string;
+  servico_nome: string;
+  horario_atual: string;
+  sugestao_ajuste: string;
+  duracao_liberada_min: number;
+  beneficio: string;
+}
+
 export interface ClienteResumo {
   id: string;
   nome_completo: string | null;
@@ -56,6 +79,8 @@ export function usePainelBarbeiro(barbeariaId?: string) {
 
   const [agendamentosHoje, setAgendamentosHoje] = useState<AgendamentoBarbeiro[]>([]);
   const [agendamentosSemana, setAgendamentosSemana] = useState<AgendamentoBarbeiro[]>([]);
+  const [vagasDiretas, setVagasDiretas] = useState<VagaDireta[]>([]);
+  const [otimizacoes, setOtimizacoes] = useState<OtimizacaoSugestao[]>([]);
   const [clientes, setClientes] = useState<ClienteResumo[]>([]);
   const [totalNaFila, setTotalNaFila] = useState(0);
   const [minutosAtraso, setMinutosAtraso] = useState(0);
@@ -197,88 +222,79 @@ export function usePainelBarbeiro(barbeariaId?: string) {
       }
       setClientes(Array.from(mapa.values()).sort((a, b) => b.totalAgendamentos - a.totalAgendamentos));
     }
+    // 8. Detecção de Vagas Diretas e Otimizações de Encaixe
+    try {
+      if (barbeariaId) {
+        const { data: vagasRes } = await supabase.rpc('detectar_vagas_e_otimizacoes', {
+          p_barbearia_id: barbeariaId,
+          p_barbeiro_id: barbeiroId,
+          p_data: dataHojeStr,
+        });
+        if (vagasRes) {
+          setVagasDiretas((vagasRes as any).vagas_diretas || []);
+          setOtimizacoes((vagasRes as any).otimizacoes || []);
+        }
+      }
+    } catch {
+      // Falha graciosa caso a RPC esteja em migração
+    }
 
     setCarregando(false);
   }, [barbeiroId, barbeariaId]);
 
   const concluirAgendamento = useCallback(async (id: string) => {
-    let consulta = supabase
+    const { error } = await supabase
       .from('agendamentos')
       .update({ status: 'concluido' })
-      .eq('id', id)
-      .eq('barbeiro_id', barbeiroId);
-    if (barbeariaId) consulta = consulta.eq('barbearia_id', barbeariaId);
-    const { error } = await consulta;
+      .eq('id', id);
 
     if (error) throw error;
-
     setAgendamentosHoje((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: 'concluido' } : item))
+      prev.map((a) => (a.id === id ? { ...a, status: 'concluido' } : a))
     );
-    setAgendamentosSemana((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: 'concluido' } : item))
-    );
-  }, [barbeiroId, barbeariaId]);
+  }, []);
 
   const cancelarAgendamento = useCallback(async (id: string) => {
-    let consulta = supabase
+    const { error } = await supabase
       .from('agendamentos')
       .update({ status: 'cancelado' })
-      .eq('id', id)
-      .eq('barbeiro_id', barbeiroId);
-    if (barbeariaId) consulta = consulta.eq('barbearia_id', barbeariaId);
-    const { error } = await consulta;
+      .eq('id', id);
 
     if (error) throw error;
-
-    setAgendamentosHoje((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: 'cancelado' } : item))
-    );
-    setAgendamentosSemana((prev) =>
-      prev.filter((item) => item.id !== id)
-    );
-  }, [barbeiroId, barbeariaId]);
+    setAgendamentosHoje((prev) => prev.filter((a) => a.id !== id));
+    setAgendamentosSemana((prev) => prev.filter((a) => a.id !== id));
+  }, []);
 
   const definirAtraso = useCallback(async (minutos: number) => {
     if (!barbeiroId) return;
-    const data = new Date().toISOString().slice(0, 10);
+    const dataHojeStr = new Date().toISOString().slice(0, 10);
 
-    const { data: afetados, error: rpcErr } = await supabase.rpc('registrar_atraso_agenda', {
-      p_minutos: minutos,
-      p_data: data,
-    });
+    const { error } = await supabase
+      .from('atrasos_agenda')
+      .upsert({
+        barbeiro_id: barbeiroId,
+        barbearia_id: barbeariaId ?? null,
+        data: dataHojeStr,
+        minutos_atraso: minutos,
+        normalizado_em: minutos === 0 ? new Date().toISOString() : null,
+      }, { onConflict: 'barbeiro_id,data' });
 
-    if (rpcErr) {
-      const { error: upsertErr } = await supabase.from('atrasos_agenda').upsert(
-        {
-          barbeiro_id: barbeiroId,
-          barbearia_id: barbeariaId ?? null,
-          data,
-          minutos_atraso: minutos,
-          normalizado_em: minutos === 0 ? new Date().toISOString() : null,
-        },
-        { onConflict: 'barbeiro_id,data' }
-      );
-      if (upsertErr) throw upsertErr;
-    }
-
+    if (error) throw error;
     setMinutosAtraso(minutos);
-    return afetados;
   }, [barbeiroId, barbeariaId]);
 
   const alternarTardeFechada = useCallback(async (fechada: boolean) => {
     if (!barbeiroId) return;
-    const data = new Date().toISOString().slice(0, 10);
+    const dataHojeStr = new Date().toISOString().slice(0, 10);
 
-    const { error } = await supabase.from('avisos_funcionamento').upsert(
-      {
+    const { error } = await supabase
+      .from('avisos_funcionamento')
+      .upsert({
         barbeiro_id: barbeiroId,
         barbearia_id: barbeariaId ?? null,
-        data,
+        data: dataHojeStr,
         tarde_fechada: fechada,
-      },
-      { onConflict: 'barbeiro_id,data' }
-    );
+      }, { onConflict: 'barbeiro_id,data' });
 
     if (error) throw error;
     setTardeFechadaHoje(fechada);
@@ -286,15 +302,28 @@ export function usePainelBarbeiro(barbeariaId?: string) {
 
   const criarReservaManual = useCallback(async (dados: {
     clienteId?: string;
+    clienteNome?: string;
     nomeCliente?: string;
+    clienteTelefone?: string;
     telefone?: string;
     servicoId: string;
     dataHora: string;
   }) => {
     if (!barbeiroId) throw new Error('Barbeiro não autenticado.');
 
-    // Se clienteId não for fornecido, usa o próprio barbeiro ou cria perfil
-    const clienteFinalId = dados.clienteId || barbeiroId;
+    const tel = (dados.clienteTelefone || dados.telefone || '').trim();
+    let clienteFinalId = dados.clienteId || barbeiroId;
+    if (tel && !dados.clienteId) {
+      const { data: perfilExistente } = await supabase
+        .from('perfis')
+        .select('id')
+        .eq('telefone', tel)
+        .maybeSingle();
+
+      if (perfilExistente) {
+        clienteFinalId = perfilExistente.id;
+      }
+    }
 
     const { data, error } = await supabase
       .from('agendamentos')
@@ -355,6 +384,40 @@ export function usePainelBarbeiro(barbeariaId?: string) {
     return data;
   }, [barbeariaId]);
 
+  const aplicarOtimizacao = useCallback(async (otim: OtimizacaoSugestao) => {
+    if (!barbeiroId || !barbeariaId) return;
+    const agora = new Date();
+    const dataHojeStr = agora.toISOString().slice(0, 10);
+    const novoIso = `${dataHojeStr}T${otim.sugestao_ajuste}:00Z`;
+
+    const { error } = await supabase
+      .from('agendamentos')
+      .update({
+        data_hora: novoIso,
+        data_hora_fim: new Date(new Date(novoIso).getTime() + (otim.duracao_liberada_min || 30) * 60 * 1000).toISOString(),
+      })
+      .eq('id', otim.agendamento_id);
+
+    if (error) throw error;
+    await carregar();
+  }, [barbeiroId, barbeariaId, carregar]);
+
+  const liberarVagaParaFila = useCallback(async (vaga: VagaDireta, filaCandidatoId?: string) => {
+    if (!barbeiroId || !barbeariaId) return;
+
+    if (filaCandidatoId) {
+      await supabase.from('notifications').insert({
+        usuario_id: filaCandidatoId,
+        barbearia_id: barbeariaId,
+        tipo: 'oferta_vaga_fila',
+        titulo: 'Vaga Disponível Hoje! ⚡',
+        mensagem: `Uma vaga foi liberada para hoje às ${vaga.hora_inicio}! Abra o app para confirmar.`,
+        dados: { barbeariaId, dataHora: vaga.data_hora },
+      });
+    }
+    await carregar();
+  }, [barbeiroId, barbeariaId, carregar]);
+
   useEffect(() => {
     carregar();
   }, [carregar]);
@@ -362,6 +425,8 @@ export function usePainelBarbeiro(barbeariaId?: string) {
   return {
     agendamentosHoje,
     agendamentosSemana,
+    vagasDiretas,
+    otimizacoes,
     clientes,
     totalNaFila,
     minutosAtraso,
@@ -374,5 +439,7 @@ export function usePainelBarbeiro(barbeariaId?: string) {
     alternarTardeFechada,
     criarReservaManual,
     enviarMimoCliente,
+    aplicarOtimizacao,
+    liberarVagaParaFila,
   };
 }

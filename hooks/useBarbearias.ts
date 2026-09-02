@@ -31,6 +31,9 @@ export interface BarbeariaPublica {
     descricao: string;
     validade_dias: number;
   } | null;
+  modo_duracao?: 'fixo_1h' | 'tempo_servico';
+  step_agendamento_min?: number;
+  intervalo_descanso_min?: number;
 }
 
 export const CAMPOS_REGRAS_BARBEARIA = 'modo_agenda, dias_janela_agendamento, comissao_padrao, regras_fidelidade, mimo_ativo';

@@ -8,40 +8,49 @@ import {
   TextInput,
   Alert,
   Modal,
-  Pressable,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
-  ChevronLeft,
-  CalendarPlus,
-  Ban,
-  UserPlus,
-  Clock,
-  Plus,
-  Check,
-  X,
-  User,
-  Phone,
-  Mail,
+  ArrowLeft,
   Users,
-  MessageSquare,
-  Send,
+  Sliders,
+  UserPlus,
+  Shield,
   UserCheck,
   UserX,
   Search,
+  Check,
+  X,
+  Trash2,
+  CheckCircle,
+  Bell,
+  Ban,
+  Phone,
+  Mail,
+  ChevronRight,
   Sparkles,
   Info,
-  Calendar,
+  Clock,
+  Plus,
 } from 'lucide-react-native';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows, type ThemePalette } from '@/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
-import { useServicos } from '@/hooks/useServicos';
-import { usePainelBarbeiro } from '@/hooks/usePainelBarbeiro';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
+import { useMembrosBarbearia, type PapelMembro, type MembroBarbearia } from '@/hooks/useMembrosBarbearia';
+import { Botao } from '@/components';
+
+interface UsuarioBusca {
+  id: string;
+  nome_completo: string | null;
+  email: string | null;
+  telefone: string | null;
+  role: string;
+}
 
 interface BloqueioCliente {
   id: string;
@@ -52,57 +61,14 @@ interface BloqueioCliente {
   criado_em: string;
 }
 
-interface FuncionarioEquipe {
-  id: string;
-  nome: string;
-  email: string | null;
-  telefone: string | null;
-  cargo: string;
-  ativo: boolean;
-}
+const PAPEL_ROTULOS: Record<PapelMembro, { rotulo: string; cor: string; desc: string }> = {
+  proprietario: { rotulo: 'Proprietário', cor: Colors.ouro, desc: 'Acesso total, gestão comercial e membros' },
+  gestor: { rotulo: 'Gestor', cor: '#4EA8DE', desc: 'Gerenciamento de agenda, dados e equipe' },
+  barbeiro: { rotulo: 'Barbeiro', cor: Colors.verde, desc: 'Atendimentos, agenda própria e clientes' },
+  atendente: { rotulo: 'Atendente', cor: '#B5838D', desc: 'Agendamentos e recepção' },
+};
 
-interface ItemFila {
-  id: string;
-  cliente_id: string;
-  cliente: {
-    id: string;
-    nome_completo: string | null;
-    telefone: string | null;
-    email?: string | null;
-  };
-}
-
-interface ClientePerfil {
-  id: string;
-  nome_completo: string | null;
-  email: string | null;
-  telefone: string | null;
-}
-
-interface AgendamentoItemSimples {
-  id: string;
-  cliente_id: string;
-  data_hora: string;
-  status: string;
-  cliente: {
-    id: string;
-    nome_completo: string | null;
-    telefone: string | null;
-  };
-  servico: {
-    id: string;
-    nome: string;
-  };
-}
-
-type GrupoMensagem = 'hoje' | 'semana' | 'fila' | 'todos';
-
-const HORARIOS_ENCAIXE = [
-  '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-  '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
-];
-
-const HORARIOS_TARDE = ['14:00', '15:00', '16:00', '17:00'];
+type AbaAjustes = 'equipe' | 'regras';
 
 export default function TelaOpcoesAvancadas() {
   const router = useRouter();
@@ -110,325 +76,329 @@ export default function TelaOpcoesAvancadas() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { session } = useAuth();
   const barbeiroId = session?.user?.id;
-  const { barbearia } = useBarbearia();
-  const { servicos } = useServicos('todos', barbearia?.id);
-  const { agendamentosHoje, clientes, alternarTardeFechada, criarReservaManual } = usePainelBarbeiro(barbearia?.id);
+  const { barbearia, selecionarBarbearia } = useBarbearia();
 
-  // Estados gerais
-  const [carregando, setCarregando] = useState(true);
+  // Membros
+  const {
+    membros,
+    carregando: carregandoMembros,
+    adicionarMembro,
+    alterarPapel,
+    alternarStatus,
+    removerMembro,
+  } = useMembrosBarbearia(barbearia?.id);
+
+  // Aba ativa
+  const [abaAtiva, setAbaAtiva] = useState<AbaAjustes>('equipe');
+
+  // Estados de Membros & Modal
+  const [modalNovoMembro, setModalNovoMembro] = useState(false);
+  const [modalEditarMembro, setModalEditarMembro] = useState<MembroBarbearia | null>(null);
+  const [buscaUsuario, setBuscaUsuario] = useState('');
+  const [usuariosEncontrados, setUsuariosEncontrados] = useState<UsuarioBusca[]>([]);
+  const [buscandoUsuarios, setBuscandoUsuarios] = useState(false);
+  const [usuarioSelecionado, setUsuarioSelecionado] = useState<UsuarioBusca | null>(null);
+  const [papelNovoMembro, setPapelNovoMembro] = useState<PapelMembro>('barbeiro');
+  const [salvandoMembro, setSalvandoMembro] = useState(false);
+
+  // Estados de Regras e Comissões
+  const [modoAgenda, setModoAgenda] = useState<'continua' | 'drops'>(
+    (barbearia?.modo_agenda as 'continua' | 'drops') || 'continua'
+  );
+  const [modoDuracao, setModoDuracao] = useState<'fixo_1h' | 'tempo_servico'>(
+    (barbearia?.modo_duracao as 'fixo_1h' | 'tempo_servico') || 'fixo_1h'
+  );
+  const [stepAgendamento, setStepAgendamento] = useState<number>(
+    barbearia?.step_agendamento_min || 30
+  );
+  const [intervaloDescanso, setIntervaloDescanso] = useState<number>(
+    barbearia?.intervalo_descanso_min || 0
+  );
+  const [diasJanela, setDiasJanela] = useState<number>(
+    barbearia?.dias_janela_agendamento || 14
+  );
+  const [comissaoPadrao, setComissaoPadrao] = useState<string>(
+    barbearia?.comissao_padrao !== undefined ? String(barbearia.comissao_padrao) : '50'
+  );
+
+  // Fidelidade
+  const [fidelidadeAtiva, setFidelidadeAtiva] = useState<boolean>(
+    barbearia?.regras_fidelidade?.ativo ?? false
+  );
+  const [metaCortesFidelidade, setMetaCortesFidelidade] = useState<string>(
+    barbearia?.regras_fidelidade?.meta_cortes ? String(barbearia.regras_fidelidade.meta_cortes) : '10'
+  );
+  const [recompensaFidelidade, setRecompensaFidelidade] = useState<string>(
+    barbearia?.regras_fidelidade?.recompensa || 'Corte ou Barba Grátis'
+  );
+
+  // Mimos
+  const [mimoAtivo, setMimoAtivo] = useState<boolean>(barbearia?.mimo_ativo?.ativo ?? true);
+  const [mimoTipo, setMimoTipo] = useState<'upgrade' | 'desconto' | 'brinde'>(
+    barbearia?.mimo_ativo?.tipo || 'upgrade'
+  );
+  const [mimoTitulo, setMimoTitulo] = useState<string>(
+    barbearia?.mimo_ativo?.titulo || 'Corte Ganha Sobrancelha Grátis 🎁'
+  );
+  const [mimoDescricao, setMimoDescricao] = useState<string>(
+    barbearia?.mimo_ativo?.descricao || 'Agende seu corte e ganhe o design de sobrancelha como cortesia da barbearia!'
+  );
+  const [mimoValidade, setMimoValidade] = useState<string>(
+    barbearia?.mimo_ativo?.validade_dias ? String(barbearia.mimo_ativo.validade_dias) : '7'
+  );
+
+  const [disparandoPush, setDisparandoPush] = useState(false);
+  const [salvandoRegras, setSalvandoRegras] = useState(false);
+
+  // Bloqueios
   const [bloqueados, setBloqueados] = useState<BloqueioCliente[]>([]);
-  const [equipe, setEquipe] = useState<FuncionarioEquipe[]>([]);
-  const [clientesFila, setClientesFila] = useState<ItemFila[]>([]);
-  const [todosClientesApp, setTodosClientesApp] = useState<ClientePerfil[]>([]);
-  const [agendamentosSemana, setAgendamentosSemana] = useState<AgendamentoItemSimples[]>([]);
-
-  // Modais
-  const [modalEncaixeAberto, setModalEncaixeAberto] = useState(false);
   const [modalBloqueioAberto, setModalBloqueioAberto] = useState(false);
-  const [modalFuncionarioAberto, setModalFuncionarioAberto] = useState(false);
-  const [modalVagasTardeAberto, setModalVagasTardeAberto] = useState(false);
-  const [modalMensagemGrupoAberto, setModalMensagemGrupoAberto] = useState(false);
-
-  // Formulário Encaixe
-  const [encaixeHora, setEncaixeHora] = useState('08:00');
-  const [encaixeClienteId, setEncaixeClienteId] = useState<string | null>(null);
-  const [encaixeNomeManual, setEncaixeNomeManual] = useState('');
-  const [encaixeTelefoneManual, setEncaixeTelefoneManual] = useState('');
-  const [encaixeEmailManual, setEncaixeEmailManual] = useState('');
-  const [encaixeServicoId, setEncaixeServicoId] = useState<string>('');
-  const [buscaClienteEncaixe, setBuscaClienteEncaixe] = useState('');
-  const [salvandoEncaixe, setSalvandoEncaixe] = useState(false);
-
-  // Formulário Bloqueio
-  const [bloqueioClienteId, setBloqueioClienteId] = useState<string | null>(null);
   const [bloqueioNome, setBloqueioNome] = useState('');
   const [bloqueioEmail, setBloqueioEmail] = useState('');
   const [bloqueioTelefone, setBloqueioTelefone] = useState('');
   const [bloqueioMotivo, setBloqueioMotivo] = useState('');
-  const [buscaClienteBloqueio, setBuscaClienteBloqueio] = useState('');
   const [salvandoBloqueio, setSalvandoBloqueio] = useState(false);
 
-  // Formulário Funcionário
-  const [funcNome, setFuncNome] = useState('');
-  const [funcEmail, setFuncEmail] = useState('');
-  const [funcTelefone, setFuncTelefone] = useState('');
-  const [funcCargo, setFuncCargo] = useState('Barbeiro');
-  const [salvandoFunc, setSalvandoFunc] = useState(false);
+  // Sincroniza dados da barbearia
+  useEffect(() => {
+    if (!barbearia) return;
+    if (barbearia.modo_agenda) setModoAgenda(barbearia.modo_agenda);
+    const modoDuracaoDetectado =
+      barbearia.modo_duracao || (barbearia.regras_fidelidade as any)?.modo_duracao || 'fixo_1h';
+    const stepDetectado =
+      barbearia.step_agendamento_min || (barbearia.regras_fidelidade as any)?.step_agendamento_min || 30;
+    const intervaloDetectado =
+      barbearia.intervalo_descanso_min !== undefined
+        ? barbearia.intervalo_descanso_min
+        : ((barbearia.regras_fidelidade as any)?.intervalo_descanso_min ?? 0);
 
-  // Vagas Tarde
-  const [tardeHorarios, setTardeHorarios] = useState<string[]>(HORARIOS_TARDE);
-  const [salvandoVagasTarde, setSalvandoVagasTarde] = useState(false);
+    setModoDuracao(modoDuracaoDetectado);
+    setStepAgendamento(stepDetectado);
+    setIntervaloDescanso(intervaloDetectado);
 
-  // Mensagem em Grupo
-  const [grupoDestino, setGrupoDestino] = useState<GrupoMensagem>('hoje');
-  const [destinatariosSelecionados, setDestinatariosSelecionados] = useState<string[]>([]);
-  const [msgTitulo, setMsgTitulo] = useState('');
-  const [msgTexto, setMsgTexto] = useState('');
-  const [enviandoMsg, setEnviandoMsg] = useState(false);
+    if (barbearia.dias_janela_agendamento) setDiasJanela(barbearia.dias_janela_agendamento);
+    if (barbearia.comissao_padrao !== undefined) setComissaoPadrao(String(barbearia.comissao_padrao));
 
-  const carregarDadosAvancados = useCallback(async () => {
+    if (barbearia.regras_fidelidade) {
+      setFidelidadeAtiva(barbearia.regras_fidelidade.ativo);
+      setMetaCortesFidelidade(String(barbearia.regras_fidelidade.meta_cortes));
+      setRecompensaFidelidade(barbearia.regras_fidelidade.recompensa);
+    }
+    if (barbearia.mimo_ativo) {
+      setMimoAtivo(barbearia.mimo_ativo.ativo);
+      setMimoTipo(barbearia.mimo_ativo.tipo);
+      setMimoTitulo(barbearia.mimo_ativo.titulo);
+      setMimoDescricao(barbearia.mimo_ativo.descricao);
+      setMimoValidade(String(barbearia.mimo_ativo.validade_dias));
+    }
+  }, [barbearia]);
+
+  // Carrega bloqueios de clientes
+  const carregarBloqueios = useCallback(async () => {
     if (!barbeiroId) return;
-    setCarregando(true);
-
     try {
-      // 1. Carrega clientes bloqueados
-      const { data: dataBloqueios } = await supabase
+      const { data } = await supabase
         .from('bloqueios_clientes')
         .select('*')
         .eq('barbeiro_id', barbeiroId)
         .order('criado_em', { ascending: false });
-
-      // 2. Carrega equipe de funcionários
-      const { data: dataEquipe } = await supabase
-        .from('equipe_barbearia')
-        .select('*')
-        .eq('barbeiro_id', barbeiroId)
-        .order('criado_em', { ascending: false });
-
-      // 3. Carrega clientes na fila de espera
-      const { data: dataFila } = await supabase
-        .from('fila_espera')
-        .select(`
-          id, cliente_id,
-          cliente:cliente_id ( id, nome_completo, telefone, email )
-        `)
-        .eq('status', 'aguardando');
-
-      // 4. Carrega todos os perfis de clientes cadastrados no app (com email e telefone)
-      const { data: dataPerfis } = await supabase
-        .from('perfis')
-        .select('id, nome_completo, email, telefone')
-        .eq('role', 'cliente')
-        .order('nome_completo', { ascending: true });
-
-      // 5. Carrega agendamentos da semana (próximos 7 dias)
-      const hoje = new Date();
-      const fimSemana = new Date();
-      fimSemana.setDate(hoje.getDate() + 7);
-      const { data: dataSemana } = await supabase
-        .from('agendamentos')
-        .select(`
-          id, cliente_id, data_hora, status,
-          cliente:cliente_id ( id, nome_completo, telefone ),
-          servico:servico_id ( id, nome )
-        `)
-        .gte('data_hora', hoje.toISOString().slice(0, 10) + 'T00:00:00Z')
-        .lte('data_hora', fimSemana.toISOString().slice(0, 10) + 'T23:59:59Z')
-        .neq('status', 'cancelado')
-        .order('data_hora', { ascending: true });
-
-      setBloqueados(dataBloqueios || []);
-      setEquipe(dataEquipe || []);
-      setClientesFila((dataFila ?? []) as unknown as ItemFila[]);
-      setTodosClientesApp((dataPerfis ?? []) as unknown as ClientePerfil[]);
-      setAgendamentosSemana((dataSemana ?? []) as unknown as AgendamentoItemSimples[]);
+      if (data) setBloqueados(data as BloqueioCliente[]);
     } catch {
-      // fallback
-    } finally {
-      setCarregando(false);
+      // silencioso
     }
   }, [barbeiroId]);
 
   useEffect(() => {
-    carregarDadosAvancados();
-  }, [carregarDadosAvancados]);
+    carregarBloqueios();
+  }, [carregarBloqueios]);
 
-  // Serviço selecionado no Encaixe (para a colinha de combo)
-  const servicoSelecionadoEncaixe = useMemo(() => {
-    return servicos.find((s) => s.id === encaixeServicoId) || servicos[0];
-  }, [servicos, encaixeServicoId]);
-
-  // Filtro de busca de clientes cadastrados no app para o ENCAIXE (Nome, E-mail ou Telefone)
-  const clientesFiltradosEncaixe = useMemo(() => {
-    const termo = buscaClienteEncaixe.trim().toLowerCase();
-    if (!termo) return [];
-    return todosClientesApp.filter((c) => {
-      const nome = (c.nome_completo || '').toLowerCase();
-      const email = (c.email || '').toLowerCase();
-      const tel = (c.telefone || '').replace(/\D/g, '');
-      const termoNum = termo.replace(/\D/g, '');
-      return (
-        nome.includes(termo) ||
-        email.includes(termo) ||
-        (termoNum && tel.includes(termoNum))
-      );
-    });
-  }, [todosClientesApp, buscaClienteEncaixe]);
-
-  function selecionarClienteParaEncaixe(c: ClientePerfil) {
-    setEncaixeClienteId(c.id);
-    setEncaixeNomeManual(c.nome_completo || 'Cliente do App');
-    setEncaixeTelefoneManual(c.telefone || '');
-    setEncaixeEmailManual(c.email || '');
-    setBuscaClienteEncaixe('');
-  }
-
-  function limparSelecaoClienteEncaixe() {
-    setEncaixeClienteId(null);
-    setEncaixeNomeManual('');
-    setEncaixeTelefoneManual('');
-    setEncaixeEmailManual('');
-    setBuscaClienteEncaixe('');
-  }
-
-  // Filtro de busca de clientes para BLOQUEIO (Nome, E-mail ou Telefone)
-  const clientesFiltradosBloqueio = useMemo(() => {
-    const termo = buscaClienteBloqueio.trim().toLowerCase();
-    if (!termo) return [];
-    return todosClientesApp.filter((c) => {
-      const nome = (c.nome_completo || '').toLowerCase();
-      const email = (c.email || '').toLowerCase();
-      const tel = (c.telefone || '').replace(/\D/g, '');
-      const termoNum = termo.replace(/\D/g, '');
-      return (
-        nome.includes(termo) ||
-        email.includes(termo) ||
-        (termoNum && tel.includes(termoNum))
-      );
-    });
-  }, [todosClientesApp, buscaClienteBloqueio]);
-
-  function selecionarClienteParaBloqueio(c: ClientePerfil) {
-    setBloqueioClienteId(c.id);
-    setBloqueioNome(c.nome_completo || 'Cliente');
-    setBloqueioEmail(c.email || '');
-    setBloqueioTelefone(c.telefone || '');
-    setBuscaClienteBloqueio('');
-  }
-
-  function limparSelecaoClienteBloqueio() {
-    setBloqueioClienteId(null);
-    setBloqueioNome('');
-    setBloqueioEmail('');
-    setBloqueioTelefone('');
-    setBuscaClienteBloqueio('');
-  }
-
-  // ─── MENSAGEM EM GRUPO (HOJE / SEMANA / FILA / TODOS) ───
-  function abrirModalMensagemGrupo() {
-    setMsgTitulo('');
-    setMsgTexto('');
-    setGrupoDestino('hoje');
-
-    const idsHoje = Array.from(
-      new Set(
-        agendamentosHoje
-          .filter((a) => a.status !== 'cancelado' && a.cliente.id)
-          .map((a) => a.cliente.id)
-      )
-    );
-    setDestinatariosSelecionados(idsHoje);
-    setModalMensagemGrupoAberto(true);
-  }
-
-  function handleMudarGrupoDestino(novoGrupo: GrupoMensagem) {
-    setGrupoDestino(novoGrupo);
-    if (novoGrupo === 'hoje') {
-      const idsHoje = Array.from(
-        new Set(
-          agendamentosHoje
-            .filter((a) => a.status !== 'cancelado' && a.cliente.id)
-            .map((a) => a.cliente.id)
-        )
-      );
-      setDestinatariosSelecionados(idsHoje);
-    } else if (novoGrupo === 'semana') {
-      const idsSemana = Array.from(
-        new Set(
-          agendamentosSemana
-            .filter((a) => a.status !== 'cancelado' && a.cliente?.id)
-            .map((a) => a.cliente.id)
-        )
-      );
-      setDestinatariosSelecionados(idsSemana);
-    } else if (novoGrupo === 'fila') {
-      const idsFila = Array.from(
-        new Set(clientesFila.filter((f) => f.cliente_id).map((f) => f.cliente_id))
-      );
-      setDestinatariosSelecionados(idsFila);
-    } else if (novoGrupo === 'todos') {
-      const idsTodos = todosClientesApp.map((c) => c.id);
-      setDestinatariosSelecionados(idsTodos);
-    }
-  }
-
-  function toggleDestinatario(clienteId: string) {
-    setDestinatariosSelecionados((prev) =>
-      prev.includes(clienteId) ? prev.filter((id) => id !== clienteId) : [...prev, clienteId]
-    );
-  }
-
-  async function handleDispararMensagemGrupo() {
-    if (!msgTitulo.trim() || !msgTexto.trim()) {
-      Alert.alert('Campos obrigatórios', 'Preencha o título e a mensagem do aviso.');
+  // ─── AÇÕES DE MEMBROS ───
+  async function buscarUsuariosParaMembro(termo: string) {
+    setBuscaUsuario(termo);
+    const termoLimpo = termo.trim().toLowerCase();
+    if (!termoLimpo || termoLimpo.length < 2) {
+      setUsuariosEncontrados([]);
       return;
     }
 
-    if (destinatariosSelecionados.length === 0) {
-      Alert.alert('Sem destinatários', 'Selecione pelo menos um cliente para receber a mensagem.');
-      return;
-    }
-
-    setEnviandoMsg(true);
+    setBuscandoUsuarios(true);
     try {
-      const registros = destinatariosSelecionados.map((clienteId) => ({
-        usuario_id: clienteId,
-        titulo: msgTitulo.trim(),
-        mensagem: msgTexto.trim(),
-        tipo: 'aviso_barbeiro',
-        dados: { enviado_em: new Date().toISOString() },
-      }));
+      const { data } = await supabase
+        .from('perfis')
+        .select('id, nome_completo, email, telefone, role')
+        .or(`nome_completo.ilike.%${termoLimpo}%,email.ilike.%${termoLimpo}%`)
+        .limit(10);
 
-      const { error } = await supabase.from('notifications').insert(registros);
+      const membrosIds = new Set(membros.map((m) => m.usuario_id));
+      const filtrados = (data ?? []).filter((u) => !membrosIds.has(u.id));
+      setUsuariosEncontrados(filtrados as UsuarioBusca[]);
+    } catch {
+      setUsuariosEncontrados([]);
+    } finally {
+      setBuscandoUsuarios(false);
+    }
+  }
+
+  async function handleConfirmarNovoMembro() {
+    if (!usuarioSelecionado) {
+      Alert.alert('Selecione um usuário', 'Escolha um perfil para vincular à barbearia.');
+      return;
+    }
+
+    setSalvandoMembro(true);
+    try {
+      await adicionarMembro(usuarioSelecionado.id, papelNovoMembro);
+      setModalNovoMembro(false);
+      setUsuarioSelecionado(null);
+      setBuscaUsuario('');
+      setUsuariosEncontrados([]);
+      Alert.alert('Membro Adicionado! 👥', `${usuarioSelecionado.nome_completo || 'O usuário'} agora faz parte da equipe.`);
+    } catch (err: any) {
+      Alert.alert('Erro ao adicionar membro', err.message || 'Tente novamente.');
+    } finally {
+      setSalvandoMembro(false);
+    }
+  }
+
+  async function handleAlterarPapelMembro(novoPapel: PapelMembro) {
+    if (!modalEditarMembro) return;
+    try {
+      await alterarPapel(modalEditarMembro.id, novoPapel);
+      setModalEditarMembro(null);
+      Alert.alert('Papel Atualizado', `O papel foi alterado para ${PAPEL_ROTULOS[novoPapel].rotulo}.`);
+    } catch (err: any) {
+      Alert.alert('Ação bloqueada ⚠️', err.message);
+    }
+  }
+
+  async function handleAlternarStatusMembro(membro: MembroBarbearia) {
+    const novoStatus = !membro.ativo;
+    const acaoTexto = novoStatus ? 'reativar' : 'desativar';
+
+    Alert.alert(
+      `${novoStatus ? 'Reativar' : 'Desativar'} Membro`,
+      `Deseja ${acaoTexto} o acesso de ${membro.perfil?.nome_completo || 'deste profissional'} neste estabelecimento?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: novoStatus ? 'Reativar' : 'Desativar',
+          style: novoStatus ? 'default' : 'destructive',
+          onPress: async () => {
+            try {
+              await alternarStatus(membro.id, novoStatus);
+              Alert.alert('Sucesso', `Membro ${novoStatus ? 'reativado' : 'desativado'} com sucesso.`);
+            } catch (err: any) {
+              Alert.alert('Ação bloqueada ⚠️', err.message);
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  async function handleRemoverMembro(membro: MembroBarbearia) {
+    Alert.alert(
+      'Remover Vínculo',
+      `Tem certeza que deseja remover ${membro.perfil?.nome_completo || 'este membro'} permanentemente da barbearia?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Remover',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await removerMembro(membro.id);
+              setModalEditarMembro(null);
+              Alert.alert('Vínculo Removido', 'O profissional foi desvinculado com sucesso.');
+            } catch (err: any) {
+              Alert.alert('Ação bloqueada ⚠️', err.message);
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  // ─── AÇÕES DE REGRAS ───
+  async function salvarRegras() {
+    if (!barbearia) return;
+    setSalvandoRegras(true);
+
+    const comissaoNum = Number(comissaoPadrao.replace(',', '.')) || 50;
+    const metaCortesNum = Number(metaCortesFidelidade) || 10;
+    const validadeNum = Number(mimoValidade) || 7;
+
+    const fidelidadePayload: any = {
+      ativo: fidelidadeAtiva,
+      meta_cortes: metaCortesNum,
+      recompensa: recompensaFidelidade.trim() || 'Corte Grátis',
+      modo_duracao: modoDuracao,
+      step_agendamento_min: stepAgendamento,
+      intervalo_descanso_min: intervaloDescanso,
+    };
+
+    const dadosAtualizacao: any = {
+      modo_agenda: modoAgenda,
+      dias_janela_agendamento: diasJanela,
+      comissao_padrao: comissaoNum,
+      regras_fidelidade: fidelidadePayload,
+      mimo_ativo: {
+        ativo: mimoAtivo,
+        tipo: mimoTipo,
+        titulo: mimoTitulo.trim() || 'Mimo Especial',
+        descricao: mimoDescricao.trim() || 'Resgate seu mimo no próximo agendamento.',
+        validade_dias: validadeNum,
+      },
+    };
+
+    try {
+      const { error } = await supabase
+        .from('barbearias')
+        .update({
+          ...dadosAtualizacao,
+          atualizado_em: new Date().toISOString(),
+        } as any)
+        .eq('id', barbearia.id);
       if (error) throw error;
-
-      setModalMensagemGrupoAberto(false);
-      Alert.alert(
-        'Mensagem Enviada! 📢',
-        `A notificação foi entregue para os ${destinatariosSelecionados.length} cliente(s) selecionados.`
-      );
-    } catch (err: any) {
-      Alert.alert('Erro ao enviar mensagem', err.message || 'Tente novamente.');
-    } finally {
-      setEnviandoMsg(false);
-    }
-  }
-
-  // ─── AÇÕES DE ENCAIXE ───
-  async function handleSalvarEncaixe() {
-    const servicoEscolhido = servicos.find((s) => s.id === encaixeServicoId) || servicos[0];
-    if (!servicoEscolhido) {
-      Alert.alert('Selecione um serviço', 'Escolha o serviço do agendamento.');
+    } catch (error) {
+      setSalvandoRegras(false);
+      Alert.alert('Erro ao salvar regras', error instanceof Error ? error.message : 'Tente novamente.');
       return;
     }
 
-    setSalvandoEncaixe(true);
+    await selecionarBarbearia({
+      ...barbearia,
+      ...dadosAtualizacao,
+      modo_duracao: modoDuracao,
+      step_agendamento_min: stepAgendamento,
+      intervalo_descanso_min: intervaloDescanso,
+    });
+
+    setSalvandoRegras(false);
+    Alert.alert('Regras Atualizadas! 💈', 'O modo de funcionamento, comissões e mimos foram salvos com sucesso.');
+  }
+
+  async function handleDispararPushMimo() {
+    if (!barbearia?.id) return;
+    setDisparandoPush(true);
     try {
-      const hojeStr = new Date().toISOString().slice(0, 10);
-      const dataHoraIso = new Date(`${hojeStr}T${encaixeHora}:00`).toISOString();
-
-      await criarReservaManual({
-        clienteId: encaixeClienteId || undefined,
-        nomeCliente: encaixeNomeManual.trim() || undefined,
-        telefone: encaixeTelefoneManual.trim() || undefined,
-        servicoId: servicoEscolhido.id,
-        dataHora: dataHoraIso,
+      const { data, error } = await supabase.rpc('disparar_mimos_reativacao', {
+        p_barbearia_id: barbearia.id,
       });
-
-      setModalEncaixeAberto(false);
-      limparSelecaoClienteEncaixe();
-      Alert.alert('Reserva Confirmada! ✂️', `Encaixe marcado com sucesso para hoje às ${encaixeHora}.`);
-    } catch (err: any) {
-      Alert.alert('Erro ao criar reserva', err.message || 'Tente novamente.');
+      if (error) throw error;
+      Alert.alert('Notificações Enviadas! 🔔', `${data ?? 0} cliente(s) recebeu(ram) o mimo por notificação in-app.`);
+    } catch (error) {
+      Alert.alert('Erro ao disparar mimo', error instanceof Error ? error.message : 'Tente novamente.');
     } finally {
-      setSalvandoEncaixe(false);
+      setDisparandoPush(false);
     }
   }
 
-  // ─── AÇÕES DE BLOQUEIO (LISTA NEGRA) ───
-  async function handleSalvarBloqueio() {
-    if (!bloqueioEmail.trim() && !bloqueioTelefone.trim() && !bloqueioClienteId) {
-      Alert.alert('Atenção', 'Selecione um cliente ou informe um e-mail ou telefone para bloquear.');
+  // ─── AÇÕES DE BLOQUEIO ───
+  async function salvarNovoBloqueio() {
+    if (!barbeiroId) return;
+    if (!bloqueioNome.trim() && !bloqueioEmail.trim() && !bloqueioTelefone.trim()) {
+      Alert.alert('Atenção', 'Informe ao menos o nome, e-mail ou telefone para bloquear.');
       return;
     }
 
@@ -436,1455 +406,1414 @@ export default function TelaOpcoesAvancadas() {
     try {
       const { error } = await supabase.from('bloqueios_clientes').insert({
         barbeiro_id: barbeiroId,
-        cliente_id: bloqueioClienteId || null,
-        email: bloqueioEmail.trim().toLowerCase() || null,
-        telefone: bloqueioTelefone.replace(/\D/g, '') || null,
-        motivo: bloqueioMotivo.trim() || 'Bloqueio de acesso pelo barbeiro',
+        email: bloqueioEmail.trim() || null,
+        telefone: bloqueioTelefone.trim() || null,
+        motivo: bloqueioMotivo.trim() || 'No-show / Falta recorrente',
       });
 
       if (error) throw error;
 
-      await carregarDadosAvancados();
       setModalBloqueioAberto(false);
-      limparSelecaoClienteBloqueio();
+      setBloqueioNome('');
+      setBloqueioEmail('');
+      setBloqueioTelefone('');
       setBloqueioMotivo('');
-      Alert.alert('Cliente Bloqueado 🚫', 'O cliente selecionado foi adicionado à lista negra e receberá tela de manutenção.');
+      carregarBloqueios();
+      Alert.alert('Bloqueio Realizado', 'O cliente não poderá mais marcar horários diretamente.');
     } catch (err: any) {
-      Alert.alert('Erro ao bloquear', err.message || 'Não foi possível bloquear o cliente.');
+      Alert.alert('Erro ao bloquear', err.message || 'Tente novamente.');
     } finally {
       setSalvandoBloqueio(false);
     }
   }
 
-  async function handleDesbloquear(bloqueioId: string) {
-    Alert.alert('Desbloquear Cliente', 'Deseja remover o bloqueio e restaurar o acesso deste cliente ao aplicativo?', [
+  async function removerBloqueio(id: string) {
+    Alert.alert('Desbloquear Cliente', 'Deseja liberar este cliente para novos agendamentos?', [
       { text: 'Cancelar', style: 'cancel' },
       {
-        text: 'Sim, Desbloquear',
+        text: 'Desbloquear',
         onPress: async () => {
           try {
-            const { error } = await supabase.from('bloqueios_clientes').delete().eq('id', bloqueioId);
-            if (error) throw error;
-            setBloqueados((prev) => prev.filter((b) => b.id !== bloqueioId));
-            Alert.alert('Desbloqueado 🔓', 'O acesso do cliente foi liberado com sucesso.');
-          } catch (err: any) {
-            Alert.alert('Erro ao desbloquear', err.message || 'Tente novamente.');
+            await supabase.from('bloqueios_clientes').delete().eq('id', id);
+            carregarBloqueios();
+            Alert.alert('Cliente Desbloqueado', 'O cliente já pode agendar normalmente.');
+          } catch {
+            Alert.alert('Erro ao desbloquear');
           }
         },
       },
     ]);
   }
 
-  // ─── AÇÕES DE EQUIPE ───
-  async function handleSalvarFuncionario() {
-    if (!funcNome.trim()) {
-      Alert.alert('Nome obrigatório', 'Informe o nome do funcionário.');
-      return;
-    }
-
-    setSalvandoFunc(true);
-    try {
-      const { error } = await supabase.from('equipe_barbearia').insert({
-        barbeiro_id: barbeiroId,
-        nome: funcNome.trim(),
-        email: funcEmail.trim().toLowerCase() || null,
-        telefone: funcTelefone.trim() || null,
-        cargo: funcCargo.trim() || 'Barbeiro',
-        ativo: true,
-      });
-
-      if (error) throw error;
-
-      await carregarDadosAvancados();
-      setModalFuncionarioAberto(false);
-      setFuncNome('');
-      setFuncEmail('');
-      setFuncTelefone('');
-      Alert.alert('Funcionário Adicionado! 💈', `O novo profissional foi registrado na equipe da ${barbearia?.nome || 'sua barbearia'}.`);
-    } catch (err: any) {
-      Alert.alert('Erro ao adicionar funcionário', err.message || 'Tente novamente.');
-    } finally {
-      setSalvandoFunc(false);
-    }
-  }
-
-  // ─── AÇÕES DE VAGAS DA TARDE (COM AVISO DE TARDE FECHADA POR JUSTIÇA) ───
-  async function handleLiberarVagasTarde() {
-    if (tardeHorarios.length === 0) {
-      Alert.alert('Selecione horários', 'Marque pelo menos um horário da tarde.');
-      return;
-    }
-    if (!barbeiroId) {
-      Alert.alert('Erro', 'Barbeiro não autenticado.');
-      return;
-    }
-    if (!barbearia?.id) {
-      Alert.alert('Erro', 'Nenhuma barbearia ativa selecionada.');
-      return;
-    }
-
-    setSalvandoVagasTarde(true);
-    try {
-      const hoje = new Date();
-      const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
-
-      // 1. Tenta a RPC atômica
-      const { error: erroRpc } = await supabase.rpc('liberar_vagas_tarde_rpc', {
-        p_barbearia_id: barbearia.id,
-        p_barbeiro_id: barbeiroId,
-        p_data: hojeStr,
-        p_horarios: tardeHorarios,
-      });
-
-      if (erroRpc) {
-        console.warn('RPC liberar_vagas_tarde_rpc falhou, executando gravação padrão:', erroRpc.message);
-
-        // Fallback
-        const diaSemana = hoje.getDay();
-        const diffSeg = diaSemana === 0 ? -6 : 1 - diaSemana;
-        const segunda = new Date(hoje);
-        segunda.setDate(hoje.getDate() + diffSeg);
-        const domingo = new Date(segunda);
-        domingo.setDate(segunda.getDate() + 6);
-
-        const inicioSemana = `${segunda.getFullYear()}-${String(segunda.getMonth() + 1).padStart(2, '0')}-${String(segunda.getDate()).padStart(2, '0')}`;
-        const fimSemana = `${domingo.getFullYear()}-${String(domingo.getMonth() + 1).padStart(2, '0')}-${String(domingo.getDate()).padStart(2, '0')}`;
-
-        const { data: agenda, error: erroAgenda } = await supabase
-          .from('agendas_semanais')
-          .upsert(
-            {
-              barbearia_id: barbearia.id,
-              barbeiro_id: barbeiroId,
-              data_inicio: inicioSemana,
-              data_fim: fimSemana,
-              status: 'aberta',
-              notificar_abertura: true,
-            },
-            { onConflict: 'barbearia_id,barbeiro_id,data_inicio' }
-          )
-          .select('id')
-          .single();
-
-        if (erroAgenda || !agenda) {
-          throw new Error(erroAgenda?.message || 'Erro ao obter agenda semanal.');
-        }
-
-        let { data: diaExistente } = await supabase
-          .from('dias_agenda')
-          .select('id')
-          .eq('agenda_semana_id', agenda.id)
-          .eq('data', hojeStr)
-          .maybeSingle();
-
-        let diaId = diaExistente?.id;
-        if (!diaId) {
-          const { data: novoDia, error: erroDia } = await supabase
-            .from('dias_agenda')
-            .insert({
-              agenda_semana_id: agenda.id,
-              barbearia_id: barbearia.id,
-              data: hojeStr,
-              ativo: true,
-            })
-            .select('id')
-            .single();
-          if (erroDia || !novoDia) {
-            throw new Error(erroDia?.message || 'Erro ao registrar dia na agenda.');
-          }
-          diaId = novoDia.id;
-        } else {
-          await supabase
-            .from('dias_agenda')
-            .update({ ativo: true, barbearia_id: barbearia.id })
-            .eq('id', diaId);
-        }
-
-        const slotsTarde = tardeHorarios.map((hora) => ({
-          barbearia_id: barbearia.id,
-          dia_agenda_id: diaId,
-          barbeiro_id: barbeiroId,
-          data_hora: new Date(`${hojeStr}T${hora}:00`).toISOString(),
-          ativo: true,
-        }));
-
-        const { error: erroSlots } = await supabase
-          .from('slots_agenda')
-          .upsert(slotsTarde, { onConflict: 'barbearia_id,barbeiro_id,data_hora' });
-
-        if (erroSlots) {
-          throw new Error(erroSlots.message);
-        }
-      }
-
-      // REGRA DE JUSTIÇA: Marca a tarde como FECHADA para ordem de chegada
-      await alternarTardeFechada(true);
-
-      // Dispara aviso para TODOS os clientes informando que hoje à tarde não haverá ordem de chegada
-      await supabase.rpc('notificar_todos_clientes', {
-        p_titulo: 'Aviso: Turno da Tarde Exclusivo por Agendamento 💈',
-        p_mensagem: 'Informamos que hoje à tarde não haverá atendimento por ordem de chegada. O atendimento será exclusivo para agendamentos liberados no aplicativo.',
-        p_tipo: 'aviso_funcionamento',
-        p_dados: { data: hojeStr, horarios: tardeHorarios },
-      });
-
-      setModalVagasTardeAberto(false);
-      Alert.alert(
-        'Vagas da Tarde Liberadas! 🚀',
-        `${tardeHorarios.length} horários foram abertos no app. O aviso de fechamento da ordem de chegada foi ativado automaticamente para evitar filas e garantir justiça!`
-      );
-    } catch (err: any) {
-      Alert.alert('Erro ao liberar vagas', err.message || 'Tente novamente.');
-    } finally {
-      setSalvandoVagasTarde(false);
-    }
+  if (!barbearia) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]}>
+        <View style={styles.vazioContainer}>
+          <Text style={[styles.vazioTexto, { color: theme.textoSecundario }]}>Selecione uma barbearia ativa primeiro no menu.</Text>
+          <TouchableOpacity style={[styles.voltarBotao, { backgroundColor: theme.ouro }]} onPress={() => router.back()}>
+            <Text style={[styles.voltarBotaoTexto, { color: theme.textoEscuroSobreOuro }]}>Voltar</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]} edges={['top']}>
-      {/* Header */}
+      {/* Header Superior */}
       <View style={[styles.header, { borderBottomColor: theme.borda }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.botaoVoltar} activeOpacity={0.7}>
-          <ChevronLeft size={24} color={theme.textoPrimario} />
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerBotao}>
+          <ArrowLeft color={theme.textoPrimario} size={22} />
         </TouchableOpacity>
-        <Text style={[styles.titulo, { color: theme.textoPrimario }]}>Opções Avançadas</Text>
-        <View style={styles.placeholder} />
+        <View style={styles.headerCentro}>
+          <Text style={[styles.headerTitulo, { color: theme.textoPrimario }]}>Ajustes & Equipe</Text>
+          <Text style={[styles.headerSubtitulo, { color: theme.textoSecundario }]} numberOfLines={1}>
+            {barbearia.nome}
+          </Text>
+        </View>
+        <View style={{ width: 22 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* ─── CARD 1: MENSAGEM EM GRUPO ─── */}
-        <View style={[styles.secaoCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
-          <View style={styles.secaoHeaderLinha}>
-            <View style={[styles.secaoIconeBadge, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
-              <MessageSquare size={20} color={theme.ouroTexto} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.secaoCardTitulo, { color: theme.textoPrimario }]}>Mensagens em Grupo</Text>
-              <Text style={[styles.secaoCardSubtitulo, { color: theme.textoSecundario }]}>
-                Envie notificações diretas para grupos: hoje, semana, fila de espera ou todos os clientes, com opção de desmarcar pessoas específicas.
-              </Text>
-            </View>
-          </View>
-
+      {/* Segmented Controller (2 Abas Claras) */}
+      <View style={[styles.segmentosWrapper, { backgroundColor: theme.superficie, borderBottomColor: theme.borda }]}>
+        <View style={styles.segmentosContainer}>
           <TouchableOpacity
-            style={[styles.botaoAcaoPrincipal, { backgroundColor: theme.ouro }]}
-            onPress={abrirModalMensagemGrupo}
+            style={[
+              styles.segmento,
+              { backgroundColor: theme.superficie2, borderColor: theme.borda },
+              abaAtiva === 'equipe' && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+            ]}
+            onPress={() => setAbaAtiva('equipe')}
             activeOpacity={0.8}
           >
-            <Send size={16} color={theme.textoEscuroSobreOuro} />
-            <Text style={[styles.botaoAcaoPrincipalTexto, { color: theme.textoEscuroSobreOuro }]}>Disparar Mensagem em Grupo</Text>
+            <Users size={16} color={abaAtiva === 'equipe' ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
+            <Text
+              style={[
+                styles.segmentoTexto,
+                { color: theme.textoSecundario },
+                abaAtiva === 'equipe' && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+              ]}
+            >
+              Equipe ({membros.length})
+            </Text>
           </TouchableOpacity>
-        </View>
-
-        {/* ─── CARD 2: RESERVA & ENCAIXE MANUAL ─── */}
-        <View style={[styles.secaoCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
-          <View style={styles.secaoHeaderLinha}>
-            <View style={[styles.secaoIconeBadge, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
-              <CalendarPlus size={20} color={theme.ouroTexto} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.secaoCardTitulo, { color: theme.textoPrimario }]}>Encaixe Rápido de Clientes</Text>
-              <Text style={[styles.secaoCardSubtitulo, { color: theme.textoSecundario }]}>
-                Pesquise clientes cadastrados por nome, e-mail ou telefone, ou preencha manualmente com colinha discreta dos combos.
-              </Text>
-            </View>
-          </View>
 
           <TouchableOpacity
-            style={[styles.botaoAcaoPrincipal, { backgroundColor: theme.ouro }]}
-            onPress={() => {
-              setEncaixeServicoId(servicos[0]?.id || '');
-              setModalEncaixeAberto(true);
-            }}
+            style={[
+              styles.segmento,
+              { backgroundColor: theme.superficie2, borderColor: theme.borda },
+              abaAtiva === 'regras' && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+            ]}
+            onPress={() => setAbaAtiva('regras')}
             activeOpacity={0.8}
           >
-            <Plus size={16} color={theme.textoEscuroSobreOuro} />
-            <Text style={[styles.botaoAcaoPrincipalTexto, { color: theme.textoEscuroSobreOuro }]}>Fazer Reserva / Encaixe de Cliente</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ─── CARD 3: LISTA NEGRA (BLOQUEIO) ─── */}
-        <View style={[styles.secaoCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
-          <View style={styles.secaoHeaderLinha}>
-            <View style={[styles.secaoIconeBadge, { backgroundColor: 'rgba(239, 68, 68, 0.12)', borderColor: 'rgba(239, 68, 68, 0.25)' }]}>
-              <Ban size={20} color={theme.erro} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.secaoCardTitulo, { color: theme.textoPrimario }]}>Clientes Restritos (Bloqueio)</Text>
-              <Text style={[styles.secaoCardSubtitulo, { color: theme.textoSecundario }]}>
-                Bloqueie o acesso de clientes ao app pesquisando por nome, e-mail ou telefone. Eles verão a tela de manutenção.
-              </Text>
-            </View>
-          </View>
-
-          {bloqueados.length > 0 ? (
-            <View style={[styles.listaBloqueados, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
-              {bloqueados.map((b) => (
-                <View key={b.id} style={[styles.itemBloqueado, { borderBottomColor: theme.borda }]}>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={[styles.itemBloqueadoIdent, { color: theme.textoPrimario }]}>
-                      {b.email || b.telefone || 'Cliente Bloqueado'}
-                    </Text>
-                    <Text style={[styles.itemBloqueadoMotivo, { color: theme.textoSecundario }]} numberOfLines={1}>
-                      {b.motivo || 'Bloqueado pelo barbeiro'}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.botaoDesbloquear, { backgroundColor: theme.verdeClaro, borderColor: theme.verde }]}
-                    onPress={() => handleDesbloquear(b.id)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.botaoDesbloquearTexto, { color: theme.verde }]}>Desbloquear</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View style={[styles.statusVazioPill, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
-              <Text style={[styles.statusVazioTexto, { color: theme.textoSecundario }]}>Nenhum cliente restrito no momento.</Text>
-            </View>
-          )}
-
-          <TouchableOpacity
-            style={[styles.botaoAcaoSecundario, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}
-            onPress={() => {
-              limparSelecaoClienteBloqueio();
-              setModalBloqueioAberto(true);
-            }}
-            activeOpacity={0.8}
-          >
-            <Ban size={16} color={theme.erro} />
-            <Text style={[styles.botaoAcaoSecundarioTexto, { color: theme.erro }]}>
-              + Bloquear Novo Cliente
+            <Sliders size={16} color={abaAtiva === 'regras' ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
+            <Text
+              style={[
+                styles.segmentoTexto,
+                { color: theme.textoSecundario },
+                abaAtiva === 'regras' && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+              ]}
+            >
+              Regras & Operação
             </Text>
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* ─── CARD 4: ADICIONAR FUNCIONÁRIO ─── */}
-        <View style={[styles.secaoCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
-          <View style={styles.secaoHeaderLinha}>
-            <View style={[styles.secaoIconeBadge, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
-              <Users size={20} color={theme.ouroTexto} />
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        {/* ─── ABA 1: GESTÃO DE EQUIPE ─── */}
+        {abaAtiva === 'equipe' && (
+          <View style={styles.secao}>
+            <View style={styles.equipeTopo}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.ajuda}>
+                  Gerencie os profissionais e colaboradores vinculados ao estabelecimento e seus papéis de acesso.
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.botaoAdicionarMembro}
+                onPress={() => {
+                  setUsuarioSelecionado(null);
+                  setBuscaUsuario('');
+                  setUsuariosEncontrados([]);
+                  setPapelNovoMembro('barbeiro');
+                  setModalNovoMembro(true);
+                }}
+                activeOpacity={0.8}
+              >
+                <UserPlus size={16} color={Colors.fundo} />
+                <Text style={styles.botaoAdicionarMembroTexto}>Novo Membro</Text>
+              </TouchableOpacity>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.secaoCardTitulo, { color: theme.textoPrimario }]}>Equipe da Barbearia</Text>
-              <Text style={[styles.secaoCardSubtitulo, { color: theme.textoSecundario }]}>
-                Cadastre outros barbeiros ou funcionários para a {barbearia?.nome || 'sua barbearia'}.
-              </Text>
-            </View>
+
+            {carregandoMembros ? (
+              <ActivityIndicator color={Colors.ouro} style={{ marginTop: 24 }} />
+            ) : membros.length === 0 ? (
+              <View style={styles.membrosVazio}>
+                <Users size={36} color={Colors.textoDesabilitado} />
+                <Text style={styles.membrosVazioTitulo}>Nenhum membro cadastrado</Text>
+                <Text style={styles.membrosVazioSub}>Vincule barbeiros ou atendentes para gerenciar a agenda.</Text>
+              </View>
+            ) : (
+              <View style={styles.membrosLista}>
+                {membros.map((membro) => {
+                  const papelInfo = PAPEL_ROTULOS[membro.papel] || PAPEL_ROTULOS.barbeiro;
+                  return (
+                    <View key={membro.id} style={[styles.membroCard, !membro.ativo && styles.membroCardInativo]}>
+                      <View style={styles.membroAvatar}>
+                        <Text style={styles.membroAvatarTexto}>
+                          {(membro.perfil?.nome_completo || 'M').slice(0, 1).toUpperCase()}
+                        </Text>
+                      </View>
+
+                      <View style={styles.membroInfo}>
+                        <View style={styles.membroNomeLinha}>
+                          <Text style={[styles.membroNome, !membro.ativo && styles.membroNomeInativo]}>
+                            {membro.perfil?.nome_completo || 'Profissional'}
+                          </Text>
+                          <View style={[styles.badgePapel, { borderColor: papelInfo.cor }]}>
+                            <Text style={[styles.badgePapelTexto, { color: papelInfo.cor }]}>{papelInfo.rotulo}</Text>
+                          </View>
+                        </View>
+
+                        <Text style={styles.membroContato}>
+                          {membro.perfil?.email || membro.perfil?.telefone || 'Sem contato cadastrado'}
+                        </Text>
+
+                        <View style={styles.membroStatusLinha}>
+                          <View
+                            style={[
+                              styles.statusPonto,
+                              { backgroundColor: membro.ativo ? Colors.verde : Colors.textoDesabilitado },
+                            ]}
+                          />
+                          <Text style={styles.membroStatusTexto}>
+                            {membro.ativo ? 'Vínculo Ativo' : 'Vínculo Desativado'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.membroAcoes}>
+                        <TouchableOpacity
+                          style={styles.membroAcaoBotao}
+                          onPress={() => setModalEditarMembro(membro)}
+                          activeOpacity={0.7}
+                        >
+                          <Shield size={16} color={Colors.ouro} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.membroAcaoBotao}
+                          onPress={() => handleAlternarStatusMembro(membro)}
+                          activeOpacity={0.7}
+                        >
+                          {membro.ativo ? (
+                            <UserX size={16} color={Colors.vermelho} />
+                          ) : (
+                            <UserCheck size={16} color={Colors.verde} />
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
           </View>
+        )}
 
-          {equipe.length > 0 ? (
-            <View style={[styles.listaBloqueados, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
-              {equipe.map((f) => (
-                <View key={f.id} style={[styles.itemBloqueado, { borderBottomColor: theme.borda }]}>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={[styles.itemBloqueadoIdent, { color: theme.textoPrimario }]}>{f.nome}</Text>
-                    <Text style={[styles.itemBloqueadoMotivo, { color: theme.textoSecundario }]}>
-                      {f.cargo} · {f.telefone || f.email || 'Sem contato'}
-                    </Text>
+        {/* ─── ABA 2: REGRAS & OPERAÇÃO ─── */}
+        {abaAtiva === 'regras' && (
+          <View style={styles.secao}>
+            <Text style={styles.ajuda}>
+              Configure o modelo de funcionamento da agenda, comissões de faturamento, mimos e regras de atendimento.
+            </Text>
+
+            {/* 1. Modo de Agendamento */}
+            <View style={styles.blocoRegra}>
+              <Text style={styles.blocoRegraTitulo}>Modo de Agendamento</Text>
+              <Text style={styles.blocoRegraDesc}>Escolha como seus clientes marcam horário no seu espaço.</Text>
+
+              <TouchableOpacity
+                style={[styles.opcaoModoCard, modoAgenda === 'continua' && styles.opcaoModoCardAtivo]}
+                onPress={() => setModoAgenda('continua')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.opcaoModoHeader}>
+                  <Text style={[styles.opcaoModoTitulo, modoAgenda === 'continua' && styles.opcaoModoTituloAtivo]}>
+                    📅 Agenda Aberta Contínua (Recomendado)
+                  </Text>
+                  {modoAgenda === 'continua' && <CheckCircle size={18} color={Colors.ouro} />}
+                </View>
+                <Text style={styles.opcaoModoSub}>
+                  Seus clientes podem agendar para qualquer dia disponível dentro da sua janela de dias livres.
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.opcaoModoCard, modoAgenda === 'drops' && styles.opcaoModoCardAtivo]}
+                onPress={() => setModoAgenda('drops')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.opcaoModoHeader}>
+                  <Text style={[styles.opcaoModoTitulo, modoAgenda === 'drops' && styles.opcaoModoTituloAtivo]}>
+                    🚀 Abertura Semanal Programada (Drops)
+                  </Text>
+                  {modoAgenda === 'drops' && <CheckCircle size={18} color={Colors.ouro} />}
+                </View>
+                <Text style={styles.opcaoModoSub}>
+                  A agenda abre em data/hora marcada com contagem regressiva e lista de espera quando lotada.
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* 2. Duração dos Horários: Fixo 1h vs Tempo de Serviço */}
+            <View style={styles.blocoRegra}>
+              <Text style={styles.blocoRegraTitulo}>Duração dos Atendimentos na Grade</Text>
+              <Text style={styles.blocoRegraDesc}>Defina se os horários são fixos de 1h ou dinâmicos pelo tempo real dos serviços.</Text>
+
+              <TouchableOpacity
+                style={[styles.opcaoModoCard, modoDuracao === 'fixo_1h' && styles.opcaoModoCardAtivo]}
+                onPress={() => setModoDuracao('fixo_1h')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.opcaoModoHeader}>
+                  <Text style={[styles.opcaoModoTitulo, modoDuracao === 'fixo_1h' && styles.opcaoModoTituloAtivo]}>
+                    ⏱️ Tempo Fixo de 1h (Slots Padrão)
+                  </Text>
+                  {modoDuracao === 'fixo_1h' && <CheckCircle size={18} color={Colors.ouro} />}
+                </View>
+                <Text style={styles.opcaoModoSub}>
+                  Cada vaga ocupa um bloco fixo de 1 hora (ex: 07:00, 08:00, 09:00), ideal para atendimentos tradicionais de 1 cliente por hora.
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.opcaoModoCard, modoDuracao === 'tempo_servico' && styles.opcaoModoCardAtivo]}
+                onPress={() => setModoDuracao('tempo_servico')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.opcaoModoHeader}>
+                  <Text style={[styles.opcaoModoTitulo, modoDuracao === 'tempo_servico' && styles.opcaoModoTituloAtivo]}>
+                    ⚡ Tempo Real do Serviço (Duração Dinâmica)
+                  </Text>
+                  {modoDuracao === 'tempo_servico' && <CheckCircle size={18} color={Colors.ouro} />}
+                </View>
+                <Text style={styles.opcaoModoSub}>
+                  Aproveitamento total sem desperdício de horários! Cortes de 30 min ocupam 30 min, permitindo até 2 clientes por hora ou combos otimizados.
+                </Text>
+              </TouchableOpacity>
+
+              {modoDuracao === 'tempo_servico' && (
+                <View style={{ marginTop: 10, gap: 12 }}>
+                  {/* Granularidade / Step */}
+                  <View>
+                    <Text style={[styles.blocoRegraTitulo, { fontSize: 12.5 }]}>Granularidade de Início</Text>
+                    <View style={[styles.janelaDiasRow, { marginTop: 6 }]}>
+                      <TouchableOpacity
+                        style={[styles.chipJanela, stepAgendamento === 30 && styles.chipJanelaAtivo]}
+                        onPress={() => setStepAgendamento(30)}
+                      >
+                        <Text style={[styles.chipJanelaTexto, stepAgendamento === 30 && styles.chipJanelaTextoAtivo]}>
+                          A cada 30 min
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.chipJanela, stepAgendamento === 15 && styles.chipJanelaAtivo]}
+                        onPress={() => setStepAgendamento(15)}
+                      >
+                        <Text style={[styles.chipJanelaTexto, stepAgendamento === 15 && styles.chipJanelaTextoAtivo]}>
+                          A cada 15 min
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                  <View style={[styles.badgeAtivo, { backgroundColor: theme.ouroTranslucido }]}>
-                    <Text style={[styles.badgeAtivoTexto, { color: theme.ouroTexto }]}>{f.ativo ? 'Ativo' : 'Inativo'}</Text>
+
+                  {/* Intervalo de Descanso */}
+                  <View>
+                    <Text style={[styles.blocoRegraTitulo, { fontSize: 12.5 }]}>Pausa de Limpeza / Descanso entre Cortes</Text>
+                    <View style={[styles.janelaDiasRow, { marginTop: 6 }]}>
+                      {[0, 5, 10, 15].map((min) => (
+                        <TouchableOpacity
+                          key={min}
+                          style={[styles.chipJanela, intervaloDescanso === min && styles.chipJanelaAtivo]}
+                          onPress={() => setIntervaloDescanso(min)}
+                        >
+                          <Text style={[styles.chipJanelaTexto, intervaloDescanso === min && styles.chipJanelaTextoAtivo]}>
+                            {min === 0 ? 'Sem pausa' : `+${min} min`}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
                   </View>
                 </View>
-              ))}
-            </View>
-          ) : (
-            <View style={[styles.statusVazioPill, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
-              <Text style={[styles.statusVazioTexto, { color: theme.textoSecundario }]}>Apenas você está cadastrado na equipe.</Text>
-            </View>
-          )}
-
-          <TouchableOpacity
-            style={[styles.botaoAcaoPrincipal, { backgroundColor: theme.ouro }]}
-            onPress={() => setModalFuncionarioAberto(true)}
-            activeOpacity={0.8}
-          >
-            <UserPlus size={16} color={theme.textoEscuroSobreOuro} />
-            <Text style={[styles.botaoAcaoPrincipalTexto, { color: theme.textoEscuroSobreOuro }]}>+ Adicionar Novo Funcionário</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ─── CARD 5: AGENDAMENTO À TARDE (DIMINUIR FILA DE ESPERA) ─── */}
-        <View style={[styles.secaoCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
-          <View style={styles.secaoHeaderLinha}>
-            <View style={[styles.secaoIconeBadge, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
-              <Clock size={20} color={theme.ouroTexto} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.secaoCardTitulo, { color: theme.textoPrimario }]}>Agendamentos à Tarde</Text>
-              <Text style={[styles.secaoCardSubtitulo, { color: theme.textoSecundario }]}>
-                Abra vagas agendáveis na tarde para diminuir a lista de espera. Avisa automaticamente que a ordem de chegada estará suspensa para garantir justiça.
-              </Text>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.botaoAcaoPrincipal, { backgroundColor: theme.ouro }]}
-            onPress={() => setModalVagasTardeAberto(true)}
-            activeOpacity={0.8}
-          >
-            <Clock size={16} color={theme.textoEscuroSobreOuro} />
-            <Text style={[styles.botaoAcaoPrincipalTexto, { color: theme.textoEscuroSobreOuro }]}>Liberar Vagas da Tarde Hoje</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-
-      {/* ─── MODAL: MENSAGEM EM GRUPO (HOJE / SEMANA / FILA / TODOS) ─── */}
-      <Modal visible={modalMensagemGrupoAberto} transparent animationType="fade" onRequestClose={() => setModalMensagemGrupoAberto(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setModalMensagemGrupoAberto(false)}>
-          <Pressable style={styles.modalConteudoGrande} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalTraco} />
-            <View style={styles.modalHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <MessageSquare size={20} color="#3B82F6" />
-                <Text style={styles.modalTitulo}>Mensagem em Grupo</Text>
-              </View>
-              <TouchableOpacity onPress={() => setModalMensagemGrupoAberto(false)} style={styles.modalBtnFechar}>
-                <X size={20} color="#8E8E93" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
-              {/* Seleção do Grupo de Destinatários */}
-              <Text style={styles.labelCampo}>SELECIONE O GRUPO DE CLIENTES</Text>
-              <View style={styles.chipsRow}>
-                <TouchableOpacity
-                  style={[styles.chip, grupoDestino === 'hoje' && styles.chipAtivoAzul]}
-                  onPress={() => handleMudarGrupoDestino('hoje')}
-                >
-                  <Text style={[styles.chipTexto, grupoDestino === 'hoje' && styles.chipTextoAtivo]}>
-                    📅 Hoje
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.chip, grupoDestino === 'semana' && styles.chipAtivoAzul]}
-                  onPress={() => handleMudarGrupoDestino('semana')}
-                >
-                  <Text style={[styles.chipTexto, grupoDestino === 'semana' && styles.chipTextoAtivo]}>
-                    🗓️ Semana
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.chip, grupoDestino === 'fila' && styles.chipAtivoAzul]}
-                  onPress={() => handleMudarGrupoDestino('fila')}
-                >
-                  <Text style={[styles.chipTexto, grupoDestino === 'fila' && styles.chipTextoAtivo]}>
-                    ⏳ Fila de Espera
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.chip, grupoDestino === 'todos' && styles.chipAtivoAzul]}
-                  onPress={() => handleMudarGrupoDestino('todos')}
-                >
-                  <Text style={[styles.chipTexto, grupoDestino === 'todos' && styles.chipTextoAtivo]}>
-                    👥 Todos os Clientes
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Lista de Destinatários com Checkbox para Desmarcar Específicos */}
-              <Text style={[styles.labelCampo, { marginTop: 12 }]}>
-                DESTINATÁRIOS ({destinatariosSelecionados.length} selecionados)
-              </Text>
-              <Text style={styles.instrucaoTexto}>
-                Toque no cliente para desmarcar caso NÃO deseje enviar para ele:
-              </Text>
-
-              <View style={styles.listaDestinatarios}>
-                {grupoDestino === 'hoje' ? (
-                  agendamentosHoje.filter((a) => a.status !== 'cancelado' && a.cliente.id).length === 0 ? (
-                    <Text style={styles.textoVazioSecao}>Nenhum agendamento ativo hoje.</Text>
-                  ) : (
-                    agendamentosHoje
-                      .filter((a) => a.status !== 'cancelado' && a.cliente.id)
-                      .map((a) => {
-                        const selecionado = destinatariosSelecionados.includes(a.cliente.id);
-                        return (
-                          <TouchableOpacity
-                            key={a.id}
-                            style={[styles.itemDestinatario, !selecionado && styles.itemDestinatarioDesmarcado]}
-                            onPress={() => toggleDestinatario(a.cliente.id)}
-                            activeOpacity={0.7}
-                          >
-                            <View style={{ flex: 1 }}>
-                              <Text style={[styles.destinatarioNome, !selecionado && styles.destinatarioNomeDesmarcado]}>
-                                {a.cliente.nome_completo || 'Cliente'}
-                              </Text>
-                              <Text style={styles.destinatarioSub}>
-                                Hoje às {new Date(a.data_hora).getHours().toString().padStart(2, '0')}:{new Date(a.data_hora).getMinutes().toString().padStart(2, '0')} · {a.servico.nome}
-                              </Text>
-                            </View>
-                            {selecionado ? <UserCheck size={18} color="#3B82F6" /> : <UserX size={18} color="#636366" />}
-                          </TouchableOpacity>
-                        );
-                      })
-                  )
-                ) : grupoDestino === 'semana' ? (
-                  agendamentosSemana.filter((a) => a.cliente?.id).length === 0 ? (
-                    <Text style={styles.textoVazioSecao}>Nenhum agendamento para os próximos dias.</Text>
-                  ) : (
-                    agendamentosSemana
-                      .filter((a) => a.cliente?.id)
-                      .map((a) => {
-                        const selecionado = destinatariosSelecionados.includes(a.cliente.id);
-                        const dataFmt = new Date(a.data_hora).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-                        const horaFmt = new Date(a.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                        return (
-                          <TouchableOpacity
-                            key={a.id}
-                            style={[styles.itemDestinatario, !selecionado && styles.itemDestinatarioDesmarcado]}
-                            onPress={() => toggleDestinatario(a.cliente.id)}
-                            activeOpacity={0.7}
-                          >
-                            <View style={{ flex: 1 }}>
-                              <Text style={[styles.destinatarioNome, !selecionado && styles.destinatarioNomeDesmarcado]}>
-                                {a.cliente.nome_completo || 'Cliente'}
-                              </Text>
-                              <Text style={styles.destinatarioSub}>
-                                {dataFmt} às {horaFmt} · {a.servico.nome}
-                              </Text>
-                            </View>
-                            {selecionado ? <UserCheck size={18} color="#3B82F6" /> : <UserX size={18} color="#636366" />}
-                          </TouchableOpacity>
-                        );
-                      })
-                  )
-                ) : grupoDestino === 'fila' ? (
-                  clientesFila.length === 0 ? (
-                    <Text style={styles.textoVazioSecao}>Ninguém na fila de espera no momento.</Text>
-                  ) : (
-                    clientesFila.map((f) => {
-                      const selecionado = destinatariosSelecionados.includes(f.cliente_id);
-                      return (
-                        <TouchableOpacity
-                          key={f.id}
-                          style={[styles.itemDestinatario, !selecionado && styles.itemDestinatarioDesmarcado]}
-                          onPress={() => toggleDestinatario(f.cliente_id)}
-                          activeOpacity={0.7}
-                        >
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.destinatarioNome, !selecionado && styles.destinatarioNomeDesmarcado]}>
-                              {f.cliente?.nome_completo || 'Cliente na Fila'}
-                            </Text>
-                            <Text style={styles.destinatarioSub}>{f.cliente?.telefone || 'Fila de espera ativa'}</Text>
-                          </View>
-                          {selecionado ? <UserCheck size={18} color="#3B82F6" /> : <UserX size={18} color="#636366" />}
-                        </TouchableOpacity>
-                      );
-                    })
-                  )
-                ) : (
-                  todosClientesApp.length === 0 ? (
-                    <Text style={styles.textoVazioSecao}>Nenhum cliente cadastrado no app.</Text>
-                  ) : (
-                    todosClientesApp.map((c) => {
-                      const selecionado = destinatariosSelecionados.includes(c.id);
-                      return (
-                        <TouchableOpacity
-                          key={c.id}
-                          style={[styles.itemDestinatario, !selecionado && styles.itemDestinatarioDesmarcado]}
-                          onPress={() => toggleDestinatario(c.id)}
-                          activeOpacity={0.7}
-                        >
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.destinatarioNome, !selecionado && styles.destinatarioNomeDesmarcado]}>
-                              {c.nome_completo || 'Cliente'}
-                            </Text>
-                            <Text style={styles.destinatarioSub}>{c.telefone || c.email || 'Cliente do app'}</Text>
-                          </View>
-                          {selecionado ? <UserCheck size={18} color="#3B82F6" /> : <UserX size={18} color="#636366" />}
-                        </TouchableOpacity>
-                      );
-                    })
-                  )
-                )}
-              </View>
-
-              {/* Campos da Mensagem */}
-              <Text style={[styles.labelCampo, { marginTop: 12 }]}>TÍTULO DO AVISO</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: Aviso sobre o atendimento"
-                placeholderTextColor="#636366"
-                value={msgTitulo}
-                onChangeText={setMsgTitulo}
-              />
-
-              <Text style={styles.labelCampo}>MENSAGEM / COMUNICADO</Text>
-              <TextInput
-                style={[styles.input, { height: 90, textAlignVertical: 'top' }]}
-                multiline
-                placeholder="Digite a mensagem que todos os selecionados receberão em formato de notificação..."
-                placeholderTextColor="#636366"
-                value={msgTexto}
-                onChangeText={setMsgTexto}
-              />
-            </ScrollView>
-
-            <TouchableOpacity
-              style={[styles.botaoConfirmar, { backgroundColor: '#3B82F6' }]}
-              onPress={handleDispararMensagemGrupo}
-              disabled={enviandoMsg}
-            >
-              {enviandoMsg ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.botaoConfirmarTexto}>
-                  Enviar para {destinatariosSelecionados.length} Cliente(s)
-                </Text>
               )}
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      {/* ─── MODAL: ENCAIXE COM PESQUISA DE CLIENTES (NOME, EMAIL, TEL) & COLINHA DE COMBOS ─── */}
-      <Modal visible={modalEncaixeAberto} transparent animationType="fade" onRequestClose={() => setModalEncaixeAberto(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setModalEncaixeAberto(false)}>
-          <Pressable style={styles.modalConteudoGrande} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalTraco} />
-            <View style={styles.modalHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <CalendarPlus size={20} color={Colors.ouro} />
-                <Text style={styles.modalTitulo}>Nova Reserva / Encaixe</Text>
-              </View>
-              <TouchableOpacity onPress={() => setModalEncaixeAberto(false)} style={styles.modalBtnFechar}>
-                <X size={20} color="#8E8E93" />
-              </TouchableOpacity>
             </View>
 
-            <ScrollView style={{ maxHeight: 440 }} showsVerticalScrollIndicator={false}>
-              {/* Horário */}
-              <Text style={styles.labelCampo}>HORÁRIO DO ENCAIXE</Text>
-              <View style={styles.chipsRow}>
-                {HORARIOS_ENCAIXE.map((h) => (
-                  <TouchableOpacity
-                    key={h}
-                    style={[styles.chip, encaixeHora === h && styles.chipAtivo]}
-                    onPress={() => setEncaixeHora(h)}
-                  >
-                    <Text style={[styles.chipTexto, encaixeHora === h && styles.chipTextoAtivo]}>{h}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Serviço com Colinha de Combos */}
-              <Text style={styles.labelCampo}>SERVIÇO</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
-                <View style={{ flexDirection: 'row', gap: 6 }}>
-                  {servicos.map((s) => (
+            {/* Janela de Dias (se Contínua) */}
+            {modoAgenda === 'continua' && (
+              <View style={styles.blocoRegra}>
+                <Text style={styles.blocoRegraTitulo}>Janela de Antecedência</Text>
+                <Text style={styles.blocoRegraDesc}>Quantos dias à frente o cliente pode marcar horário?</Text>
+                <View style={styles.janelaDiasRow}>
+                  {[7, 14, 21, 30].map((dias) => (
                     <TouchableOpacity
-                      key={s.id}
-                      style={[styles.chipServico, encaixeServicoId === s.id && styles.chipServicoAtivo]}
-                      onPress={() => setEncaixeServicoId(s.id)}
+                      key={dias}
+                      style={[styles.chipJanela, diasJanela === dias && styles.chipJanelaAtivo]}
+                      onPress={() => setDiasJanela(dias)}
                     >
-                      <Text style={[styles.chipServicoNome, encaixeServicoId === s.id && styles.chipServicoNomeAtivo]}>
-                        {s.nome}
-                      </Text>
-                      <Text style={[styles.chipServicoPreco, encaixeServicoId === s.id && styles.chipServicoPrecoAtivo]}>
-                        {Number(s.preco).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      <Text style={[styles.chipJanelaTexto, diasJanela === dias && styles.chipJanelaTextoAtivo]}>
+                        {dias} dias
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
-              </ScrollView>
-
-              {/* Colinha Discreta e Resumida do Combo Selecionado */}
-              {servicoSelecionadoEncaixe && servicoSelecionadoEncaixe.descricao && (
-                <View style={styles.colinhaComboWrapper}>
-                  <View style={styles.colinhaIconeBadge}>
-                    <Sparkles size={13} color={Colors.ouro} />
-                  </View>
-                  <View style={{ flex: 1, gap: 1 }}>
-                    <Text style={styles.colinhaTitulo}>
-                      {servicoSelecionadoEncaixe.nome}
-                    </Text>
-                    <Text style={styles.colinhaDescricao}>
-                      {servicoSelecionadoEncaixe.descricao}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {/* Busca de Clientes do App (Nome, E-mail ou Telefone) */}
-              <Text style={[styles.labelCampo, { marginTop: 12 }]}>
-                PESQUISAR CLIENTE (NOME, E-MAIL OU TELEFONE)
-              </Text>
-              
-              {encaixeClienteId ? (
-                <View style={styles.cardClienteSelecionado}>
-                  <View style={styles.avatarClienteSelecionado}>
-                    <User size={18} color={Colors.ouro} />
-                  </View>
-                  <View style={{ flex: 1, gap: 1 }}>
-                    <Text style={styles.nomeClienteSelecionado}>{encaixeNomeManual}</Text>
-                    <Text style={styles.telClienteSelecionado}>
-                      {encaixeTelefoneManual || encaixeEmailManual || 'Cliente cadastrado no app'}
-                    </Text>
-                  </View>
-                  <TouchableOpacity onPress={limparSelecaoClienteEncaixe} style={styles.btnRemoverCliente}>
-                    <X size={16} color={Colors.erro} />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <>
-                  <View style={styles.buscaInputWrapper}>
-                    <Search size={16} color="#8E8E93" />
-                    <TextInput
-                      style={styles.buscaInput}
-                      placeholder="Digite nome, email ou telefone..."
-                      placeholderTextColor="#636366"
-                      value={buscaClienteEncaixe}
-                      onChangeText={setBuscaClienteEncaixe}
-                    />
-                    {buscaClienteEncaixe.length > 0 && (
-                      <TouchableOpacity onPress={() => setBuscaClienteEncaixe('')}>
-                        <X size={16} color="#8E8E93" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-
-                  {/* Resultados da busca */}
-                  {clientesFiltradosEncaixe.length > 0 && (
-                    <View style={styles.resultadosBusca}>
-                      {clientesFiltradosEncaixe.slice(0, 5).map((c) => (
-                        <TouchableOpacity
-                          key={c.id}
-                          style={styles.itemResultadoBusca}
-                          onPress={() => selecionarClienteParaEncaixe(c)}
-                          activeOpacity={0.7}
-                        >
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.resultadoNome}>{c.nome_completo || 'Cliente'}</Text>
-                            <Text style={styles.resultadoTel}>
-                              {c.telefone || c.email || 'Cliente do app'}
-                            </Text>
-                          </View>
-                          <View style={styles.badgeSelecionar}>
-                            <Text style={styles.badgeSelecionarTexto}>Selecionar</Text>
-                          </View>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-
-                  {/* Digitação Manual / Avulsa */}
-                  <Text style={[styles.labelCampo, { marginTop: 10 }]}>OU PREENCHER DADOS MANUALMENTE</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Nome do cliente (ex: João Silva)"
-                    placeholderTextColor="#636366"
-                    value={encaixeNomeManual}
-                    onChangeText={setEncaixeNomeManual}
-                  />
-
-                  <TextInput
-                    style={[styles.input, { marginTop: 6 }]}
-                    placeholder="Telefone / WhatsApp (ex: 86 99999-9999)"
-                    placeholderTextColor="#636366"
-                    keyboardType="phone-pad"
-                    value={encaixeTelefoneManual}
-                    onChangeText={setEncaixeTelefoneManual}
-                  />
-                </>
-              )}
-            </ScrollView>
-
-            <TouchableOpacity style={styles.botaoConfirmar} onPress={handleSalvarEncaixe} disabled={salvandoEncaixe}>
-              {salvandoEncaixe ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.botaoConfirmarTexto}>Confirmar Reserva / Encaixe</Text>}
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      {/* ─── MODAL: BLOQUEIO (LISTA NEGRA) COM PESQUISA DE CLIENTES ─── */}
-      <Modal visible={modalBloqueioAberto} transparent animationType="fade" onRequestClose={() => setModalBloqueioAberto(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setModalBloqueioAberto(false)}>
-          <Pressable style={styles.modalConteudoGrande} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalTraco} />
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitulo}>Bloquear Acesso (Lista Negra)</Text>
-              <TouchableOpacity onPress={() => setModalBloqueioAberto(false)} style={styles.modalBtnFechar}>
-                <X size={20} color="#8E8E93" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
-              {/* Pesquisa de Clientes Cadastrados */}
-              <Text style={styles.labelCampo}>PESQUISAR CLIENTE CADASTRADO NO APP</Text>
-              
-              {bloqueioClienteId ? (
-                <View style={[styles.cardClienteSelecionado, { borderColor: Colors.erro }]}>
-                  <View style={[styles.avatarClienteSelecionado, { backgroundColor: 'rgba(229, 57, 53, 0.15)' }]}>
-                    <Ban size={18} color={Colors.erro} />
-                  </View>
-                  <View style={{ flex: 1, gap: 1 }}>
-                    <Text style={styles.nomeClienteSelecionado}>{bloqueioNome}</Text>
-                    <Text style={[styles.telClienteSelecionado, { color: Colors.erro }]}>
-                      {bloqueioTelefone || bloqueioEmail || 'Cliente selecionado'}
-                    </Text>
-                  </View>
-                  <TouchableOpacity onPress={limparSelecaoClienteBloqueio} style={styles.btnRemoverCliente}>
-                    <X size={16} color={Colors.erro} />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <>
-                  <View style={styles.buscaInputWrapper}>
-                    <Search size={16} color="#8E8E93" />
-                    <TextInput
-                      style={styles.buscaInput}
-                      placeholder="Buscar por nome, email ou telefone..."
-                      placeholderTextColor="#636366"
-                      value={buscaClienteBloqueio}
-                      onChangeText={setBuscaClienteBloqueio}
-                    />
-                    {buscaClienteBloqueio.length > 0 && (
-                      <TouchableOpacity onPress={() => setBuscaClienteBloqueio('')}>
-                        <X size={16} color="#8E8E93" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-
-                  {/* Resultados da busca de bloqueio */}
-                  {clientesFiltradosBloqueio.length > 0 && (
-                    <View style={styles.resultadosBusca}>
-                      {clientesFiltradosBloqueio.slice(0, 5).map((c) => (
-                        <TouchableOpacity
-                          key={c.id}
-                          style={styles.itemResultadoBusca}
-                          onPress={() => selecionarClienteParaBloqueio(c)}
-                          activeOpacity={0.7}
-                        >
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.resultadoNome}>{c.nome_completo || 'Cliente'}</Text>
-                            <Text style={styles.resultadoTel}>
-                              {c.telefone || c.email || 'Cliente do app'}
-                            </Text>
-                          </View>
-                          <View style={[styles.badgeSelecionar, { backgroundColor: 'rgba(229, 57, 53, 0.15)', borderColor: 'rgba(229, 57, 53, 0.3)' }]}>
-                            <Text style={[styles.badgeSelecionarTexto, { color: Colors.erro }]}>Bloquear</Text>
-                          </View>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-
-                  <Text style={[styles.labelCampo, { marginTop: 10 }]}>OU DIGITE E-MAIL / TELEFONE MANUALMENTE</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="cliente@email.com"
-                    placeholderTextColor="#636366"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    value={bloqueioEmail}
-                    onChangeText={setBloqueioEmail}
-                  />
-
-                  <TextInput
-                    style={[styles.input, { marginTop: 6 }]}
-                    placeholder="(86) 99999-9999"
-                    placeholderTextColor="#636366"
-                    keyboardType="phone-pad"
-                    value={bloqueioTelefone}
-                    onChangeText={setBloqueioTelefone}
-                  />
-                </>
-              )}
-
-              <Text style={[styles.labelCampo, { marginTop: 10 }]}>MOTIVO DO BLOQUEIO</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: Faltas repetidas sem aviso prévio"
-                placeholderTextColor="#636366"
-                value={bloqueioMotivo}
-                onChangeText={setBloqueioMotivo}
-              />
-            </ScrollView>
-
-            <TouchableOpacity
-              style={[styles.botaoConfirmar, { backgroundColor: Colors.erro }]}
-              onPress={handleSalvarBloqueio}
-              disabled={salvandoBloqueio}
-            >
-              {salvandoBloqueio ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.botaoConfirmarTexto}>Bloquear Cliente</Text>}
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      {/* ─── MODAL: ADICIONAR FUNCIONÁRIO ─── */}
-      <Modal visible={modalFuncionarioAberto} transparent animationType="fade" onRequestClose={() => setModalFuncionarioAberto(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setModalFuncionarioAberto(false)}>
-          <Pressable style={styles.modalConteudoGrande} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalTraco} />
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitulo}>Adicionar Funcionário</Text>
-              <TouchableOpacity onPress={() => setModalFuncionarioAberto(false)} style={styles.modalBtnFechar}>
-                <X size={20} color="#8E8E93" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
-              <Text style={styles.labelCampo}>NOME COMPLETO</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: Carlos Vieira"
-                placeholderTextColor="#636366"
-                value={funcNome}
-                onChangeText={setFuncNome}
-              />
-
-              <Text style={styles.labelCampo}>E-MAIL</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="carlos@barbearia.com"
-                placeholderTextColor="#636366"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={funcEmail}
-                onChangeText={setFuncEmail}
-              />
-
-              <Text style={styles.labelCampo}>TELEFONE</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="(86) 99999-9999"
-                placeholderTextColor="#636366"
-                keyboardType="phone-pad"
-                value={funcTelefone}
-                onChangeText={setFuncTelefone}
-              />
-
-              <Text style={styles.labelCampo}>CARGO</Text>
-              <View style={styles.chipsRow}>
-                {['Barbeiro', 'Barbeiro Júnior', 'Atendente'].map((cargo) => (
-                  <TouchableOpacity
-                    key={cargo}
-                    style={[styles.chip, funcCargo === cargo && styles.chipAtivo]}
-                    onPress={() => setFuncCargo(cargo)}
-                  >
-                    <Text style={[styles.chipTexto, funcCargo === cargo && styles.chipTextoAtivo]}>{cargo}</Text>
-                  </TouchableOpacity>
-                ))}
               </View>
-            </ScrollView>
+            )}
 
-            <TouchableOpacity style={styles.botaoConfirmar} onPress={handleSalvarFuncionario} disabled={salvandoFunc}>
-              {salvandoFunc ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.botaoConfirmarTexto}>Cadastrar Funcionário</Text>}
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
+            {/* 3. Comissão Padrão da Equipe */}
+            <View style={styles.blocoRegra}>
+              <Text style={styles.blocoRegraTitulo}>Comissão Padrão da Equipe (%)</Text>
+              <Text style={styles.blocoRegraDesc}>Percentual padrão pago aos barbeiros nos relatórios de fechamento de caixa.</Text>
+              <View style={styles.inputComissaoWrapper}>
+                <TextInput
+                  style={styles.inputComissao}
+                  value={comissaoPadrao}
+                  onChangeText={setComissaoPadrao}
+                  keyboardType="numeric"
+                  placeholder="50"
+                  placeholderTextColor={Colors.textoDesabilitado}
+                />
+                <Text style={styles.inputComissaoSufixo}>% de comissão</Text>
+              </View>
+            </View>
 
-      {/* ─── MODAL: VAGAS DA TARDE (COM REGRA DE JUSTIÇA) ─── */}
-      <Modal visible={modalVagasTardeAberto} transparent animationType="fade" onRequestClose={() => setModalVagasTardeAberto(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setModalVagasTardeAberto(false)}>
-          <Pressable style={styles.modalConteudoGrande} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalTraco} />
+            {/* 4. Programa de Fidelidade */}
+            <View style={styles.blocoRegra}>
+              <View style={styles.fidelidadeHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.blocoRegraTitulo}>Programa de Fidelidade Digital</Text>
+                  <Text style={styles.blocoRegraDesc}>Incentive seus clientes a voltarem com frequência.</Text>
+                </View>
+                <Switch
+                  value={fidelidadeAtiva}
+                  onValueChange={setFidelidadeAtiva}
+                  trackColor={{ false: theme.borda, true: theme.ouro }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+
+              {fidelidadeAtiva && (
+                <View style={styles.fidelidadeCampos}>
+                  <CampoAjuste
+                    label="Meta de Cortes para Recompensa"
+                    value={metaCortesFidelidade}
+                    onChangeText={setMetaCortesFidelidade}
+                    placeholder="Ex: 10"
+                    keyboardType="numeric"
+                  />
+                  <CampoAjuste
+                    label="Recompensa do Cliente"
+                    value={recompensaFidelidade}
+                    onChangeText={setRecompensaFidelidade}
+                    placeholder="Ex: Corte ou Barba Grátis"
+                  />
+                </View>
+              )}
+            </View>
+
+            {/* 5. Mimos VIP para Clientes Ausentes (+40 dias) */}
+            <View style={styles.blocoRegra}>
+              <View style={styles.fidelidadeHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.blocoRegraTitulo}>Mimo VIP para Clientes Ausentes (+40d)</Text>
+                  <Text style={styles.blocoRegraDesc}>
+                    Envie presentes exclusivos por notificação in-app antes do contato via WhatsApp.
+                  </Text>
+                </View>
+                <Switch
+                  value={mimoAtivo}
+                  onValueChange={setMimoAtivo}
+                  trackColor={{ false: theme.borda, true: theme.ouro }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+
+              {mimoAtivo && (
+                <View style={styles.fidelidadeCampos}>
+                  {/* Tipo de Mimo */}
+                  <Text style={styles.mimoTipoLabel}>Tipo de Mimo:</Text>
+                  <View style={styles.janelaDiasRow}>
+                    <TouchableOpacity
+                      style={[styles.chipJanela, { paddingHorizontal: 4 }, mimoTipo === 'upgrade' && styles.chipJanelaAtivo]}
+                      onPress={() => {
+                        setMimoTipo('upgrade');
+                        setMimoTitulo('Corte Ganha Sobrancelha Grátis 🎁');
+                        setMimoDescricao('Agende seu corte e ganhe o design de sobrancelha como cortesia da barbearia.');
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text
+                        style={[styles.chipJanelaTexto, mimoTipo === 'upgrade' && styles.chipJanelaTextoAtivo]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                      >
+                        🎁 Upgrade
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.chipJanela, { paddingHorizontal: 4 }, mimoTipo === 'desconto' && styles.chipJanelaAtivo]}
+                      onPress={() => {
+                        setMimoTipo('desconto');
+                        setMimoTitulo('Voucher 15% OFF no Próximo Corte 🏷️');
+                        setMimoDescricao('Liberamos 15% de desconto exclusivo para você dar um tapa no visual esta semana.');
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text
+                        style={[styles.chipJanelaTexto, mimoTipo === 'desconto' && styles.chipJanelaTextoAtivo]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                      >
+                        🏷️ Desconto
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.chipJanela, { paddingHorizontal: 4 }, mimoTipo === 'brinde' && styles.chipJanelaAtivo]}
+                      onPress={() => {
+                        setMimoTipo('brinde');
+                        setMimoTitulo('Brinde Exclusivo no Atendimento 🧴');
+                        setMimoDescricao('Venha cortar esta semana e retire um brinde exclusivo direto na bancada.');
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text
+                        style={[styles.chipJanelaTexto, mimoTipo === 'brinde' && styles.chipJanelaTextoAtivo]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                      >
+                        🧴 Brinde
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <CampoAjuste
+                    label="Título da Oferta / Presente"
+                    value={mimoTitulo}
+                    onChangeText={setMimoTitulo}
+                    placeholder="Ex: Corte Ganha Sobrancelha Grátis 🎁"
+                  />
+                  <CampoAjuste
+                    label="Mensagem Explicativa"
+                    value={mimoDescricao}
+                    onChangeText={setMimoDescricao}
+                    multiline
+                    placeholder="Descreva o benefício e como o cliente resgata..."
+                  />
+
+                  {/* Botão de Disparo em Massa */}
+                  <TouchableOpacity
+                    style={styles.botaoDisparoPush}
+                    onPress={handleDispararPushMimo}
+                    disabled={disparandoPush}
+                    activeOpacity={0.8}
+                  >
+                    <Bell size={16} color={Colors.fundo} />
+                    <Text style={styles.botaoDisparoPushTexto}>
+                      {disparandoPush ? 'Disparando...' : 'Disparar Notificações In-App (+40d)'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* 6. Clientes Bloqueados (No-Show Protection) */}
+            <View style={styles.blocoRegra}>
+              <View style={styles.fidelidadeHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.blocoRegraTitulo}>Proteção & Clientes Bloqueados ({bloqueados.length})</Text>
+                  <Text style={styles.blocoRegraDesc}>Gerencie restrições para clientes faltosos (no-show).</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.botaoAddBloqueio}
+                  onPress={() => setModalBloqueioAberto(true)}
+                  activeOpacity={0.8}
+                >
+                  <Ban size={14} color={Colors.vermelho} />
+                  <Text style={styles.botaoAddBloqueioTexto}>Bloquear</Text>
+                </TouchableOpacity>
+              </View>
+
+              {bloqueados.length > 0 && (
+                <View style={styles.bloqueadosLista}>
+                  {bloqueados.map((b) => (
+                    <View key={b.id} style={styles.bloqueadoCard}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.bloqueadoTexto}>
+                          {b.email || b.telefone || 'Cliente bloqueado'}
+                        </Text>
+                        <Text style={styles.bloqueadoMotivo}>{b.motivo || 'Sem motivo informado'}</Text>
+                      </View>
+                      <TouchableOpacity onPress={() => removerBloqueio(b.id)}>
+                        <X size={16} color={Colors.textoDesabilitado} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            {/* BOTÃO SALVAR REGRAS */}
+            <Botao
+              label={salvandoRegras ? 'Salvando regras...' : 'Salvar Regras & Ajustes'}
+              onPress={salvarRegras}
+              desabilitado={salvandoRegras}
+              estiloContainer={{ marginTop: Spacing.sm }}
+            />
+          </View>
+        )}
+      </ScrollView>
+
+      {/* ─── MODAL: ADICIONAR NOVO MEMBRO ─── */}
+      <Modal visible={modalNovoMembro} transparent animationType="fade" onRequestClose={() => setModalNovoMembro(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalConteudo}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitulo}>Liberar Vagas da Tarde</Text>
-              <TouchableOpacity onPress={() => setModalVagasTardeAberto(false)} style={styles.modalBtnFechar}>
-                <X size={20} color="#8E8E93" />
+              <Text style={styles.modalTitulo}>Vincular Novo Membro</Text>
+              <TouchableOpacity onPress={() => setModalNovoMembro(false)}>
+                <X size={20} color={Colors.textoSecundario} />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalDescricaoTexto}>
-              Marque os horários que deseja abrir para hoje à tarde. Ao liberar, o app automaticamente avisará a todos que a ordem de chegada estará fechada, garantindo justiça com os clientes.
+            <Text style={styles.modalSub}>
+              Busque um usuário cadastrado no aplicativo por nome ou e-mail para adicionar à equipe.
             </Text>
 
-            <View style={styles.chipsRow}>
-              {HORARIOS_TARDE.map((hora) => {
-                const ativo = tardeHorarios.includes(hora);
-                return (
+            {/* Campo de Busca */}
+            <View style={styles.buscaLinha}>
+              <Search size={18} color={Colors.textoSecundario} />
+              <TextInput
+                style={styles.buscaInput}
+                placeholder="Buscar por nome ou e-mail..."
+                placeholderTextColor={Colors.textoDesabilitado}
+                value={buscaUsuario}
+                onChangeText={buscarUsuariosParaMembro}
+              />
+              {buscandoUsuarios && <ActivityIndicator size="small" color={Colors.ouro} />}
+            </View>
+
+            {/* Lista de Resultados */}
+            {usuariosEncontrados.length > 0 && !usuarioSelecionado && (
+              <ScrollView style={styles.buscaResultados} nestedScrollEnabled>
+                {usuariosEncontrados.map((u) => (
                   <TouchableOpacity
-                    key={hora}
-                    style={[styles.chip, ativo && styles.chipAtivo]}
+                    key={u.id}
+                    style={styles.buscaItem}
                     onPress={() => {
-                      if (ativo) {
-                        setTardeHorarios((prev) => prev.filter((h) => h !== hora));
-                      } else {
-                        setTardeHorarios((prev) => [...prev, hora].sort());
-                      }
+                      setUsuarioSelecionado(u);
+                      setUsuariosEncontrados([]);
                     }}
                   >
-                    <Text style={[styles.chipTexto, ativo && styles.chipTextoAtivo]}>{hora}</Text>
-                    {ativo && <Check size={14} color="#FFFFFF" />}
+                    <View style={styles.buscaItemAvatar}>
+                      <Text style={styles.buscaItemAvatarTexto}>{(u.nome_completo || 'U').slice(0, 1).toUpperCase()}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.buscaItemNome}>{u.nome_completo || 'Sem nome'}</Text>
+                      <Text style={styles.buscaItemEmail}>{u.email || u.telefone || 'Sem contato'}</Text>
+                    </View>
+                    <ChevronRight size={16} color={Colors.ouro} />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+
+            {/* Usuário Selecionado */}
+            {usuarioSelecionado && (
+              <View style={styles.usuarioCardSelecionado}>
+                <View style={styles.buscaItemAvatar}>
+                  <Text style={styles.buscaItemAvatarTexto}>
+                    {(usuarioSelecionado.nome_completo || 'U').slice(0, 1).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.usuarioCardNome}>{usuarioSelecionado.nome_completo}</Text>
+                  <Text style={styles.usuarioCardEmail}>{usuarioSelecionado.email || usuarioSelecionado.telefone}</Text>
+                </View>
+                <TouchableOpacity onPress={() => setUsuarioSelecionado(null)}>
+                  <X size={18} color={Colors.vermelho} />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Seleção do Papel */}
+            <Text style={[styles.campoLabel, { marginTop: 14 }]}>Papel no Estabelecimento:</Text>
+            <View style={styles.papeisOpcoes}>
+              {(['barbeiro', 'gestor', 'atendente', 'proprietario'] as PapelMembro[]).map((papel) => {
+                const info = PAPEL_ROTULOS[papel];
+                const selecionado = papelNovoMembro === papel;
+                return (
+                  <TouchableOpacity
+                    key={papel}
+                    style={[styles.papelChip, selecionado && { borderColor: info.cor, backgroundColor: theme.superficie2 }]}
+                    onPress={() => setPapelNovoMembro(papel)}
+                  >
+                    <View style={[styles.papelPonto, { backgroundColor: info.cor }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.papelChipTexto, selecionado && { color: info.cor, fontFamily: FontFamily.bold }]}>
+                        {info.rotulo}
+                      </Text>
+                      <Text style={styles.papelChipDesc}>{info.desc}</Text>
+                    </View>
+                    {selecionado && <Check size={16} color={info.cor} />}
                   </TouchableOpacity>
                 );
               })}
             </View>
 
             <TouchableOpacity
-              style={styles.botaoConfirmar}
-              onPress={handleLiberarVagasTarde}
-              disabled={salvandoVagasTarde}
+              style={styles.botaoConfirmarModal}
+              onPress={handleConfirmarNovoMembro}
+              disabled={salvandoMembro || !usuarioSelecionado}
             >
-              {salvandoVagasTarde ? (
-                <ActivityIndicator color="#FFFFFF" />
+              {salvandoMembro ? (
+                <ActivityIndicator color={theme.textoEscuroSobreOuro} size="small" />
               ) : (
-                <Text style={styles.botaoConfirmarTexto}>Liberar Vagas e Ativar Aviso da Tarde</Text>
+                <Text style={styles.botaoConfirmarModalTexto}>Confirmar Vínculo</Text>
               )}
             </TouchableOpacity>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ─── MODAL: EDITAR PAPEL DO MEMBRO ─── */}
+      <Modal visible={modalEditarMembro !== null} transparent animationType="fade" onRequestClose={() => setModalEditarMembro(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalConteudo}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitulo}>Alterar Papel de Acesso</Text>
+              <TouchableOpacity onPress={() => setModalEditarMembro(null)}>
+                <X size={20} color={theme.textoSecundario} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSub}>
+              Membro:{' '}
+              <Text style={{ color: theme.ouroTexto, fontFamily: FontFamily.bold }}>
+                {modalEditarMembro?.perfil?.nome_completo || 'Profissional'}
+              </Text>
+            </Text>
+
+            <View style={styles.papeisOpcoes}>
+              {(['proprietario', 'gestor', 'barbeiro', 'atendente'] as PapelMembro[]).map((papel) => {
+                const info = PAPEL_ROTULOS[papel];
+                const selecionado = modalEditarMembro?.papel === papel;
+                return (
+                  <TouchableOpacity
+                    key={papel}
+                    style={[styles.papelChip, selecionado && { borderColor: info.cor, backgroundColor: theme.superficie2 }]}
+                    onPress={() => handleAlterarPapelMembro(papel)}
+                  >
+                    <View style={[styles.papelPonto, { backgroundColor: info.cor }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.papelChipTexto, selecionado && { color: info.cor, fontFamily: FontFamily.bold }]}>
+                        {info.rotulo}
+                      </Text>
+                      <Text style={styles.papelChipDesc}>{info.desc}</Text>
+                    </View>
+                    {selecionado && <Check size={16} color={info.cor} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {modalEditarMembro && (
+              <TouchableOpacity
+                style={styles.botaoExcluirMembroModal}
+                onPress={() => handleRemoverMembro(modalEditarMembro)}
+              >
+                <Trash2 size={16} color={Colors.vermelho} />
+                <Text style={styles.botaoExcluirMembroModalTexto}>Remover Vínculo Permanentemente</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* ─── MODAL: NOVO BLOQUEIO DE CLIENTE ─── */}
+      <Modal visible={modalBloqueioAberto} transparent animationType="fade" onRequestClose={() => setModalBloqueioAberto(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalConteudo}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitulo}>Bloquear Cliente</Text>
+              <TouchableOpacity onPress={() => setModalBloqueioAberto(false)}>
+                <X size={20} color={theme.textoSecundario} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSub}>
+              Impeça que clientes com histórico de no-show marquem novos horários sem liberação prévia.
+            </Text>
+
+            <CampoAjuste
+              label="E-mail do Cliente"
+              value={bloqueioEmail}
+              onChangeText={setBloqueioEmail}
+              placeholder="cliente@email.com"
+              keyboardType="email-address"
+            />
+
+            <CampoAjuste
+              label="Telefone / WhatsApp"
+              value={bloqueioTelefone}
+              onChangeText={setBloqueioTelefone}
+              placeholder="(00) 00000-0000"
+              keyboardType="phone-pad"
+            />
+
+            <CampoAjuste
+              label="Motivo do Bloqueio"
+              value={bloqueioMotivo}
+              onChangeText={setBloqueioMotivo}
+              placeholder="Ex: Faltou 2 vezes sem avisar"
+            />
+
+            <TouchableOpacity
+              style={[styles.botaoConfirmarModal, { backgroundColor: Colors.vermelho }]}
+              onPress={salvarNovoBloqueio}
+              disabled={salvandoBloqueio}
+            >
+              {salvandoBloqueio ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={[styles.botaoConfirmarModalTexto, { color: '#FFFFFF' }]}>Confirmar Bloqueio</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
 }
 
-const createStyles = (theme: ThemePalette) =>
-  StyleSheet.create({
-    safe: { flex: 1, backgroundColor: theme.fundo },
+function CampoAjuste({
+  label,
+  multiline,
+  ...props
+}: {
+  label: string;
+  multiline?: boolean;
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder?: string;
+  keyboardType?: any;
+}) {
+  const { theme } = useTheme();
+  return (
+    <View style={stylesBase.campoGrupo}>
+      <Text style={[stylesBase.campoLabel, { color: theme.textoSecundario }]}>{label}</Text>
+      <TextInput
+        style={[
+          stylesBase.campoInput,
+          {
+            backgroundColor: theme.superficie2,
+            borderColor: theme.borda,
+            color: theme.textoPrimario,
+          },
+          multiline && stylesBase.campoInputMultiline,
+        ]}
+        placeholderTextColor={theme.textoDesabilitado}
+        multiline={multiline}
+        textAlignVertical={multiline ? 'top' : 'center'}
+        {...props}
+      />
+    </View>
+  );
+}
+
+const stylesBase = StyleSheet.create({
+  campoGrupo: {
+    gap: 4,
+    marginTop: 6,
+  },
+  campoLabel: {
+    fontFamily: FontFamily.medium,
+    fontSize: 12,
+  },
+  campoInput: {
+    borderRadius: Radii.md,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 10,
+    fontSize: 14,
+    fontFamily: FontFamily.regular,
+  },
+  campoInputMultiline: {
+    minHeight: 70,
+    paddingTop: 10,
+  },
+});
+
+function createStyles(theme: ThemePalette) {
+  return StyleSheet.create({
+    safe: {
+      flex: 1,
+    },
+    vazioContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: Spacing.lg,
+      gap: Spacing.md,
+    },
+    vazioTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: 14,
+      textAlign: 'center',
+    },
+    voltarBotao: {
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: 10,
+      borderRadius: Radii.md,
+    },
+    voltarBotaoTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 14,
+    },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: Spacing.telaH,
-      paddingTop: Spacing.md,
-      paddingBottom: Spacing.md,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
       borderBottomWidth: 1,
-      borderBottomColor: theme.borda,
     },
-    botaoVoltar: { padding: 4 },
-    titulo: { fontFamily: FontFamily.bold, fontSize: FontSize.headingSm, color: theme.textoPrimario },
-    placeholder: { width: 32 },
-    scroll: {
-      padding: Spacing.telaH,
-      gap: Spacing.md,
-      paddingBottom: Spacing.giant,
+    headerBotao: {
+      padding: 6,
     },
-    secaoCard: {
-      backgroundColor: theme.superficie,
-      borderRadius: Radii.xl,
-      padding: Spacing.lg,
-      borderWidth: 1,
-      borderColor: theme.borda,
-      gap: Spacing.md,
-      ...Shadows.card,
+    headerCentro: {
+      flex: 1,
+      alignItems: 'center',
     },
-    secaoHeaderLinha: {
+    headerTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: 16,
+    },
+    headerSubtitulo: {
+      fontFamily: FontFamily.regular,
+      fontSize: 12,
+    },
+    segmentosWrapper: {
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      borderBottomWidth: 1,
+    },
+    segmentosContainer: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: Spacing.md,
+      gap: Spacing.sm,
     },
-    secaoIconeBadge: {
-      width: 40,
-      height: 40,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: 'transparent',
+    segmento: {
+      flex: 1,
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 10,
+      borderRadius: Radii.md,
+      borderWidth: 1,
     },
-    iconeBadgeVermelho: {
-      backgroundColor: 'rgba(239, 68, 68, 0.12)',
-      borderColor: 'rgba(239, 68, 68, 0.25)',
+    segmentoTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: 13,
     },
-    secaoCardTitulo: {
-      fontFamily: FontFamily.bold,
-      fontSize: 15.5,
-      color: theme.textoPrimario,
+    scroll: {
+      padding: Spacing.md,
+      paddingBottom: 40,
     },
-    secaoCardSubtitulo: {
+    secao: {
+      gap: Spacing.md,
+    },
+    ajuda: {
       fontFamily: FontFamily.regular,
       fontSize: 12.5,
       color: theme.textoSecundario,
-      lineHeight: 17,
+      lineHeight: 18,
+    },
+    equipeTopo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: Spacing.sm,
+    },
+    botaoAdicionarMembro: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: theme.ouro,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 8,
+      borderRadius: Radii.md,
+    },
+    botaoAdicionarMembroTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 13,
+      color: theme.textoEscuroSobreOuro,
+    },
+    membrosVazio: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 32,
+      gap: 8,
+    },
+    membrosVazioTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: 15,
+      color: theme.textoPrimario,
+    },
+    membrosVazioSub: {
+      fontFamily: FontFamily.regular,
+      fontSize: 12.5,
+      color: theme.textoSecundario,
+      textAlign: 'center',
+    },
+    membrosLista: {
+      gap: Spacing.sm,
+    },
+    membroCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.lg,
+      padding: Spacing.md,
+      gap: Spacing.sm,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    membroCardInativo: {
+      opacity: 0.6,
+    },
+    membroAvatar: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: theme.ouroTranslucido,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: theme.bordaOuro,
+    },
+    membroAvatarTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 18,
+      color: theme.ouroTexto,
+    },
+    membroInfo: {
+      flex: 1,
+      gap: 2,
+    },
+    membroNomeLinha: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    membroNome: {
+      fontFamily: FontFamily.bold,
+      fontSize: 14,
+      color: theme.textoPrimario,
+    },
+    membroNomeInativo: {
+      textDecorationLine: 'line-through',
+    },
+    badgePapel: {
+      borderWidth: 1,
+      borderRadius: Radii.full,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+    },
+    badgePapelTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 10,
+    },
+    membroContato: {
+      fontFamily: FontFamily.regular,
+      fontSize: 12,
+      color: theme.textoSecundario,
+    },
+    membroStatusLinha: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
       marginTop: 2,
     },
-    botaoAcaoPrincipal: {
+    statusPonto: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    membroStatusTexto: {
+      fontFamily: FontFamily.regular,
+      fontSize: 11,
+      color: theme.textoSecundario,
+    },
+    membroAcoes: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    membroAcaoBotao: {
+      padding: 8,
+      borderRadius: Radii.md,
+      backgroundColor: theme.superficie2,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    blocoRegra: {
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.lg,
+      padding: Spacing.md,
+      gap: Spacing.xs,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    blocoRegraTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: 15,
+      color: theme.textoPrimario,
+    },
+    blocoRegraDesc: {
+      fontFamily: FontFamily.regular,
+      fontSize: 12,
+      color: theme.textoSecundario,
+      marginBottom: 4,
+      lineHeight: 16,
+    },
+    opcaoModoCard: {
+      backgroundColor: theme.superficie2,
+      borderRadius: Radii.md,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      gap: 4,
+      marginTop: 6,
+    },
+    opcaoModoCardAtivo: {
+      borderColor: theme.ouro,
+      backgroundColor: theme.ouroTranslucido,
+    },
+    opcaoModoHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    opcaoModoTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: 13.5,
+      color: theme.textoPrimario,
+    },
+    opcaoModoTituloAtivo: {
+      color: theme.ouroTexto,
+    },
+    opcaoModoSub: {
+      fontFamily: FontFamily.regular,
+      fontSize: 11.5,
+      color: theme.textoSecundario,
+      lineHeight: 15,
+    },
+    janelaDiasRow: {
+      flexDirection: 'row',
+      gap: Spacing.xs,
+      marginTop: 6,
+    },
+    chipJanela: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: Radii.md,
+      backgroundColor: theme.superficie2,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    chipJanelaAtivo: {
+      backgroundColor: theme.ouro,
+      borderColor: theme.ouro,
+    },
+    chipJanelaTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: 12,
+      color: theme.textoSecundario,
+    },
+    chipJanelaTextoAtivo: {
+      color: theme.textoEscuroSobreOuro,
+      fontFamily: FontFamily.bold,
+    },
+    inputComissaoWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.superficie2,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      paddingHorizontal: Spacing.md,
+      height: 48,
+      marginTop: 4,
+      gap: Spacing.xs,
+    },
+    inputComissao: {
+      flex: 1,
+      color: theme.textoPrimario,
+      fontFamily: FontFamily.bold,
+      fontSize: 16,
+      height: '100%',
+    },
+    inputComissaoSufixo: {
+      fontFamily: FontFamily.medium,
+      fontSize: 13,
+      color: theme.ouroTexto,
+    },
+    fidelidadeHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: Spacing.sm,
+    },
+    fidelidadeCampos: {
+      gap: Spacing.xs,
+      marginTop: Spacing.sm,
+      paddingTop: Spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: theme.borda,
+    },
+    mimoTipoLabel: {
+      fontFamily: FontFamily.bold,
+      fontSize: 12.5,
+      color: theme.ouroTexto,
+      marginTop: 4,
+    },
+    botaoDisparoPush: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,
       backgroundColor: theme.ouro,
-      paddingVertical: 13,
       borderRadius: Radii.md,
-      marginTop: 2,
+      paddingVertical: 12,
+      marginTop: Spacing.xs,
     },
-    botaoAcaoPrincipalTexto: {
+    botaoDisparoPushTexto: {
       fontFamily: FontFamily.bold,
-      fontSize: 13.5,
+      fontSize: 13,
       color: theme.textoEscuroSobreOuro,
     },
-    botaoAcaoSecundario: {
+    botaoAddBloqueio: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      paddingVertical: 12,
-      borderRadius: Radii.md,
-      borderWidth: 1,
-      marginTop: 2,
-    },
-    botaoAcaoSecundarioTexto: {
-      fontFamily: FontFamily.bold,
-      fontSize: 13.5,
-    },
-    statusVazioPill: {
-      paddingVertical: 10,
-      paddingHorizontal: Spacing.md,
-      borderRadius: Radii.md,
-      borderWidth: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginVertical: 2,
-    },
-    statusVazioTexto: {
-      fontFamily: FontFamily.medium,
-      fontSize: 12.5,
-    },
-    listaBloqueados: {
-      borderRadius: Radii.md,
-      padding: Spacing.xs,
       gap: 4,
-      borderWidth: 1,
-    },
-    itemBloqueado: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: Spacing.sm,
-      borderBottomWidth: 1,
-    },
-    itemBloqueadoIdent: {
-      fontFamily: FontFamily.semiBold,
-      fontSize: FontSize.bodySm,
-      color: theme.textoPrimario,
-    },
-    itemBloqueadoMotivo: {
-      fontFamily: FontFamily.regular,
-      fontSize: FontSize.labelXs,
-      color: theme.textoSecundario,
-    },
-    botaoDesbloquear: {
+      backgroundColor: 'rgba(239, 68, 68, 0.12)',
       paddingHorizontal: 10,
       paddingVertical: 6,
-      borderRadius: Radii.sm,
-      borderWidth: 1,
-    },
-    botaoDesbloquearTexto: {
-      fontFamily: FontFamily.bold,
-      fontSize: FontSize.labelXs,
-    },
-    badgeAtivo: {
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-      borderRadius: Radii.sm,
-    },
-    badgeAtivoTexto: {
-      fontFamily: FontFamily.semiBold,
-      fontSize: FontSize.labelXs,
-    },
-    textoVazioSecao: {
-      fontFamily: FontFamily.regular,
-      fontSize: FontSize.labelXs,
-      color: theme.textoSecundario,
-      paddingVertical: 2,
-    },
-    listaDestinatarios: {
-      backgroundColor: theme.superficie2,
       borderRadius: Radii.md,
-      padding: Spacing.xs,
-      gap: 4,
-      maxHeight: 160,
+      borderWidth: 1,
+      borderColor: 'rgba(239, 68, 68, 0.3)',
     },
-    itemDestinatario: {
+    botaoAddBloqueioTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 12,
+      color: Colors.vermelho,
+    },
+    bloqueadosLista: {
+      gap: 6,
+      marginTop: 6,
+    },
+    bloqueadoCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: Spacing.xs,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.borda,
-    },
-    itemDestinatarioDesmarcado: {
-      opacity: 0.45,
-    },
-    destinatarioNome: {
-      fontFamily: FontFamily.semiBold,
-      fontSize: FontSize.bodySm,
-      color: theme.textoPrimario,
-    },
-    destinatarioNomeDesmarcado: {
-      color: theme.textoSecundario,
-      textDecorationLine: 'line-through',
-    },
-    destinatarioSub: {
-      fontFamily: FontFamily.regular,
-      fontSize: FontSize.labelXs,
-      color: theme.textoSecundario,
-    },
-    instrucaoTexto: {
-      fontFamily: FontFamily.regular,
-      fontSize: FontSize.labelXs,
-      color: theme.textoSecundario,
-      marginBottom: 4,
-    },
-
-    /* Modais */
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-      justifyContent: 'flex-end',
-    },
-    modalConteudoGrande: {
-      backgroundColor: theme.superficie,
-      borderTopLeftRadius: Radii.xl,
-      borderTopRightRadius: Radii.xl,
-      paddingHorizontal: Spacing.telaH,
-      paddingTop: Spacing.sm,
-      paddingBottom: Spacing.giant,
+      backgroundColor: theme.superficie2,
+      borderRadius: Radii.md,
+      padding: Spacing.sm,
       borderWidth: 1,
       borderColor: theme.borda,
-      gap: Spacing.xs,
-      maxHeight: '90%',
     },
-    modalTraco: {
-      width: 36,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: theme.bordaDestaque,
-      alignSelf: 'center',
-      marginBottom: Spacing.xs,
+    bloqueadoTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 12.5,
+      color: theme.textoPrimario,
+    },
+    bloqueadoMotivo: {
+      fontFamily: FontFamily.regular,
+      fontSize: 11,
+      color: theme.textoSecundario,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      justifyContent: 'center',
+      padding: Spacing.md,
+    },
+    modalConteudo: {
+      backgroundColor: theme.superficie,
+      borderRadius: Radii.xl,
+      padding: Spacing.lg,
+      borderWidth: 1,
+      borderColor: theme.borda,
+      maxHeight: '85%',
     },
     modalHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: Spacing.xs,
+      marginBottom: 6,
     },
     modalTitulo: {
       fontFamily: FontFamily.bold,
-      fontSize: FontSize.headingSm,
+      fontSize: 16,
       color: theme.textoPrimario,
     },
-    modalBtnFechar: { padding: 4 },
-    modalDescricaoTexto: {
+    modalSub: {
       fontFamily: FontFamily.regular,
-      fontSize: FontSize.bodySm,
+      fontSize: 12.5,
       color: theme.textoSecundario,
-      lineHeight: 18,
-      marginBottom: Spacing.xs,
+      marginBottom: Spacing.sm,
     },
-    labelCampo: {
-      fontFamily: FontFamily.bold,
-      fontSize: FontSize.labelXs,
-      color: theme.textoSecundario,
-      letterSpacing: 0.5,
-      marginTop: Spacing.sm,
-      marginBottom: 4,
-    },
-    chipsRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 6,
-    },
-    chip: {
+    buscaLinha: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: Radii.sm,
       backgroundColor: theme.superficie2,
+      borderRadius: Radii.md,
       borderWidth: 1,
       borderColor: theme.borda,
-    },
-    chipAtivo: {
-      backgroundColor: theme.vermelho,
-      borderColor: theme.vermelho,
-    },
-    chipAtivoAzul: {
-      backgroundColor: '#2563EB',
-      borderColor: '#3B82F6',
-    },
-    chipAtivoVermelho: {
-      backgroundColor: theme.erro,
-      borderColor: theme.erro,
-    },
-    chipTexto: {
-      fontFamily: FontFamily.medium,
-      fontSize: FontSize.bodySm,
-      color: theme.textoSecundario,
-    },
-    chipTextoAtivo: {
-      color: '#FFFFFF',
-      fontFamily: FontFamily.bold,
-    },
-    chipServico: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: Radii.sm,
-      backgroundColor: theme.superficie2,
-      borderWidth: 1,
-      borderColor: theme.borda,
-      gap: 2,
-    },
-    chipServicoAtivo: {
-      backgroundColor: theme.ouroTranslucido,
-      borderColor: theme.ouro,
-    },
-    chipServicoNome: {
-      fontFamily: FontFamily.semiBold,
-      fontSize: FontSize.bodySm,
-      color: theme.textoPrimario,
-    },
-    chipServicoNomeAtivo: {
-      color: theme.ouroTexto,
-    },
-    chipServicoPreco: {
-      fontFamily: FontFamily.regular,
-      fontSize: FontSize.labelXs,
-      color: theme.textoSecundario,
-    },
-    chipServicoPrecoAtivo: {
-      color: theme.ouroTexto,
-    },
-
-    /* Colinha de Combo */
-    colinhaComboWrapper: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 8,
-      backgroundColor: theme.ouroTranslucido,
-      borderRadius: Radii.sm,
-      padding: Spacing.sm,
-      borderWidth: 1,
-      borderColor: theme.bordaOuro,
-      marginVertical: 4,
-    },
-    colinhaIconeBadge: {
-      marginTop: 2,
-    },
-    colinhaTitulo: {
-      fontFamily: FontFamily.bold,
-      fontSize: FontSize.labelXs,
-      color: theme.ouroTexto,
-      letterSpacing: 0.3,
-    },
-    colinhaDescricao: {
-      fontFamily: FontFamily.regular,
-      fontSize: FontSize.bodySm,
-      color: theme.textoPrimario,
-      lineHeight: 16,
-    },
-
-    input: {
-      backgroundColor: theme.superficie2,
-      borderRadius: Radii.sm,
-      borderWidth: 1,
-      borderColor: theme.borda,
-      paddingHorizontal: Spacing.md,
-      paddingVertical: 10,
-      color: theme.textoPrimario,
-      fontFamily: FontFamily.regular,
-      fontSize: FontSize.bodyMd,
-    },
-    buscaInputWrapper: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      backgroundColor: theme.superficie2,
-      borderRadius: Radii.sm,
-      borderWidth: 1,
-      borderColor: theme.borda,
-      paddingHorizontal: Spacing.md,
-      paddingVertical: 8,
+      paddingHorizontal: Spacing.sm,
+      gap: Spacing.xs,
+      height: 44,
+      marginBottom: Spacing.sm,
     },
     buscaInput: {
       flex: 1,
-      color: theme.textoPrimario,
       fontFamily: FontFamily.regular,
-      fontSize: FontSize.bodyMd,
-      padding: 0,
+      fontSize: 13,
+      color: theme.textoPrimario,
+      height: '100%',
     },
-    resultadosBusca: {
+    buscaResultados: {
+      maxHeight: 180,
+      marginBottom: Spacing.sm,
+    },
+    buscaItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
       backgroundColor: theme.superficie2,
-      borderRadius: Radii.sm,
+      borderRadius: Radii.md,
+      padding: Spacing.sm,
+      gap: Spacing.sm,
+      marginBottom: 6,
       borderWidth: 1,
       borderColor: theme.borda,
-      marginTop: 4,
-      overflow: 'hidden',
     },
-    itemResultadoBusca: {
-      flexDirection: 'row',
+    buscaItemAvatar: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: theme.ouroTranslucido,
       alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: Spacing.sm,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.borda,
+      justifyContent: 'center',
     },
-    resultadoNome: {
-      fontFamily: FontFamily.semiBold,
-      fontSize: FontSize.bodySm,
+    buscaItemAvatarTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 13,
+      color: theme.ouroTexto,
+    },
+    buscaItemNome: {
+      fontFamily: FontFamily.bold,
+      fontSize: 13,
       color: theme.textoPrimario,
     },
-    resultadoTel: {
+    buscaItemEmail: {
       fontFamily: FontFamily.regular,
-      fontSize: FontSize.labelXs,
+      fontSize: 11,
       color: theme.textoSecundario,
     },
-    badgeSelecionar: {
-      backgroundColor: theme.ouroTranslucido,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: Radii.sm,
-      borderWidth: 1,
-      borderColor: theme.bordaOuro,
-    },
-    badgeSelecionarTexto: {
-      fontFamily: FontFamily.bold,
-      fontSize: FontSize.labelXs,
-      color: theme.ouroTexto,
-    },
-    cardClienteSelecionado: {
+    usuarioCardSelecionado: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: Spacing.sm,
-      backgroundColor: theme.superficie2,
-      borderRadius: Radii.sm,
-      padding: Spacing.sm,
-      borderWidth: 1,
-      borderColor: theme.ouro,
-    },
-    avatarClienteSelecionado: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
       backgroundColor: theme.ouroTranslucido,
-      alignItems: 'center',
-      justifyContent: 'center',
+      borderRadius: Radii.md,
+      padding: Spacing.sm,
+      gap: Spacing.sm,
+      borderWidth: 1,
+      borderColor: theme.bordaOuro,
+      marginBottom: Spacing.sm,
     },
-    nomeClienteSelecionado: {
+    usuarioCardNome: {
       fontFamily: FontFamily.bold,
-      fontSize: FontSize.bodySm,
-      color: theme.textoPrimario,
-    },
-    telClienteSelecionado: {
-      fontFamily: FontFamily.regular,
-      fontSize: FontSize.labelXs,
+      fontSize: 13,
       color: theme.ouroTexto,
     },
-    btnRemoverCliente: {
-      padding: 6,
+    usuarioCardEmail: {
+      fontFamily: FontFamily.regular,
+      fontSize: 11,
+      color: theme.textoSecundario,
     },
-    botaoConfirmar: {
-      backgroundColor: theme.verde,
-      paddingVertical: 14,
-      borderRadius: Radii.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginTop: Spacing.md,
-    },
-    botaoConfirmarTexto: {
+    campoLabel: {
       fontFamily: FontFamily.bold,
-      fontSize: FontSize.bodyMd,
+      fontSize: 12,
+      color: theme.textoPrimario,
+      marginBottom: 4,
+    },
+    papeisOpcoes: {
+      gap: 6,
+      marginVertical: Spacing.xs,
+    },
+    papelChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.superficie2,
+      borderRadius: Radii.md,
+      padding: Spacing.sm,
+      gap: Spacing.sm,
+      borderWidth: 1,
+      borderColor: theme.borda,
+    },
+    papelPonto: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    papelChipTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: 13,
+      color: theme.textoPrimario,
+    },
+    papelChipDesc: {
+      fontFamily: FontFamily.regular,
+      fontSize: 11,
+      color: theme.textoSecundario,
+    },
+    botaoConfirmarModal: {
+      backgroundColor: theme.ouro,
+      borderRadius: Radii.md,
+      paddingVertical: 12,
+      alignItems: 'center',
+      marginTop: Spacing.sm,
+    },
+    botaoConfirmarModalTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 14,
       color: theme.textoEscuroSobreOuro,
     },
+    botaoExcluirMembroModal: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      marginTop: Spacing.md,
+      paddingVertical: 10,
+    },
+    botaoExcluirMembroModalTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 13,
+      color: Colors.vermelho,
+    },
   });
+}

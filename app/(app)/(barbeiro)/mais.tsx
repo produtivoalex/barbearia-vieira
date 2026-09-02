@@ -13,6 +13,7 @@ import {
   Share,
   Platform,
   Keyboard,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -42,6 +43,8 @@ import {
   Eye,
   Share2,
   Copy,
+  Instagram,
+  MessageCircle,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -398,13 +401,25 @@ export default function TelaBarbeiroMais() {
     }
   }
 
+  const nomeExibicao = carregandoPerfil
+    ? 'Carregando...'
+    : perfil?.nome_completo || 'Barbeiro Profissional';
+  const emailExibicao = session?.user?.email || '';
+
+  const instagramHandle = useMemo(() => {
+    if (barbearia?.tema?.instagram) return barbearia.tema.instagram;
+    if (barbearia?.slug === 'barbearia-vieira' || barbearia?.nome?.includes('Vieira')) return '@barbearia_vieira';
+    return `@${barbearia?.slug || 'barbearia'}`;
+  }, [barbearia]);
+
+  const whatsappExibicao = useMemo(() => {
+    return barbearia?.whatsapp || barbearia?.telefone || '(86) 98190-7478';
+  }, [barbearia]);
+
   function handleCompartilharLink() {
-    const slug = barbearia?.slug || barbearia?.id || 'barbearia';
     const nome = barbearia?.nome || 'nossa barbearia';
-    const link = `https://naregua.app/${slug}`;
     Share.share({
-      message: `💈 Agende seu corte na ${nome} pelo app Na Régua:\n${link}`,
-      url: link,
+      message: `💈 ${nome}\n📱 WhatsApp: ${whatsappExibicao}\n📸 Instagram: ${instagramHandle}`,
     }).catch(() => {});
   }
 
@@ -416,12 +431,6 @@ export default function TelaBarbeiroMais() {
       router.push('/(app)/barbearias');
     }
   }
-
-  const nomeExibicao = carregandoPerfil
-    ? 'Carregando...'
-    : perfil?.nome_completo || 'Barbeiro Profissional';
-  const emailExibicao = session?.user?.email || '';
-  const slugBarbearia = barbearia?.slug || 'vieira';
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]} edges={['top']}>
@@ -470,11 +479,6 @@ export default function TelaBarbeiroMais() {
               <Text style={[styles.heroDono, { color: theme.textoSecundario }]} numberOfLines={1}>
                 {nomeExibicao} • {emailExibicao}
               </Text>
-              <View style={styles.heroLinkLinha}>
-                <Text style={[styles.heroLinkTexto, { color: theme.ouroTexto }]} numberOfLines={1}>
-                  naregua.app/{slugBarbearia}
-                </Text>
-              </View>
             </View>
           </View>
 
@@ -554,7 +558,7 @@ export default function TelaBarbeiroMais() {
               </View>
               <Text style={[styles.gridCardTitulo, { color: theme.textoPrimario }]}>Espaço & Fotos</Text>
               <Text style={[styles.gridCardSub, { color: theme.textoSecundario }]}>
-                Logo, fotos e dados
+                Dados, fotos e temas
               </Text>
               <View style={styles.gridCardSeta}>
                 <ChevronRight size={14} color={theme.textoDesabilitado} />
@@ -572,7 +576,7 @@ export default function TelaBarbeiroMais() {
               </View>
               <Text style={[styles.gridCardTitulo, { color: theme.textoPrimario }]}>Ajustes & Equipe</Text>
               <Text style={[styles.gridCardSub, { color: theme.textoSecundario }]}>
-                Regras e horários
+                Membros, regras e operação
               </Text>
               <View style={styles.gridCardSeta}>
                 <ChevronRight size={14} color={theme.textoDesabilitado} />
@@ -1279,13 +1283,6 @@ const createStyles = (theme: ThemePalette) =>
     heroDono: {
       fontFamily: FontFamily.regular,
       fontSize: FontSize.labelXs,
-    },
-    heroLinkLinha: {
-      marginTop: 2,
-    },
-    heroLinkTexto: {
-      fontFamily: FontFamily.semiBold,
-      fontSize: 11.5,
     },
     heroAcoesLinha: {
       flexDirection: 'row',

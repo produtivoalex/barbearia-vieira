@@ -20,7 +20,26 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAgendaSemanal } from '@/hooks/useAgendaSemanal';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
 
-const HORARIOS_DISPONIVEIS = ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+// Grade padrão de 15 horários distribuídos em 3 linhas de 5 colunas:
+// Linha 1 (Manhã): 07:00 às 11:00 (o corte das 11h termina às 12h)
+// Linha 2 (Tarde): 13:00 às 17:00 (o corte das 17h termina às 18h)
+// Linha 3 (Tarde/Noite): 18:00 às 22:00 (para quem atende direto ou noite)
+export const HORARIOS_GRADE_15 = [
+  '07:00', '08:00', '09:00', '10:00', '11:00',
+  '13:00', '14:00', '15:00', '16:00', '17:00',
+  '18:00', '19:00', '20:00', '21:00', '22:00',
+];
+
+// Padrão 10 vagas (2 linhas de 5: 07h-12h e 13h-18h)
+export const HORARIOS_PADRAO_10 = [
+  '07:00', '08:00', '09:00', '10:00', '11:00',
+  '13:00', '14:00', '15:00', '16:00', '17:00',
+];
+
+// Padrão 15 vagas (3 linhas de 5: sem fechar / direto)
+export const HORARIOS_PADRAO_15 = HORARIOS_GRADE_15;
+
+const HORARIOS_DISPONIVEIS = HORARIOS_PADRAO_10;
 const NOMES_DIAS = [
   'Segunda-feira',
   'Terça-feira',
@@ -94,11 +113,11 @@ export default function PrepararAgenda() {
         const novosAtivos: Record<string, boolean> = {};
         const novosHorarios: Record<string, string[]> = {};
 
-        // Inicializa todas as datas como ativas com os horários padrão
+        // Inicializa todas as datas como ativas com os 10 horários padrão (2x5)
         for (const data of todasDatas) {
           const strData = dataLocal(data);
           novosAtivos[strData] = true;
-          novosHorarios[strData] = HORARIOS_DISPONIVEIS;
+          novosHorarios[strData] = HORARIOS_PADRAO_10;
         }
 
         // Busca se há slots já salvos no banco para essas datas
@@ -167,14 +186,59 @@ export default function PrepararAgenda() {
     return count;
   }, [diasAtivosMap, horariosMap, todasDatas]);
 
+  interface SugestaoReplicacao {
+    strDataOrigem: string;
+    diaSemanaNome: string;
+    diaSemanaIdx: number; // 0 = Seg ... 6 = Dom
+    horarios: string[];
+  }
+
+  const [sugestaoReplicacao, setSugestaoReplicacao] = useState<SugestaoReplicacao | null>(null);
+  const [sincronizarAuto, setSincronizarAuto] = useState(false);
+
+  function replicarParaOutrosDiasSemana(origem: SugestaoReplicacao) {
+    const novosHorarios = { ...horariosMap };
+    const novosAtivos = { ...diasAtivosMap };
+
+    for (const data of todasDatas) {
+      const strData = dataLocal(data);
+      if (novosAtivos[strData]) {
+        novosHorarios[strData] = [...origem.horarios];
+      }
+    }
+
+    setHorariosMap(novosHorarios);
+    setSugestaoReplicacao(null);
+    Alert.alert('Personalização Replicada! 💈', `A grade de ${origem.horarios.length} horários foi aplicada a todos os dias ativos.`);
+  }
+
+  function replicarParaMesmoDiaNoMes(origem: SugestaoReplicacao) {
+    const novosHorarios = { ...horariosMap };
+    const novosAtivos = { ...diasAtivosMap };
+
+    for (const data of todasDatas) {
+      const diaSemanaIdx = (data.getDay() + 6) % 7; // 0 = Seg, ..., 6 = Dom
+      if (diaSemanaIdx === origem.diaSemanaIdx) {
+        const strData = dataLocal(data);
+        novosAtivos[strData] = origem.horarios.length > 0;
+        novosHorarios[strData] = [...origem.horarios];
+      }
+    }
+
+    setDiasAtivosMap(novosAtivos);
+    setHorariosMap(novosHorarios);
+    setSugestaoReplicacao(null);
+    Alert.alert('Personalização Replicada no Mês! 📅', `A grade foi aplicada a todas as ${origem.diaSemanaNome}s do mês.`);
+  }
+
   function handleToggleDia(strData: string, valor: boolean) {
     setDiasAtivosMap((prev) => ({ ...prev, [strData]: valor }));
     if (valor && (!horariosMap[strData] || horariosMap[strData].length === 0)) {
-      setHorariosMap((prev) => ({ ...prev, [strData]: HORARIOS_DISPONIVEIS }));
+      setHorariosMap((prev) => ({ ...prev, [strData]: HORARIOS_PADRAO_10 }));
     }
   }
 
-  function handleToggleHorario(strData: string, hora: string) {
+  function handleToggleHorario(strData: string, hora: string, diaSemanaIdx: number, diaNome: string) {
     const listaAtual = horariosMap[strData] || [];
     let novaLista: string[];
     if (listaAtual.includes(hora)) {
@@ -183,32 +247,86 @@ export default function PrepararAgenda() {
       novaLista = [...listaAtual, hora].sort();
     }
 
-    setHorariosMap((prev) => ({ ...prev, [strData]: novaLista }));
-    setDiasAtivosMap((prev) => ({ ...prev, [strData]: novaLista.length > 0 }));
+    if (sincronizarAuto) {
+      const novos = { ...horariosMap };
+      for (const d of todasDatas) {
+        const s = dataLocal(d);
+        if (diasAtivosMap[s]) {
+          novos[s] = novaLista;
+        }
+      }
+      setHorariosMap(novos);
+    } else {
+      setHorariosMap((prev) => ({ ...prev, [strData]: novaLista }));
+      setDiasAtivosMap((prev) => ({ ...prev, [strData]: novaLista.length > 0 }));
+      setSugestaoReplicacao({
+        strDataOrigem: strData,
+        diaSemanaNome: diaNome,
+        diaSemanaIdx,
+        horarios: novaLista,
+      });
+    }
   }
 
-  // ─── PRESETS RÁPIDOS ───
-  function aplicarPreset(tipo: 'seg_sab' | 'ter_sab' | 'todos' | 'nenhum') {
+  function handleDefinirHorariosDia(strData: string, horarios: string[], diaSemanaIdx: number, diaNome: string) {
+    if (sincronizarAuto) {
+      const novos = { ...horariosMap };
+      for (const d of todasDatas) {
+        const s = dataLocal(d);
+        if (diasAtivosMap[s]) {
+          novos[s] = horarios;
+        }
+      }
+      setHorariosMap(novos);
+    } else {
+      setHorariosMap((prev) => ({ ...prev, [strData]: horarios }));
+      setDiasAtivosMap((prev) => ({ ...prev, [strData]: horarios.length > 0 }));
+      setSugestaoReplicacao({
+        strDataOrigem: strData,
+        diaSemanaNome: diaNome,
+        diaSemanaIdx,
+        horarios,
+      });
+    }
+  }
+
+  // ─── PRESETS RÁPIDOS DE DIAS ───
+  function aplicarPreset(tipo: 'seg_sex' | 'seg_sab' | 'ter_dom' | 'todos' | 'nenhum') {
     const novosAtivos: Record<string, boolean> = { ...diasAtivosMap };
     const novosHorarios: Record<string, string[]> = { ...horariosMap };
 
     for (const data of todasDatas) {
       const strData = dataLocal(data);
-      const diaSemana = data.getDay(); // 0 = Dom, 1 = Seg, 2 = Ter, ...
+      const diaSemana = data.getDay(); // 0 = Dom, 1 = Seg, 2 = Ter, 3 = Qua, 4 = Qui, 5 = Sex, 6 = Sáb
 
       let ativo = false;
       if (tipo === 'todos') ativo = true;
+      else if (tipo === 'seg_sex') ativo = diaSemana >= 1 && diaSemana <= 5; // Seg a Sex
       else if (tipo === 'seg_sab') ativo = diaSemana >= 1 && diaSemana <= 6; // Seg a Sáb
-      else if (tipo === 'ter_sab') ativo = diaSemana >= 2 && diaSemana <= 6; // Ter a Sáb
+      else if (tipo === 'ter_dom') ativo = diaSemana !== 1; // Ter a Dom
       else if (tipo === 'nenhum') ativo = false;
 
       novosAtivos[strData] = ativo;
       if (ativo && (!novosHorarios[strData] || novosHorarios[strData].length === 0)) {
-        novosHorarios[strData] = HORARIOS_DISPONIVEIS;
+        novosHorarios[strData] = HORARIOS_PADRAO_10;
       }
     }
 
     setDiasAtivosMap(novosAtivos);
+    setHorariosMap(novosHorarios);
+  }
+
+  // ─── PRESET RÁPIDO DE VAGAS PARA TODOS OS DIAS ATIVOS ───
+  function aplicarPresetVagasGlobal(tipo: '10_vagas' | '15_vagas') {
+    const novosHorarios: Record<string, string[]> = { ...horariosMap };
+    const listaEscolhida = tipo === '10_vagas' ? HORARIOS_PADRAO_10 : HORARIOS_PADRAO_15;
+
+    for (const data of todasDatas) {
+      const strData = dataLocal(data);
+      if (diasAtivosMap[strData]) {
+        novosHorarios[strData] = listaEscolhida;
+      }
+    }
     setHorariosMap(novosHorarios);
   }
 
@@ -349,13 +467,15 @@ export default function PrepararAgenda() {
         <TouchableOpacity
           style={[
             styles.semanaTab,
+            styles.semanaTabEsta,
             semanaOffset === 0 && { backgroundColor: theme.ouro },
           ]}
           onPress={() => setSemanaOffset(0)}
           activeOpacity={0.8}
         >
-          <Calendar size={13} color={semanaOffset === 0 ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
+          <Calendar size={12} color={semanaOffset === 0 ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
           <Text
+            numberOfLines={1}
             style={[
               styles.semanaTabTexto,
               { color: theme.textoSecundario },
@@ -369,13 +489,15 @@ export default function PrepararAgenda() {
         <TouchableOpacity
           style={[
             styles.semanaTab,
+            styles.semanaTabProxima,
             semanaOffset === 1 && { backgroundColor: theme.ouro },
           ]}
           onPress={() => setSemanaOffset(1)}
           activeOpacity={0.8}
         >
-          <Calendar size={13} color={semanaOffset === 1 ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
+          <Calendar size={12} color={semanaOffset === 1 ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
           <Text
+            numberOfLines={1}
             style={[
               styles.semanaTabTexto,
               { color: theme.textoSecundario },
@@ -389,13 +511,15 @@ export default function PrepararAgenda() {
         <TouchableOpacity
           style={[
             styles.semanaTab,
+            styles.semanaTabMes,
             semanaOffset === 2 && { backgroundColor: theme.ouro },
           ]}
           onPress={() => setSemanaOffset(2)}
           activeOpacity={0.8}
         >
-          <Sparkles size={13} color={semanaOffset === 2 ? theme.textoEscuroSobreOuro : theme.ouroTexto} />
+          <Sparkles size={12} color={semanaOffset === 2 ? theme.textoEscuroSobreOuro : theme.ouroTexto} />
           <Text
+            numberOfLines={1}
             style={[
               styles.semanaTabTexto,
               { color: theme.textoSecundario },
@@ -434,10 +558,22 @@ export default function PrepararAgenda() {
             </View>
           </View>
 
-          {/* Barra de Presets Rápidos */}
+          {/* Barra de Presets Rápidos de Dias */}
           <View style={styles.presetsContainer}>
-            <Text style={[styles.presetsTitulo, { color: theme.ouroTexto }]}>⚡ PRÉ-CONFIGURAÇÕES RÁPIDAS</Text>
-            <View style={styles.presetsLinha}>
+            <Text style={[styles.presetsTitulo, { color: theme.ouroTexto }]}>⚡ PRÉ-CONFIGURAÇÕES DE DIAS</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.presetsLinhaScroll}
+            >
+              <TouchableOpacity
+                style={[styles.presetChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
+                onPress={() => aplicarPreset('seg_sex')}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.presetChipTexto, { color: theme.textoPrimario }]}>Seg - Sex</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity
                 style={[styles.presetChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
                 onPress={() => aplicarPreset('seg_sab')}
@@ -448,10 +584,10 @@ export default function PrepararAgenda() {
 
               <TouchableOpacity
                 style={[styles.presetChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
-                onPress={() => aplicarPreset('ter_sab')}
+                onPress={() => aplicarPreset('ter_dom')}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.presetChipTexto, { color: theme.textoPrimario }]}>Ter - Sáb</Text>
+                <Text style={[styles.presetChipTexto, { color: theme.textoPrimario }]}>Ter - Dom</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -469,41 +605,115 @@ export default function PrepararAgenda() {
               >
                 <Text style={[styles.presetChipTexto, { color: theme.textoSecundario }]}>Limpar</Text>
               </TouchableOpacity>
+            </ScrollView>
+          </View>
+
+          {/* Atalhos Globais de Vagas */}
+          <View style={styles.presetsVagasGlobalContainer}>
+            <Text style={[styles.presetsTitulo, { color: theme.textoSecundario }]}>⚡ APLICAR EM TODOS OS DIAS ATIVOS</Text>
+            <View style={styles.presetsVagasGlobalLinha}>
+              <TouchableOpacity
+                style={[styles.presetVagaChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
+                onPress={() => aplicarPresetVagasGlobal('10_vagas')}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.presetVagaChipTexto, { color: theme.textoPrimario }]}>
+                  10 Vagas (2x5: 07h-12h e 13h-18h)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.presetVagaChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
+                onPress={() => aplicarPresetVagasGlobal('15_vagas')}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.presetVagaChipTexto, { color: theme.textoPrimario }]}>
+                  15 Vagas (3x5 Sem Fechar)
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
 
-          {/* BOX DE LIBERAÇÃO IMEDIATA */}
-          <View style={[
-            styles.boxAberturaImediata,
-            { backgroundColor: theme.superficie, borderColor: theme.borda },
-            abrirImediatamente && { borderColor: theme.verde, backgroundColor: isEscuro ? 'rgba(34, 197, 94, 0.08)' : '#F0FDF4' },
-          ]}>
-            <View style={{ flex: 1, gap: 2 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Zap size={16} color={abrirImediatamente ? theme.verde : theme.ouroTexto} />
-                <Text style={[styles.boxAberturaImediataTitulo, { color: theme.textoPrimario }]}>
-                  Liberar Imediatamente (Aberta Agora)
+          {/* Opção Simples "Liberar agora" & Switch de Sincronização */}
+          <View style={{ gap: 8 }}>
+            <View style={[styles.linhaLiberarAgoraContainer, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
+              <View style={styles.linhaLiberarAgoraEsquerda}>
+                <Zap size={16} color={abrirImediatamente ? theme.verde : theme.textoSecundario} />
+                <Text style={[styles.linhaLiberarAgoraTexto, { color: theme.textoPrimario }]}>
+                  Liberar agora
                 </Text>
               </View>
-              <Text style={[styles.boxAberturaImediataSub, { color: theme.textoSecundario }]}>
-                {abrirImediatamente
-                  ? 'Os horários ficarão ABERTOS agora para qualquer cliente agendar no aplicativo.'
-                  : `A agenda ficará programada para abrir na segunda-feira às ${abertura}.`}
-              </Text>
+              <Switch
+                value={abrirImediatamente}
+                onValueChange={setAbrirImediatamente}
+                trackColor={{ false: isEscuro ? '#27272A' : '#E4E4E7', true: theme.verde }}
+                thumbColor={abrirImediatamente ? '#FFFFFF' : (isEscuro ? '#71717A' : '#A1A1AA')}
+              />
             </View>
-            <Switch
-              value={abrirImediatamente}
-              onValueChange={setAbrirImediatamente}
-              trackColor={{ false: isEscuro ? '#27272A' : '#E4E4E7', true: theme.verde }}
-              thumbColor={abrirImediatamente ? '#FFFFFF' : (isEscuro ? '#71717A' : '#A1A1AA')}
-            />
+
+            {/* Switch de Sincronização Automática */}
+            <View style={[styles.syncRow, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Sparkles size={14} color={sincronizarAuto ? theme.ouro : theme.textoSecundario} />
+                <Text style={[styles.syncTexto, { color: theme.textoPrimario }]}>
+                  Sincronizar edições em todos os dias
+                </Text>
+              </View>
+              <Switch
+                value={sincronizarAuto}
+                onValueChange={setSincronizarAuto}
+                trackColor={{ false: isEscuro ? '#27272A' : '#E4E4E7', true: theme.ouro }}
+                thumbColor={sincronizarAuto ? '#FFFFFF' : (isEscuro ? '#71717A' : '#A1A1AA')}
+              />
+            </View>
           </View>
+
+          {/* CARD DE SUGESTÃO DE REPLICAÇÃO CONTEXTUAL */}
+          {sugestaoReplicacao && !sincronizarAuto && (
+            <View style={[styles.cardReplicacao, { backgroundColor: theme.superficie, borderColor: theme.ouro }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                  <Sparkles size={16} color={theme.ouroTexto} />
+                  <Text style={[styles.cardReplicacaoTitulo, { color: theme.textoPrimario }]}>
+                    Replicar horários de {sugestaoReplicacao.diaSemanaNome}?
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setSugestaoReplicacao(null)} style={{ padding: 4 }}>
+                  <Text style={{ color: theme.textoSecundario, fontSize: 13, fontWeight: 'bold' }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.cardReplicacaoSub, { color: theme.textoSecundario }]}>
+                Você personalizou {sugestaoReplicacao.horarios.length} vaga(s). Deseja aplicar essa mesma configuração aos outros dias?
+              </Text>
+
+              <View style={styles.cardReplicacaoBotoes}>
+                <TouchableOpacity
+                  style={[styles.botaoReplicarAcao, { backgroundColor: theme.ouro }]}
+                  onPress={() => replicarParaOutrosDiasSemana(sugestaoReplicacao)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.botaoReplicarTexto, { color: theme.textoEscuroSobreOuro }]}>
+                    📅 Aplicar aos outros dias ativos
+                  </Text>
+                </TouchableOpacity>
+
+                {isModoMes && (
+                  <TouchableOpacity
+                    style={[styles.botaoReplicarAcao, { backgroundColor: theme.superficie2, borderColor: theme.borda, borderWidth: 1 }]}
+                    onPress={() => replicarParaMesmoDiaNoMes(sugestaoReplicacao)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.botaoReplicarTexto, { color: theme.textoPrimario }]}>
+                      🗓️ Replicar nas {sugestaoReplicacao.diaSemanaNome}s do Mês
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
 
           {/* Lista de Semanas & Dias */}
           {semanas.map((semanaDatas, semIdx) => {
-            const inicioSem = dataLocal(semanaDatas[0]);
-            const fimSem = dataLocal(semanaDatas[semanaDatas.length - 1]);
-
             return (
               <View key={`semana-${semIdx}`} style={styles.blocoSemana}>
                 {isModoMes && (
@@ -521,13 +731,14 @@ export default function PrepararAgenda() {
                     const horasAtivas = horariosMap[strData] || [];
                     const qtdVagasDia = diaAberto ? horasAtivas.length : 0;
                     const diaSemanaIdx = (data.getDay() + 6) % 7; // 0 = Seg, ..., 6 = Dom
+                    const nomeDiaAtual = NOMES_DIAS[diaSemanaIdx];
 
                     return (
                       <View key={strData} style={[styles.diaContainer, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
                         <View style={styles.diaCabecalho}>
                           <View style={styles.diaTexto}>
                             <Text style={[styles.diaNome, { color: theme.textoPrimario }]}>
-                              {NOMES_DIAS[diaSemanaIdx]}
+                              {nomeDiaAtual}
                             </Text>
                             <Text style={[styles.diaData, { color: theme.textoSecundario }]}>
                               {data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
@@ -546,32 +757,62 @@ export default function PrepararAgenda() {
                           />
                         </View>
 
-                        {/* Grade de Horários Granulares do Dia (3x3 Simétrico) */}
+                        {/* Grade de 15 Horários em 3 Linhas de 5 Colunas */}
                         {diaAberto && (
-                          <View style={styles.horariosGranularesGrid}>
-                            {HORARIOS_DISPONIVEIS.map((hora) => {
-                              const ativo = horasAtivas.includes(hora);
-                              return (
-                                <TouchableOpacity
-                                  key={hora}
-                                  style={[
-                                    styles.chipHorario,
-                                    { backgroundColor: theme.superficie2, borderColor: theme.borda },
-                                    ativo && { backgroundColor: theme.ouro, borderColor: theme.ouro },
-                                  ]}
-                                  onPress={() => handleToggleHorario(strData, hora)}
-                                  activeOpacity={0.7}
-                                >
-                                  <Text style={[
-                                    styles.chipHorarioTexto,
-                                    { color: theme.textoSecundario },
-                                    ativo && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
-                                  ]}>
-                                    {hora}
-                                  </Text>
-                                </TouchableOpacity>
-                              );
-                            })}
+                          <View style={styles.horariosWrapper}>
+                            {/* Atalhos Rápidos por Dia */}
+                            <View style={styles.diaAtalhosLinha}>
+                              <TouchableOpacity
+                                style={[styles.diaAtalhoChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
+                                onPress={() => handleDefinirHorariosDia(strData, HORARIOS_PADRAO_10, diaSemanaIdx, nomeDiaAtual)}
+                                activeOpacity={0.7}
+                              >
+                                <Text style={[styles.diaAtalhoTexto, { color: theme.textoPrimario }]}>10 vagas (2x5)</Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                style={[styles.diaAtalhoChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
+                                onPress={() => handleDefinirHorariosDia(strData, HORARIOS_PADRAO_15, diaSemanaIdx, nomeDiaAtual)}
+                                activeOpacity={0.7}
+                              >
+                                <Text style={[styles.diaAtalhoTexto, { color: theme.textoPrimario }]}>15 vagas (3x5)</Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                style={[styles.diaAtalhoChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
+                                onPress={() => handleDefinirHorariosDia(strData, [], diaSemanaIdx, nomeDiaAtual)}
+                                activeOpacity={0.7}
+                              >
+                                <Text style={[styles.diaAtalhoTexto, { color: theme.textoSecundario }]}>Limpar</Text>
+                              </TouchableOpacity>
+                            </View>
+
+                            {/* Grade de 5 colunas */}
+                            <View style={styles.horariosGranularesGrid}>
+                              {HORARIOS_GRADE_15.map((hora) => {
+                                const ativo = horasAtivas.includes(hora);
+                                return (
+                                  <TouchableOpacity
+                                    key={hora}
+                                    style={[
+                                      styles.chipHorario,
+                                      { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                                      ativo && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+                                    ]}
+                                    onPress={() => handleToggleHorario(strData, hora, diaSemanaIdx, nomeDiaAtual)}
+                                    activeOpacity={0.7}
+                                  >
+                                    <Text style={[
+                                      styles.chipHorarioTexto,
+                                      { color: theme.textoSecundario },
+                                      ativo && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+                                    ]}>
+                                      {hora}
+                                    </Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </View>
                           </View>
                         )}
                       </View>
@@ -618,18 +859,16 @@ export default function PrepararAgenda() {
             </>
           )}
 
-          {/* Botão de Salvar */}
+          {/* Botão de Salvar / Liberar */}
           <Botao
             label={
               salvando
                 ? 'Salvando vagas...'
                 : abrirImediatamente
-                ? isModoMes
-                  ? 'Liberar Mês Inteiro (30 Dias)'
-                  : 'Liberar Agenda Imediatamente'
+                ? 'Liberar agora'
                 : 'Programar e Ativar Agenda'
             }
-            iconeEsquerda={<Save size={18} color="#FFFFFF" />}
+            iconeEsquerda={<Zap size={18} color="#FFFFFF" />}
             onPress={salvar}
             desabilitado={salvando || totalVagas === 0}
             estiloContainer={abrirImediatamente ? { ...styles.botaoSalvar, backgroundColor: theme.verde } : styles.botaoSalvar}
@@ -664,17 +903,27 @@ const createStyles = (theme: ThemePalette) =>
       gap: 4,
     },
     semanaTab: {
-      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 5,
+      gap: 4,
       paddingVertical: 8,
+      paddingHorizontal: 4,
       borderRadius: Radii.md,
+    },
+    semanaTabEsta: {
+      flex: 1.05,
+    },
+    semanaTabProxima: {
+      flex: 0.8,
+    },
+    semanaTabMes: {
+      flex: 1.25,
     },
     semanaTabTexto: {
       fontFamily: FontFamily.medium,
-      fontSize: 12,
+      fontSize: 11.5,
+      textAlign: 'center',
     },
     botaoVoltar: {
       padding: 4,
@@ -746,14 +995,15 @@ const createStyles = (theme: ThemePalette) =>
       fontSize: FontSize.labelXs,
       letterSpacing: 0.5,
     },
-    presetsLinha: {
+    presetsLinhaScroll: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
+      paddingVertical: 2,
     },
     presetChip: {
-      flex: 1,
-      paddingVertical: 8,
+      paddingVertical: 7,
+      paddingHorizontal: 14,
       borderRadius: Radii.md,
       borderWidth: 1,
       alignItems: 'center',
@@ -764,26 +1014,47 @@ const createStyles = (theme: ThemePalette) =>
       fontSize: 12,
       textAlign: 'center',
     },
-    boxAberturaImediata: {
+    presetsVagasGlobalContainer: {
+      gap: Spacing.xs,
+    },
+    presetsVagasGlobalLinha: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    presetVagaChip: {
+      flex: 1,
+      paddingVertical: 8,
+      paddingHorizontal: 6,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    presetVagaChipTexto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: 11,
+      textAlign: 'center',
+    },
+    linhaLiberarAgoraContainer: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
       backgroundColor: theme.superficie,
       borderRadius: Radii.md,
-      padding: Spacing.md,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 12,
       borderWidth: 1,
       borderColor: theme.borda,
-      gap: Spacing.sm,
     },
-    boxAberturaImediataTitulo: {
+    linhaLiberarAgoraEsquerda: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    linhaLiberarAgoraTexto: {
       fontFamily: FontFamily.bold,
-      fontSize: FontSize.bodySm,
+      fontSize: 14,
       color: theme.textoPrimario,
-    },
-    boxAberturaImediataSub: {
-      fontFamily: FontFamily.regular,
-      fontSize: FontSize.labelXs,
-      color: theme.textoSecundario,
-      lineHeight: 16,
     },
     secaoTitulo: {
       fontFamily: FontFamily.bold,
@@ -839,18 +1110,34 @@ const createStyles = (theme: ThemePalette) =>
       fontSize: 12,
       color: theme.textoSecundario,
     },
-    horariosGranularesGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'space-between',
-      rowGap: 8,
+    horariosWrapper: {
+      gap: 8,
       paddingTop: Spacing.sm,
       borderTopWidth: 1,
       borderTopColor: theme.borda,
     },
+    diaAtalhosLinha: {
+      flexDirection: 'row',
+      gap: 6,
+    },
+    diaAtalhoChip: {
+      paddingVertical: 4,
+      paddingHorizontal: 8,
+      borderRadius: Radii.sm,
+      borderWidth: 1,
+    },
+    diaAtalhoTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: 10.5,
+    },
+    horariosGranularesGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 5,
+    },
     chipHorario: {
-      width: '31.8%',
-      height: 38,
+      width: '18.7%',
+      height: 34,
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: Radii.md,
@@ -860,7 +1147,7 @@ const createStyles = (theme: ThemePalette) =>
     },
     chipHorarioTexto: {
       fontFamily: FontFamily.bold,
-      fontSize: 13,
+      fontSize: 11,
       textAlign: 'center',
     },
     horariosContainer: {
@@ -899,7 +1186,51 @@ const createStyles = (theme: ThemePalette) =>
       lineHeight: 16,
     },
     botaoSalvar: {
-      backgroundColor: theme.vermelho,
+      backgroundColor: theme.verde,
       marginTop: Spacing.xs,
+    },
+    syncRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 10,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+    },
+    syncTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: 12,
+    },
+    cardReplicacao: {
+      borderRadius: Radii.lg,
+      borderWidth: 1.5,
+      padding: Spacing.md,
+      gap: 8,
+      ...Shadows.card,
+    },
+    cardReplicacaoTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: 13.5,
+    },
+    cardReplicacaoSub: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.labelXs,
+      lineHeight: 16,
+    },
+    cardReplicacaoBotoes: {
+      gap: 6,
+      marginTop: 4,
+    },
+    botaoReplicarAcao: {
+      paddingVertical: 9,
+      paddingHorizontal: 12,
+      borderRadius: Radii.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    botaoReplicarTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 12,
     },
   });

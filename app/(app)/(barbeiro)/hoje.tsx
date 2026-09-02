@@ -98,6 +98,8 @@ export default function TelaBarbeiroHoje() {
   const { servicos } = useServicos('todos', barbearia?.id);
   const {
     agendamentosHoje,
+    vagasDiretas,
+    otimizacoes,
     totalNaFila,
     minutosAtraso,
     tardeFechadaHoje,
@@ -108,6 +110,8 @@ export default function TelaBarbeiroHoje() {
     definirAtraso,
     alternarTardeFechada,
     criarReservaManual,
+    aplicarOtimizacao,
+    liberarVagaParaFila,
   } = usePainelBarbeiro(barbearia?.id);
 
   const [filtro, setFiltro] = useState<'ativos' | 'concluidos' | 'todos'>('ativos');
@@ -458,6 +462,91 @@ export default function TelaBarbeiroHoje() {
                 activeOpacity={0.7}
               >
                 <Text style={styles.bannerAlertaBtnReabrirTexto}>Reabrir</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* ─── VAGAS DIRETAS ABERTAS (Notificação / Encaixe) ─── */}
+        {vagasDiretas.length > 0 && (
+          <View style={[styles.cardOtimizacaoDestaque, { backgroundColor: theme.superficie, borderColor: theme.verde }]}>
+            <View style={styles.cardOtimizacaoTopo}>
+              <View style={[styles.badgeOtimizacao, { backgroundColor: 'rgba(34, 197, 94, 0.12)', borderColor: theme.verde }]}>
+                <Zap size={13} color={theme.verde} />
+                <Text style={[styles.badgeOtimizacaoTexto, { color: theme.verde }]}>Vaga Direta Disponível</Text>
+              </View>
+              <Text style={[styles.cardOtimizacaoHora, { color: theme.textoPrimario }]}>
+                {vagasDiretas[0].hora_inicio} - {vagasDiretas[0].hora_fim} ({vagasDiretas[0].duracao_min} min)
+              </Text>
+            </View>
+            <Text style={[styles.cardOtimizacaoDesc, { color: theme.textoSecundario }]}>
+              {vagasDiretas[0].candidatos_fila.length > 0
+                ? `Há ${vagasDiretas[0].candidatos_fila.length} cliente(s) na fila de espera aguardando este horário!`
+                : 'Horário liberado para atendimento rápido hoje. Deseja realizar um encaixe manual?'}
+            </Text>
+            <View style={styles.cardOtimizacaoBotoes}>
+              {vagasDiretas[0].candidatos_fila.length > 0 && (
+                <TouchableOpacity
+                  style={[styles.btnOtimizacaoAcao, { backgroundColor: theme.verde }]}
+                  onPress={() => {
+                    const cand = vagasDiretas[0].candidatos_fila[0];
+                    liberarVagaParaFila(vagasDiretas[0], cand?.id);
+                    Alert.alert('Cliente Notificado! 🔔', `O convite para o horário das ${vagasDiretas[0].hora_inicio} foi enviado para ${cand.cliente_nome}.`);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Send size={13} color="#FFFFFF" />
+                  <Text style={[styles.btnOtimizacaoAcaoTexto, { color: '#FFFFFF' }]}>
+                    Notificar {vagasDiretas[0].candidatos_fila[0].cliente_nome.split(' ')[0]} da Fila
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[styles.btnOtimizacaoSecundario, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
+                onPress={() => {
+                  setHoraEncaixe(vagasDiretas[0].hora_inicio);
+                  setNomeEncaixe('');
+                  setTelefoneEncaixe('');
+                  setServicoEncaixeId(servicos[0]?.id || '');
+                  setModalEncaixe(true);
+                }}
+                activeOpacity={0.8}
+              >
+                <Plus size={13} color={theme.textoPrimario} />
+                <Text style={[styles.btnOtimizacaoSecundarioTexto, { color: theme.textoPrimario }]}>Encaixe Manual</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* ─── SUGESTÃO DE OTIMIZAÇÃO INDIRETA ─── */}
+        {otimizacoes.length > 0 && (
+          <View style={[styles.cardOtimizacaoDestaque, { backgroundColor: theme.superficie, borderColor: theme.ouro }]}>
+            <View style={styles.cardOtimizacaoTopo}>
+              <View style={[styles.badgeOtimizacao, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
+                <Sparkles size={13} color={theme.ouroTexto} />
+                <Text style={[styles.badgeOtimizacaoTexto, { color: theme.ouroTexto }]}>Otimização de Agenda</Text>
+              </View>
+              <Text style={[styles.cardOtimizacaoHora, { color: theme.ouroTexto }]}>
+                +{otimizacoes[0].duracao_liberada_min} min livres
+              </Text>
+            </View>
+            <Text style={[styles.cardOtimizacaoDesc, { color: theme.textoSecundario }]}>
+              Ajustar {otimizacoes[0].cliente_nome} ({otimizacoes[0].servico_nome}) das {otimizacoes[0].horario_atual} ➔ {otimizacoes[0].sugestao_ajuste} abre espaço contínuo para mais um cliente!
+            </Text>
+            <View style={styles.cardOtimizacaoBotoes}>
+              <TouchableOpacity
+                style={[styles.btnOtimizacaoAcao, { backgroundColor: theme.ouro }]}
+                onPress={async () => {
+                  await aplicarOtimizacao(otimizacoes[0]);
+                  Alert.alert('Agenda Otimizada! 💈', `O horário foi reorganizado com sucesso.`);
+                }}
+                activeOpacity={0.8}
+              >
+                <Check size={13} color={theme.textoEscuroSobreOuro} />
+                <Text style={[styles.btnOtimizacaoAcaoTexto, { color: theme.textoEscuroSobreOuro }]}>
+                  Reorganizar para {otimizacoes[0].sugestao_ajuste}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2040,5 +2129,74 @@ const createStyles = (theme: ThemePalette) =>
       fontFamily: FontFamily.bold,
       fontSize: FontSize.bodyMd,
       color: '#09090B',
+    },
+
+    /* ─── CARDS DE OTIMIZAÇÃO & VAGAS DIRETAS ─── */
+    cardOtimizacaoDestaque: {
+      borderRadius: Radii.lg,
+      borderWidth: 1.5,
+      padding: Spacing.md,
+      marginHorizontal: Spacing.md,
+      marginBottom: Spacing.sm,
+      gap: 8,
+      ...Shadows.card,
+    },
+    cardOtimizacaoTopo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    badgeOtimizacao: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      paddingVertical: 3,
+      paddingHorizontal: 8,
+      borderRadius: Radii.full,
+      borderWidth: 1,
+    },
+    badgeOtimizacaoTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 11,
+    },
+    cardOtimizacaoHora: {
+      fontFamily: FontFamily.bold,
+      fontSize: 12.5,
+    },
+    cardOtimizacaoDesc: {
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.labelXs,
+      lineHeight: 16,
+    },
+    cardOtimizacaoBotoes: {
+      flexDirection: 'row',
+      gap: 8,
+      marginTop: 4,
+    },
+    btnOtimizacaoAcao: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 8,
+      borderRadius: Radii.md,
+    },
+    btnOtimizacaoAcaoTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 11.5,
+    },
+    btnOtimizacaoSecundario: {
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    btnOtimizacaoSecundarioTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: 11.5,
     },
   });
