@@ -7,25 +7,31 @@ const STORAGE_KEY = '@barbearia/tenant-selecionado';
 
 export interface TemaTenant {
   primary: string;
-  secondary: string;
-  background: string;
-  card: string;
-  text: string;
+  secondary?: string;
+  background?: string;
+  card?: string;
+  text?: string;
+  secondaryText?: string;
+  border?: string;
   accent: string;
   frameColor: string;
   nomeTema?: string;
+  tipo?: 'predefinida' | 'personalizada';
   [key: string]: string | undefined;
 }
 
 export const TEMA_PADRAO: TemaTenant = {
   primary: '#CBA14A',
   secondary: '#141416',
-  background: '#0F0F10',
-  card: '#18181B',
-  text: '#FFFFFF',
+  background: '#09090B',
+  card: '#121215',
+  text: '#F5F5F7',
+  secondaryText: '#9898A2',
+  border: 'rgba(255, 255, 255, 0.08)',
   accent: '#F0D17D',
   frameColor: '#CBA14A',
   nomeTema: 'Ouro Imperial',
+  tipo: 'predefinida',
 };
 
 export const PALETAS_PREDEFINIDAS: {
@@ -36,6 +42,8 @@ export const PALETAS_PREDEFINIDAS: {
   accent: string;
   frameColor: string;
   card: string;
+  background: string;
+  text: string;
 }[] = [
   {
     id: 'ouro_imperial',
@@ -44,7 +52,9 @@ export const PALETAS_PREDEFINIDAS: {
     primary: '#CBA14A',
     accent: '#F0D17D',
     frameColor: '#CBA14A',
-    card: '#18181B',
+    card: '#121215',
+    background: '#09090B',
+    text: '#F5F5F7',
   },
   {
     id: 'rubi_barber',
@@ -53,7 +63,9 @@ export const PALETAS_PREDEFINIDAS: {
     primary: '#E63946',
     accent: '#FF6B6B',
     frameColor: '#E63946',
-    card: '#1C1516',
+    card: '#181314',
+    background: '#0D0809',
+    text: '#F5F5F7',
   },
   {
     id: 'esmeralda_luxo',
@@ -62,43 +74,108 @@ export const PALETAS_PREDEFINIDAS: {
     primary: '#2A9D8F',
     accent: '#52B788',
     frameColor: '#2A9D8F',
-    card: '#141B1A',
+    card: '#111716',
+    background: '#070C0B',
+    text: '#F5F5F7',
   },
   {
     id: 'azul_royal',
-    nome: 'Azul Royal / Safira',
-    descricao: 'Azul profundo moderno e confiante.',
-    primary: '#3182CE',
-    accent: '#63B3ED',
-    frameColor: '#3182CE',
-    card: '#131820',
+    nome: 'Azul Royal & Safira',
+    descricao: 'Azul profundo moderno, confiante e executivo.',
+    primary: '#1E88E5',
+    accent: '#64B5F6',
+    frameColor: '#1E88E5',
+    card: '#101620',
+    background: '#070A10',
+    text: '#F5F5F7',
   },
   {
     id: 'cyberpunk_ametista',
     nome: 'Ametista Cyberpunk',
-    descricao: 'Roxo néon de vanguarda e estilo urbano.',
+    descricao: 'Roxo néon de vanguarda e estilo urbano futurista.',
     primary: '#8338EC',
     accent: '#C77DFF',
     frameColor: '#8338EC',
-    card: '#181420',
-  },
-  {
-    id: 'carbono_silver',
-    nome: 'Carbono & Prata',
-    descricao: 'Monocromático elegante e minimalista.',
-    primary: '#E0E1DD',
-    accent: '#778DA9',
-    frameColor: '#E0E1DD',
-    card: '#19191B',
+    card: '#161120',
+    background: '#0A0612',
+    text: '#F5F5F7',
   },
   {
     id: 'ambar_cobre',
-    nome: 'Âmbar Cobre',
-    descricao: 'Tons terrosos quentes e acabamento artesanal.',
+    nome: 'Âmbar Cobre & Rústico',
+    descricao: 'Tons terrosos quentes e acabamento artesanal em couro.',
     primary: '#E76F51',
     accent: '#F4A261',
     frameColor: '#E76F51',
-    card: '#1D1715',
+    card: '#1B1411',
+    background: '#0F0907',
+    text: '#F5F5F7',
+  },
+  {
+    id: 'carbono_silver',
+    nome: 'Carbono Titanium',
+    descricao: 'Monocromático elegante, minimalista e ultra-moderno.',
+    primary: '#E0E1DD',
+    accent: '#9BA1A6',
+    frameColor: '#E0E1DD',
+    card: '#161618',
+    background: '#09090A',
+    text: '#F5F5F7',
+  },
+  {
+    id: 'rose_gold',
+    nome: 'Rose Gold Elegance',
+    descricao: 'Ouro rosa delicado, luxuoso e contemporâneo.',
+    primary: '#E0A9AF',
+    accent: '#F7D6D9',
+    frameColor: '#E0A9AF',
+    card: '#1A1316',
+    background: '#0E080B',
+    text: '#F5F5F7',
+  },
+  {
+    id: 'midnight_bronze',
+    nome: 'Midnight Bronze & Café',
+    descricao: 'Bronze café intenso e acolhedor para ambientes refinados.',
+    primary: '#CD7F32',
+    accent: '#E5A65D',
+    frameColor: '#CD7F32',
+    card: '#181410',
+    background: '#0D0A07',
+    text: '#F5F5F7',
+  },
+  {
+    id: 'mint_fresh',
+    nome: 'Mint & Fresh Barber',
+    descricao: 'Verde menta moderno e revigorante com alta vibração.',
+    primary: '#00C49F',
+    accent: '#5DF0D2',
+    frameColor: '#00C49F',
+    card: '#0F1816',
+    background: '#060D0B',
+    text: '#F5F5F7',
+  },
+  {
+    id: 'stealth_black',
+    nome: 'Total Black Stealth',
+    descricao: 'Preto absoluto minimalista com detalhes em aço branco.',
+    primary: '#FFFFFF',
+    accent: '#D1D5DB',
+    frameColor: '#FFFFFF',
+    card: '#141416',
+    background: '#050506',
+    text: '#FFFFFF',
+  },
+  {
+    id: 'sunset_solar',
+    nome: 'Sunset Solar & Âmbar',
+    descricao: 'Laranja pôr do sol enérgico, marcante e vibrante.',
+    primary: '#FF7A00',
+    accent: '#FFB03A',
+    frameColor: '#FF7A00',
+    card: '#1A140F',
+    background: '#0E0905',
+    text: '#F5F5F7',
   },
 ];
 

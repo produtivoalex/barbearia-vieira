@@ -129,11 +129,11 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider>
-      <BarbeariaProvider>
+    <BarbeariaProvider>
+      <ThemeProvider>
         <ConteudoApp />
-      </BarbeariaProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </BarbeariaProvider>
   );
 }
 

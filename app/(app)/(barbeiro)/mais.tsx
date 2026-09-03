@@ -14,6 +14,7 @@ import {
   Platform,
   Keyboard,
   Linking,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -45,6 +46,7 @@ import {
   Copy,
   Instagram,
   MessageCircle,
+  Users,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -52,6 +54,7 @@ import { LogoBarbearia } from '@/components';
 import {
   IlustracaoServico,
   BIBLIOTECA_SERVICOS,
+  identificarTipoServico,
   type TipoServicoId,
 } from '@/components/IlustracaoServico';
 import { uploadImagemTenant, removerMidiaStorage } from '@/lib/storage';
@@ -59,6 +62,7 @@ import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows, type ThemePalett
 import { usePerfil } from '@/hooks/usePerfil';
 import { useAuth } from '@/hooks/useAuth';
 import { useServicos, type Servico, type CategoriaServico, CATEGORIAS_CONFIG } from '@/hooks/useServicos';
+import { useMembrosBarbearia } from '@/hooks/useMembrosBarbearia';
 import { supabase } from '@/lib/supabase';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -71,6 +75,7 @@ export default function TelaBarbeiroMais() {
   const { session } = useAuth();
   const barbeiroId = session?.user?.id;
   const { barbearia, selecionarBarbearia } = useBarbearia();
+  const { membros } = useMembrosBarbearia(barbearia?.id);
   const { theme, isEscuro, modoTema, setModoTema } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { servicos, recarregar: recarregarServicos } = useServicos('todos', barbearia?.id);
@@ -110,6 +115,21 @@ export default function TelaBarbeiroMais() {
   const [corMolduraForm, setCorMolduraForm] = useState<string>('');
   const [enviandoFotoServico, setEnviandoFotoServico] = useState(false);
   const [salvandoServico, setSalvandoServico] = useState(false);
+  const [mostrarBiblioteca, setMostrarBiblioteca] = useState(false);
+
+  // Sugestão automática de ilustração baseada no nome digitado
+  const tipoSugerido = useMemo<TipoServicoId | null>(() => {
+    if (nomeForm.trim().length < 2) return null;
+    const tipo = identificarTipoServico(undefined, nomeForm, categoriaForm);
+    // Só mostra sugestão se for diferente do ícone atual
+    if (tipo === iconeForm) return null;
+    return tipo;
+  }, [nomeForm, categoriaForm, iconeForm]);
+
+  const labelSugerida = useMemo(() => {
+    if (!tipoSugerido) return null;
+    return BIBLIOTECA_SERVICOS.find((b) => b.id === tipoSugerido)?.label ?? null;
+  }, [tipoSugerido]);
 
   // Estados de Reajuste Individual
   const [servicoParaReajuste, setServicoParaReajuste] = useState<Servico | null>(null);
@@ -420,7 +440,7 @@ export default function TelaBarbeiroMais() {
     const nome = barbearia?.nome || 'nossa barbearia';
     Share.share({
       message: `💈 ${nome}\n📱 WhatsApp: ${whatsappExibicao}\n📸 Instagram: ${instagramHandle}`,
-    }).catch(() => {});
+    }).catch(() => { });
   }
 
   function handleVerComoCliente() {
@@ -547,7 +567,7 @@ export default function TelaBarbeiroMais() {
               </View>
             </TouchableOpacity>
 
-            {/* Card 3: Espaço & Identidade */}
+            {/* Card 3: Visual */}
             <TouchableOpacity
               style={[styles.gridCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}
               onPress={() => router.push('/(app)/(barbeiro)/gestao-barbearia')}
@@ -556,16 +576,16 @@ export default function TelaBarbeiroMais() {
               <View style={[styles.gridIconeBox, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
                 <Edit3 size={20} color={theme.ouroTexto} />
               </View>
-              <Text style={[styles.gridCardTitulo, { color: theme.textoPrimario }]}>Espaço & Fotos</Text>
+              <Text style={[styles.gridCardTitulo, { color: theme.textoPrimario }]}>Visual</Text>
               <Text style={[styles.gridCardSub, { color: theme.textoSecundario }]}>
-                Dados, fotos e temas
+                Fotos, temas e dados
               </Text>
               <View style={styles.gridCardSeta}>
                 <ChevronRight size={14} color={theme.textoDesabilitado} />
               </View>
             </TouchableOpacity>
 
-            {/* Card 4: Ajustes & Controles */}
+            {/* Card 4: Ajustes */}
             <TouchableOpacity
               style={[styles.gridCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}
               onPress={() => router.push('/(app)/(barbeiro)/opcoes-avancadas')}
@@ -574,9 +594,9 @@ export default function TelaBarbeiroMais() {
               <View style={[styles.gridIconeBox, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
                 <Sliders size={20} color={theme.ouroTexto} />
               </View>
-              <Text style={[styles.gridCardTitulo, { color: theme.textoPrimario }]}>Ajustes & Equipe</Text>
+              <Text style={[styles.gridCardTitulo, { color: theme.textoPrimario }]}>Ajustes</Text>
               <Text style={[styles.gridCardSub, { color: theme.textoSecundario }]}>
-                Membros, regras e operação
+                Regras, fidelidade e operação
               </Text>
               <View style={styles.gridCardSeta}>
                 <ChevronRight size={14} color={theme.textoDesabilitado} />
@@ -590,7 +610,25 @@ export default function TelaBarbeiroMais() {
           <Text style={[styles.secaoRotulo, { color: theme.textoSecundario }]}>SISTEMA & PREFERÊNCIAS</Text>
 
           <View style={[styles.cardAgrupadoIos, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
-            {/* Trocar Estabelecimento */}
+            {/* Gerenciar Equipe */}
+            <TouchableOpacity
+              style={styles.itemIosLinha}
+              onPress={() => router.push('/(app)/(barbeiro)/gerenciar-equipe')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.itemIosIconeBox, { backgroundColor: theme.superficie2 }]}>
+                <Users size={16} color={theme.ouroTexto} />
+              </View>
+              <Text style={[styles.itemIosTitulo, { color: theme.textoPrimario }]}>Gerenciar Equipe</Text>
+              <Text style={[styles.itemIosValor, { color: theme.textoSecundario }]} numberOfLines={1}>
+                {membros.length} {membros.length === 1 ? 'membro' : 'membros'}
+              </Text>
+              <ChevronRight size={16} color={theme.textoDesabilitado} />
+            </TouchableOpacity>
+
+            <View style={[styles.divisorIos, { backgroundColor: theme.borda }]} />
+
+            {/* Filiais (Trocar Unidade e Cadastrar Nova) */}
             <TouchableOpacity
               style={styles.itemIosLinha}
               onPress={() => router.push({ pathname: '/(app)/barbearias', params: { modo: 'painel' } })}
@@ -599,7 +637,7 @@ export default function TelaBarbeiroMais() {
               <View style={[styles.itemIosIconeBox, { backgroundColor: theme.superficie2 }]}>
                 <Store size={16} color={theme.textoSecundario} />
               </View>
-              <Text style={[styles.itemIosTitulo, { color: theme.textoPrimario }]}>Trocar Unidade</Text>
+              <Text style={[styles.itemIosTitulo, { color: theme.textoPrimario }]}>Filiais</Text>
               <Text style={[styles.itemIosValor, { color: theme.textoSecundario }]} numberOfLines={1}>
                 {barbearia?.nome || 'Selecionar'}
               </Text>
@@ -785,9 +823,13 @@ export default function TelaBarbeiroMais() {
         animationType="slide"
         onRequestClose={() => setModalEditorServico(false)}
       >
-        <View style={[styles.modalOverlay, alturaTeclado > 0 && { paddingBottom: alturaTeclado }]}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
           <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setModalEditorServico(false)} />
-          <View style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda, maxHeight: alturaTeclado > 0 ? '70%' : '88%' }]}>
+          <View style={[styles.modalConteudo, styles.modalEditorConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
             <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
 
             <View style={styles.modalHeader}>
@@ -800,13 +842,113 @@ export default function TelaBarbeiroMais() {
             </View>
 
             <ScrollView
-              showsVerticalScrollIndicator={true}
-              style={{ maxHeight: 480, flexShrink: 1 }}
-              contentContainerStyle={{ paddingBottom: Spacing.xl }}
+              showsVerticalScrollIndicator={false}
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.editorScrollContent}
               nestedScrollEnabled={true}
               keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
+              keyboardDismissMode="interactive"
+              automaticallyAdjustKeyboardInsets={true}
             >
+              {/* ── Prévia da Ilustração atual ── */}
+              <View style={styles.editorPreviewRow}>
+                <IlustracaoServico
+                  nome={nomeForm}
+                  categoria={categoriaForm}
+                  imagemUrl={imagemUrlForm}
+                  tipoPredefinido={iconeForm}
+                  corMoldura={corMolduraForm || theme.ouro}
+                  tamanho={64}
+                />
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={[styles.editorPreviewLabel, { color: theme.textoSecundario }]}>ILUSTRAÇÃO ATUAL</Text>
+                  <Text style={[styles.editorPreviewNome, { color: theme.textoPrimario }]}>
+                    {iconeForm
+                      ? (BIBLIOTECA_SERVICOS.find((b) => b.id === iconeForm)?.label ?? iconeForm)
+                      : imagemUrlForm ? 'Foto personalizada' : 'Automático'}
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.btnTrocarIlustracao, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}
+                    onPress={() => setMostrarBiblioteca((v) => !v)}
+                    activeOpacity={0.7}
+                  >
+                    <Palette size={12} color={theme.ouroTexto} />
+                    <Text style={[styles.btnTrocarIlustracaoTexto, { color: theme.ouroTexto }]}>
+                      {mostrarBiblioteca ? 'Fechar biblioteca' : 'Trocar ilustração'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* ── Sugestão automática em tempo real ── */}
+              {tipoSugerido && labelSugerida && (
+                <TouchableOpacity
+                  style={[styles.chipSugestao, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}
+                  onPress={() => {
+                    setIconeForm(tipoSugerido);
+                    setImagemUrlForm(null);
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <IlustracaoServico
+                    tipoPredefinido={tipoSugerido}
+                    corMoldura={corMolduraForm || theme.ouro}
+                    tamanho={36}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.chipSugestaoLabel, { color: theme.textoSecundario }]}>✨ SUGESTÃO AUTOMÁTICA</Text>
+                    <Text style={[styles.chipSugestaoNome, { color: theme.ouroTexto }]}>{labelSugerida}</Text>
+                  </View>
+                  <View style={[styles.chipSugestaoBotao, { backgroundColor: theme.ouro }]}>
+                    <Text style={styles.chipSugestaoBotaoTexto}>Usar</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {/* ── Biblioteca de ilustrações ── */}
+              {mostrarBiblioteca && (
+                <View style={[styles.bibliotecaContainer, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                  <Text style={[styles.bibliotecaTitulo, { color: theme.textoSecundario }]}>BIBLIOTECA DE ILUSTRAÇÕES</Text>
+                  <View style={styles.bibliotecaGrid}>
+                    {BIBLIOTECA_SERVICOS.map((item) => (
+                      <TouchableOpacity
+                        key={item.id}
+                        style={[
+                          styles.bibliotecaItem,
+                          { borderColor: iconeForm === item.id ? theme.ouro : theme.borda, backgroundColor: iconeForm === item.id ? theme.ouroTranslucido : theme.superficie },
+                        ]}
+                        onPress={() => {
+                          setIconeForm(item.id);
+                          setImagemUrlForm(null);
+                          setMostrarBiblioteca(false);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <IlustracaoServico
+                          tipoPredefinido={item.id}
+                          corMoldura={iconeForm === item.id ? theme.ouro : theme.borda}
+                          tamanho={44}
+                        />
+                        <Text
+                          style={[
+                            styles.bibliotecaItemLabel,
+                            { color: iconeForm === item.id ? theme.ouroTexto : theme.textoSecundario },
+                          ]}
+                          numberOfLines={2}
+                        >
+                          {item.label}
+                        </Text>
+                        {iconeForm === item.id && (
+                          <View style={[styles.bibliotecaItemCheck, { backgroundColor: theme.ouro }]}>
+                            <Check size={10} color="#09090B" />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
               <Text style={[styles.labelCampo, { color: theme.textoSecundario }]}>NOME DO SERVIÇO</Text>
               <TextInput
                 style={[styles.inputModal, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
@@ -814,6 +956,7 @@ export default function TelaBarbeiroMais() {
                 onChangeText={setNomeForm}
                 placeholder="Ex: Corte Degradê, Barboterapia"
                 placeholderTextColor={theme.textoDesabilitado}
+                returnKeyType="next"
               />
 
               <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
@@ -826,6 +969,7 @@ export default function TelaBarbeiroMais() {
                     placeholder="35,00"
                     placeholderTextColor={theme.textoDesabilitado}
                     keyboardType="numeric"
+                    returnKeyType="next"
                   />
                 </View>
 
@@ -838,17 +982,23 @@ export default function TelaBarbeiroMais() {
                     placeholder="30"
                     placeholderTextColor={theme.textoDesabilitado}
                     keyboardType="numeric"
+                    returnKeyType="next"
                   />
                 </View>
               </View>
 
               <Text style={[styles.labelCampo, { color: theme.textoSecundario }]}>DESCRIÇÃO (OPCIONAL)</Text>
               <TextInput
-                style={[styles.inputModal, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
+                style={[styles.inputModal, styles.inputDescricao, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
                 value={descricaoForm}
                 onChangeText={setDescricaoForm}
                 placeholder="Detalhes ou diferenciais do serviço..."
                 placeholderTextColor={theme.textoDesabilitado}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+                returnKeyType="done"
+                blurOnSubmit
               />
 
               <TouchableOpacity
@@ -867,7 +1017,7 @@ export default function TelaBarbeiroMais() {
               </TouchableOpacity>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ─── Modal de Reajuste Individual ─── */}
@@ -1641,6 +1791,129 @@ const createStyles = (theme: ThemePalette) =>
       fontFamily: FontFamily.bold,
       fontSize: FontSize.bodyMd,
       color: '#09090B',
+    },
+
+    /* ─── MODAL EDITOR DE SERVIÇO (layout sem teclado sobrepondo) ─── */
+    modalEditorConteudo: {
+      maxHeight: '92%',
+      flex: 0,
+    },
+    editorScrollContent: {
+      paddingBottom: Spacing.giant,
+      gap: 2,
+    },
+    editorPreviewRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+      marginBottom: Spacing.sm,
+      paddingBottom: Spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borda,
+    },
+    editorPreviewLabel: {
+      fontFamily: FontFamily.bold,
+      fontSize: 10,
+      letterSpacing: 0.5,
+    },
+    editorPreviewNome: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: FontSize.bodySm,
+    },
+    btnTrocarIlustracao: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 5,
+      borderRadius: Radii.sm,
+      borderWidth: 1,
+      alignSelf: 'flex-start',
+      marginTop: 2,
+    },
+    btnTrocarIlustracaoTexto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: 11,
+    },
+
+    /* ─── CHIP DE SUGESTÃO AUTOMÁTICA ─── */
+    chipSugestao: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      padding: Spacing.sm,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      marginBottom: Spacing.sm,
+    },
+    chipSugestaoLabel: {
+      fontFamily: FontFamily.bold,
+      fontSize: 10,
+      letterSpacing: 0.5,
+    },
+    chipSugestaoNome: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodySm,
+    },
+    chipSugestaoBotao: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: Radii.sm,
+    },
+    chipSugestaoBotaoTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.labelXs,
+      color: '#09090B',
+    },
+
+    /* ─── BIBLIOTECA DE ILUSTRAÇÕES ─── */
+    bibliotecaContainer: {
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      padding: Spacing.sm,
+      marginBottom: Spacing.sm,
+    },
+    bibliotecaTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: 10,
+      letterSpacing: 0.5,
+      marginBottom: Spacing.sm,
+    },
+    bibliotecaGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.xs,
+    },
+    bibliotecaItem: {
+      width: '30%',
+      alignItems: 'center',
+      padding: Spacing.xs,
+      borderRadius: Radii.sm,
+      borderWidth: 1.5,
+      gap: 4,
+      position: 'relative',
+    },
+    bibliotecaItemLabel: {
+      fontFamily: FontFamily.medium,
+      fontSize: 10,
+      textAlign: 'center',
+      lineHeight: 13,
+    },
+    bibliotecaItemCheck: {
+      position: 'absolute',
+      top: 4,
+      right: 4,
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    /* ─── CAMPO DESCRIÇÃO MULTILINE ─── */
+    inputDescricao: {
+      minHeight: 72,
+      paddingTop: 10,
     },
     opcaoTemaCard: {
       flexDirection: 'row',

@@ -20,26 +20,42 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAgendaSemanal } from '@/hooks/useAgendaSemanal';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
 
-// Grade padrão de 15 horários distribuídos em 3 linhas de 5 colunas:
-// Linha 1 (Manhã): 07:00 às 11:00 (o corte das 11h termina às 12h)
-// Linha 2 (Tarde): 13:00 às 17:00 (o corte das 17h termina às 18h)
-// Linha 3 (Tarde/Noite): 18:00 às 22:00 (para quem atende direto ou noite)
-export const HORARIOS_GRADE_15 = [
-  '07:00', '08:00', '09:00', '10:00', '11:00',
-  '13:00', '14:00', '15:00', '16:00', '17:00',
-  '18:00', '19:00', '20:00', '21:00', '22:00',
-];
+// Grade completa de 18 horários distribuídos em 3 turnos de 6 colunas:
+// Linha 1 (Manhã): 06:00 às 11:00 (6 vagas)
+// Linha 2 (Tarde): 12:00 às 17:00 (6 vagas)
+// Linha 3 (Noite): 18:00 às 23:00 (6 vagas)
+export const HORARIOS_MANHA = ['06:00', '07:00', '08:00', '09:00', '10:00', '11:00'];
+export const HORARIOS_TARDE = ['12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+export const HORARIOS_NOITE = ['18:00', '19:00', '20:00', '21:00', '22:00', '23:00'];
+export const HORARIOS_GRADE_18 = [...HORARIOS_MANHA, ...HORARIOS_TARDE, ...HORARIOS_NOITE];
 
-// Padrão 10 vagas (2 linhas de 5: 07h-12h e 13h-18h)
-export const HORARIOS_PADRAO_10 = [
-  '07:00', '08:00', '09:00', '10:00', '11:00',
-  '13:00', '14:00', '15:00', '16:00', '17:00',
-];
+// Compatibilidade legada
+export const HORARIOS_GRADE_15 = HORARIOS_GRADE_18;
+export const HORARIOS_PADRAO_10 = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+export const HORARIOS_PADRAO_15 = HORARIOS_GRADE_18;
 
-// Padrão 15 vagas (3 linhas de 5: sem fechar / direto)
-export const HORARIOS_PADRAO_15 = HORARIOS_GRADE_15;
+function obterHorariosBaseBarbearia(horarioConfig: any): string[] {
+  if (!horarioConfig) {
+    // Padrão: Manhã (08h-11h) + Tarde (12h-17h) = 10 vagas
+    return ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+  }
+  const turnos: string[] = horarioConfig.turnos_padrao || ['manha', 'tarde'];
+  let slots: string[] = [];
+  if (turnos.includes('manha')) slots.push(...HORARIOS_MANHA);
+  if (turnos.includes('tarde')) slots.push(...HORARIOS_TARDE);
+  if (turnos.includes('noite')) slots.push(...HORARIOS_NOITE);
 
-const HORARIOS_DISPONIVEIS = HORARIOS_PADRAO_10;
+  const inicio = horarioConfig.inicio || '08:00';
+  const fim = horarioConfig.fim || '20:00';
+  slots = slots.filter((h) => h >= inicio && h <= fim);
+
+  if (horarioConfig.tem_intervalo && horarioConfig.intervalo_inicio && horarioConfig.intervalo_fim) {
+    slots = slots.filter((h) => h < horarioConfig.intervalo_inicio || h >= horarioConfig.intervalo_fim);
+  }
+
+  return slots.length > 0 ? slots : ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+}
+
 const NOMES_DIAS = [
   'Segunda-feira',
   'Terça-feira',
@@ -69,7 +85,6 @@ function dataLocal(data: Date) {
   return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
 }
 
-
 export default function PrepararAgenda() {
   const router = useRouter();
   const { theme, isEscuro } = useTheme();
@@ -78,17 +93,22 @@ export default function PrepararAgenda() {
   const { barbearia } = useBarbearia();
   const { carregarSemanaParaBarbeiro } = useAgendaSemanal(barbearia?.id);
 
+  const isModoSemanal = barbearia?.modo_agenda === 'drops';
+
   // 0 = Esta Semana, 1 = Próxima Semana, 2 = Mês Inteiro (4 semanas)
   const [semanaOffset, setSemanaOffset] = useState<0 | 1 | 2>(0);
-  const isModoMes = semanaOffset === 2;
+  const isModoMes = !isModoSemanal && semanaOffset === 2;
 
   // Semanas carregadas (1 semana nos modos 0 e 1, ou 4 semanas no modo 2)
   const semanas = useMemo(() => {
+    if (isModoSemanal) {
+      return [obterSemana(0)];
+    }
     if (isModoMes) {
       return [obterSemana(0), obterSemana(1), obterSemana(2), obterSemana(3)];
     }
     return [obterSemana(semanaOffset)];
-  }, [isModoMes, semanaOffset]);
+  }, [isModoMes, isModoSemanal, semanaOffset]);
 
   // Lista plana de todas as datas atualmente visíveis
   const todasDatas = useMemo(() => semanas.flat(), [semanas]);
@@ -97,6 +117,10 @@ export default function PrepararAgenda() {
   const [diasAtivosMap, setDiasAtivosMap] = useState<Record<string, boolean>>({});
   // Estado dos horários granulares (mapeado por string ISO "YYYY-MM-DD")
   const [horariosMap, setHorariosMap] = useState<Record<string, string[]>>({});
+  // Estado do preset de dias ativo para feedback visual
+  const [presetDiasAtivo, setPresetDiasAtivo] = useState<
+    'seg_sex' | 'seg_sab' | 'ter_dom' | 'todos' | 'nenhum' | 'personalizado'
+  >('todos');
 
   const [abertura, setAbertura] = useState('19:30');
   const [abrirImediatamente, setAbrirImediatamente] = useState(true);
@@ -112,12 +136,15 @@ export default function PrepararAgenda() {
       try {
         const novosAtivos: Record<string, boolean> = {};
         const novosHorarios: Record<string, string[]> = {};
+        const configHorario =
+          barbearia?.horario_funcionamento_padrao || (barbearia?.regras_fidelidade as any)?.horario_funcionamento_padrao;
+        const horariosPadrao = obterHorariosBaseBarbearia(configHorario);
 
-        // Inicializa todas as datas como ativas com os 10 horários padrão (2x5)
+        // Inicializa todas as datas como ativas com os horários base da barbearia
         for (const data of todasDatas) {
           const strData = dataLocal(data);
           novosAtivos[strData] = true;
-          novosHorarios[strData] = HORARIOS_PADRAO_10;
+          novosHorarios[strData] = horariosPadrao;
         }
 
         // Busca se há slots já salvos no banco para essas datas
@@ -172,7 +199,7 @@ export default function PrepararAgenda() {
     return () => {
       montado = false;
     };
-  }, [barbearia?.id, session?.user?.id, todasDatas]);
+  }, [barbearia?.horario_funcionamento_padrao, barbearia?.id, session?.user?.id, todasDatas]);
 
   // Contagem total de vagas ativas
   const totalVagas = useMemo(() => {
@@ -194,7 +221,6 @@ export default function PrepararAgenda() {
   }
 
   const [sugestaoReplicacao, setSugestaoReplicacao] = useState<SugestaoReplicacao | null>(null);
-  const [sincronizarAuto, setSincronizarAuto] = useState(false);
 
   function replicarParaOutrosDiasSemana(origem: SugestaoReplicacao) {
     const novosHorarios = { ...horariosMap };
@@ -232,9 +258,13 @@ export default function PrepararAgenda() {
   }
 
   function handleToggleDia(strData: string, valor: boolean) {
+    setPresetDiasAtivo('personalizado');
     setDiasAtivosMap((prev) => ({ ...prev, [strData]: valor }));
     if (valor && (!horariosMap[strData] || horariosMap[strData].length === 0)) {
-      setHorariosMap((prev) => ({ ...prev, [strData]: HORARIOS_PADRAO_10 }));
+      const configHorario =
+        barbearia?.horario_funcionamento_padrao || (barbearia?.regras_fidelidade as any)?.horario_funcionamento_padrao;
+      const base = obterHorariosBaseBarbearia(configHorario);
+      setHorariosMap((prev) => ({ ...prev, [strData]: base }));
     }
   }
 
@@ -247,53 +277,60 @@ export default function PrepararAgenda() {
       novaLista = [...listaAtual, hora].sort();
     }
 
-    if (sincronizarAuto) {
-      const novos = { ...horariosMap };
-      for (const d of todasDatas) {
-        const s = dataLocal(d);
-        if (diasAtivosMap[s]) {
-          novos[s] = novaLista;
-        }
-      }
-      setHorariosMap(novos);
-    } else {
-      setHorariosMap((prev) => ({ ...prev, [strData]: novaLista }));
-      setDiasAtivosMap((prev) => ({ ...prev, [strData]: novaLista.length > 0 }));
-      setSugestaoReplicacao({
-        strDataOrigem: strData,
-        diaSemanaNome: diaNome,
-        diaSemanaIdx,
-        horarios: novaLista,
-      });
-    }
+    setHorariosMap((prev) => ({ ...prev, [strData]: novaLista }));
+    setDiasAtivosMap((prev) => ({ ...prev, [strData]: novaLista.length > 0 }));
+    setSugestaoReplicacao({
+      strDataOrigem: strData,
+      diaSemanaNome: diaNome,
+      diaSemanaIdx,
+      horarios: novaLista,
+    });
   }
 
-  function handleDefinirHorariosDia(strData: string, horarios: string[], diaSemanaIdx: number, diaNome: string) {
-    if (sincronizarAuto) {
-      const novos = { ...horariosMap };
-      for (const d of todasDatas) {
-        const s = dataLocal(d);
-        if (diasAtivosMap[s]) {
-          novos[s] = horarios;
-        }
-      }
-      setHorariosMap(novos);
+  // Alterna um turno inteiro para um dia específico (Manhã, Tarde ou Noite)
+  function handleToggleTurnoDia(
+    strData: string,
+    turno: 'manha' | 'tarde' | 'noite',
+    diaSemanaIdx: number,
+    diaNome: string
+  ) {
+    const listaTurno =
+      turno === 'manha' ? HORARIOS_MANHA : turno === 'tarde' ? HORARIOS_TARDE : HORARIOS_NOITE;
+    const horasAtuais = horariosMap[strData] || [];
+    const temEsseTurno = listaTurno.some((h) => horasAtuais.includes(h));
+
+    let novaLista: string[];
+    if (temEsseTurno) {
+      // Oculta o turno removendo seus horários
+      novaLista = horasAtuais.filter((h) => !listaTurno.includes(h));
     } else {
-      setHorariosMap((prev) => ({ ...prev, [strData]: horarios }));
-      setDiasAtivosMap((prev) => ({ ...prev, [strData]: horarios.length > 0 }));
-      setSugestaoReplicacao({
-        strDataOrigem: strData,
-        diaSemanaNome: diaNome,
-        diaSemanaIdx,
-        horarios,
-      });
+      // Exibe o turno adicionando todos os seus 6 horários
+      novaLista = Array.from(new Set([...horasAtuais, ...listaTurno])).sort();
     }
+
+    setHorariosMap((prev) => ({ ...prev, [strData]: novaLista }));
+    setDiasAtivosMap((prev) => ({ ...prev, [strData]: novaLista.length > 0 }));
+    setSugestaoReplicacao({
+      strDataOrigem: strData,
+      diaSemanaNome: diaNome,
+      diaSemanaIdx,
+      horarios: novaLista,
+    });
+  }
+
+  function handleLimparDia(strData: string, diaSemanaIdx: number, diaNome: string) {
+    setHorariosMap((prev) => ({ ...prev, [strData]: [] }));
+    setDiasAtivosMap((prev) => ({ ...prev, [strData]: false }));
   }
 
   // ─── PRESETS RÁPIDOS DE DIAS ───
   function aplicarPreset(tipo: 'seg_sex' | 'seg_sab' | 'ter_dom' | 'todos' | 'nenhum') {
+    setPresetDiasAtivo(tipo);
     const novosAtivos: Record<string, boolean> = { ...diasAtivosMap };
     const novosHorarios: Record<string, string[]> = { ...horariosMap };
+    const configHorario =
+      barbearia?.horario_funcionamento_padrao || (barbearia?.regras_fidelidade as any)?.horario_funcionamento_padrao;
+    const horariosBase = obterHorariosBaseBarbearia(configHorario);
 
     for (const data of todasDatas) {
       const strData = dataLocal(data);
@@ -308,7 +345,7 @@ export default function PrepararAgenda() {
 
       novosAtivos[strData] = ativo;
       if (ativo && (!novosHorarios[strData] || novosHorarios[strData].length === 0)) {
-        novosHorarios[strData] = HORARIOS_PADRAO_10;
+        novosHorarios[strData] = horariosBase;
       }
     }
 
@@ -316,22 +353,38 @@ export default function PrepararAgenda() {
     setHorariosMap(novosHorarios);
   }
 
-  // ─── PRESET RÁPIDO DE VAGAS PARA TODOS OS DIAS ATIVOS ───
-  function aplicarPresetVagasGlobal(tipo: '10_vagas' | '15_vagas') {
+  // ─── ALTERNA TURNO GLOBAL EM TODOS OS DIAS ATIVOS (MANHÃ, TARDE, NOITE) ───
+  function handleToggleTurnoGlobal(turno: 'manha' | 'tarde' | 'noite') {
+    const listaTurno =
+      turno === 'manha' ? HORARIOS_MANHA : turno === 'tarde' ? HORARIOS_TARDE : HORARIOS_NOITE;
     const novosHorarios: Record<string, string[]> = { ...horariosMap };
-    const listaEscolhida = tipo === '10_vagas' ? HORARIOS_PADRAO_10 : HORARIOS_PADRAO_15;
+
+    const diasAtivosLista = todasDatas.filter((d) => diasAtivosMap[dataLocal(d)]);
+    const todosTemEsseTurno =
+      diasAtivosLista.length > 0 &&
+      diasAtivosLista.every((d) => {
+        const horas = horariosMap[dataLocal(d)] || [];
+        return listaTurno.some((h) => horas.includes(h));
+      });
 
     for (const data of todasDatas) {
       const strData = dataLocal(data);
       if (diasAtivosMap[strData]) {
-        novosHorarios[strData] = listaEscolhida;
+        const horasAtuais = horariosMap[strData] || [];
+        if (todosTemEsseTurno) {
+          // Desmarca esse turno em todos os dias ativos
+          novosHorarios[strData] = horasAtuais.filter((h) => !listaTurno.includes(h));
+        } else {
+          // Adiciona os 6 horários do turno em todos os dias ativos
+          novosHorarios[strData] = Array.from(new Set([...horasAtuais, ...listaTurno])).sort();
+        }
       }
     }
     setHorariosMap(novosHorarios);
   }
 
   // ─── SALVAR AGENDA (SEMANAL OU MÊS INTEIRO) ───
-  async function salvar() {
+  async function salvar(forcarImediato = false) {
     if (!session?.user?.id) {
       Alert.alert('Erro', 'Sessão não identificada. Faça login novamente.');
       return;
@@ -342,6 +395,8 @@ export default function PrepararAgenda() {
     }
     setSalvando(true);
 
+    const abrirAgora = forcarImediato;
+
     try {
       // Constrói payload para cada semana
       const semanasPayload = semanas.map((semanaDatas) => {
@@ -349,7 +404,7 @@ export default function PrepararAgenda() {
         const fimSemana = dataLocal(semanaDatas[semanaDatas.length - 1]);
 
         const segundaAnterior = new Date(semanaDatas[0]);
-        const aberturaProgramada = abrirImediatamente
+        const aberturaProgramada = abrirAgora
           ? new Date().toISOString()
           : new Date(`${dataLocal(segundaAnterior)}T${abertura}:00`).toISOString();
 
@@ -374,7 +429,7 @@ export default function PrepararAgenda() {
         return {
           data_inicio: inicioSemana,
           data_fim: fimSemana,
-          status: abrirImediatamente ? 'aberta' : 'programada',
+          status: abrirAgora ? 'aberta' : 'programada',
           data_abertura_programada: aberturaProgramada,
           dias: diasPayload,
           slots: slotsPayload,
@@ -410,7 +465,7 @@ export default function PrepararAgenda() {
         }
       }
 
-      if (abrirImediatamente) {
+      if (abrirAgora) {
         try {
           await supabase.rpc('notificar_todos_clientes', {
             p_titulo: isModoMes
@@ -430,14 +485,14 @@ export default function PrepararAgenda() {
       }
 
       Alert.alert(
-        abrirImediatamente
+        abrirAgora
           ? isModoMes
             ? 'Mês Inteiro Liberado com Sucesso! 🚀'
             : 'Agenda Liberada para os Clientes! 🚀'
           : 'Agenda Programada com Sucesso! 💈',
-        abrirImediatamente
+        abrirAgora
           ? `${totalVagas} vagas foram abertas no aplicativo para ${isModoMes ? 'os próximos 30 dias (Mês Inteiro)' : semanaOffset === 0 ? 'Esta Semana' : 'Próxima Semana'}. Os clientes já podem agendar!`
-          : `A agenda foi programada com ${totalVagas} vagas no total e abrirá na segunda-feira às ${abertura}.`,
+          : `A agenda foi programada com ${totalVagas} vagas no total e abrirá na segunda-feira pontualmente às ${abertura}.`,
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (err: unknown) {
@@ -462,74 +517,76 @@ export default function PrepararAgenda() {
         <View style={styles.placeholder} />
       </View>
 
-      {/* Seletor de Escopo: Esta Semana vs Próxima Semana vs Mês Inteiro */}
-      <View style={[styles.semanaTabContainer, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
-        <TouchableOpacity
-          style={[
-            styles.semanaTab,
-            styles.semanaTabEsta,
-            semanaOffset === 0 && { backgroundColor: theme.ouro },
-          ]}
-          onPress={() => setSemanaOffset(0)}
-          activeOpacity={0.8}
-        >
-          <Calendar size={12} color={semanaOffset === 0 ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
-          <Text
-            numberOfLines={1}
+      {/* Seletor de Escopo: Apenas exibido no modo Livre */}
+      {!isModoSemanal && (
+        <View style={[styles.semanaTabContainer, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
+          <TouchableOpacity
             style={[
-              styles.semanaTabTexto,
-              { color: theme.textoSecundario },
-              semanaOffset === 0 && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+              styles.semanaTab,
+              styles.semanaTabEsta,
+              semanaOffset === 0 && { backgroundColor: theme.ouro },
             ]}
+            onPress={() => setSemanaOffset(0)}
+            activeOpacity={0.8}
           >
-            Esta Semana
-          </Text>
-        </TouchableOpacity>
+            <Calendar size={12} color={semanaOffset === 0 ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.semanaTabTexto,
+                { color: theme.textoSecundario },
+                semanaOffset === 0 && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+              ]}
+            >
+              Esta Semana
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.semanaTab,
-            styles.semanaTabProxima,
-            semanaOffset === 1 && { backgroundColor: theme.ouro },
-          ]}
-          onPress={() => setSemanaOffset(1)}
-          activeOpacity={0.8}
-        >
-          <Calendar size={12} color={semanaOffset === 1 ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
-          <Text
-            numberOfLines={1}
+          <TouchableOpacity
             style={[
-              styles.semanaTabTexto,
-              { color: theme.textoSecundario },
-              semanaOffset === 1 && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+              styles.semanaTab,
+              styles.semanaTabProxima,
+              semanaOffset === 1 && { backgroundColor: theme.ouro },
             ]}
+            onPress={() => setSemanaOffset(1)}
+            activeOpacity={0.8}
           >
-            Próxima
-          </Text>
-        </TouchableOpacity>
+            <Calendar size={12} color={semanaOffset === 1 ? theme.textoEscuroSobreOuro : theme.textoSecundario} />
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.semanaTabTexto,
+                { color: theme.textoSecundario },
+                semanaOffset === 1 && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+              ]}
+            >
+              Próxima
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.semanaTab,
-            styles.semanaTabMes,
-            semanaOffset === 2 && { backgroundColor: theme.ouro },
-          ]}
-          onPress={() => setSemanaOffset(2)}
-          activeOpacity={0.8}
-        >
-          <Sparkles size={12} color={semanaOffset === 2 ? theme.textoEscuroSobreOuro : theme.ouroTexto} />
-          <Text
-            numberOfLines={1}
+          <TouchableOpacity
             style={[
-              styles.semanaTabTexto,
-              { color: theme.textoSecundario },
-              semanaOffset === 2 && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+              styles.semanaTab,
+              styles.semanaTabMes,
+              semanaOffset === 2 && { backgroundColor: theme.ouro },
             ]}
+            onPress={() => setSemanaOffset(2)}
+            activeOpacity={0.8}
           >
-            Mês Inteiro (30d)
-          </Text>
-        </TouchableOpacity>
-      </View>
+            <Sparkles size={12} color={semanaOffset === 2 ? theme.textoEscuroSobreOuro : theme.ouroTexto} />
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.semanaTabTexto,
+                { color: theme.textoSecundario },
+                semanaOffset === 2 && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+              ]}
+            >
+              Mês Inteiro (30d)
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {carregandoDados ? (
         <View style={styles.loadingContainer}>
@@ -548,12 +605,21 @@ export default function PrepararAgenda() {
             </View>
             <View style={styles.resumoTexto}>
               <Text style={[styles.resumoTitulo, { color: theme.textoPrimario }]}>
-                {isModoMes ? 'Mês Inteiro (Agenda Contínua)' : semanaOffset === 0 ? 'Esta Semana' : 'Próxima Semana'} ({totalVagas} vagas ativas)
+                {isModoSemanal
+                  ? 'Esta Semana (Modo Semanal)'
+                  : isModoMes
+                  ? 'Mês Inteiro (Modo Livre)'
+                  : semanaOffset === 0
+                  ? 'Esta Semana'
+                  : 'Próxima Semana'}{' '}
+                ({totalVagas} vagas ativas)
               </Text>
               <Text style={[styles.resumoDescricao, { color: theme.textoSecundario }]}>
-                {isModoMes
+                {isModoSemanal
+                  ? 'Configure os dias e horários da semana para a abertura programada aos clientes.'
+                  : isModoMes
                   ? 'Libere os próximos 30 dias de uma vez só e desmarque facilmente os dias de folga.'
-                  : 'Todos os 7 dias da semana (incluindo Segundas) podem ser ativados livremente.'}
+                  : 'Todos os 7 dias da semana podem ser ativados livremente.'}
               </Text>
             </View>
           </View>
@@ -561,115 +627,92 @@ export default function PrepararAgenda() {
           {/* Barra de Presets Rápidos de Dias */}
           <View style={styles.presetsContainer}>
             <Text style={[styles.presetsTitulo, { color: theme.ouroTexto }]}>⚡ PRÉ-CONFIGURAÇÕES DE DIAS</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.presetsLinhaScroll}
-            >
-              <TouchableOpacity
-                style={[styles.presetChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
-                onPress={() => aplicarPreset('seg_sex')}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.presetChipTexto, { color: theme.textoPrimario }]}>Seg - Sex</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.presetChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
-                onPress={() => aplicarPreset('seg_sab')}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.presetChipTexto, { color: theme.textoPrimario }]}>Seg - Sáb</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.presetChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
-                onPress={() => aplicarPreset('ter_dom')}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.presetChipTexto, { color: theme.textoPrimario }]}>Ter - Dom</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.presetChip, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}
-                onPress={() => aplicarPreset('todos')}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.presetChipTexto, { color: theme.ouroTexto, fontFamily: FontFamily.bold }]}>Todos (7D)</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.presetChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
-                onPress={() => aplicarPreset('nenhum')}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.presetChipTexto, { color: theme.textoSecundario }]}>Limpar</Text>
-              </TouchableOpacity>
-            </ScrollView>
+            <View style={styles.presetsLinhaRow}>
+              {[
+                { id: 'seg_sex', label: 'Seg - Sex' },
+                { id: 'seg_sab', label: 'Seg - Sáb' },
+                { id: 'ter_dom', label: 'Ter - Dom' },
+                { id: 'todos', label: 'Todos' },
+                { id: 'nenhum', label: 'Limpar' },
+              ].map((p) => {
+                const selecionado = presetDiasAtivo === p.id;
+                return (
+                  <TouchableOpacity
+                    key={p.id}
+                    style={[
+                      styles.presetChip,
+                      { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                      selecionado && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+                    ]}
+                    onPress={() => aplicarPreset(p.id as any)}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.presetChipTexto,
+                        { color: theme.textoSecundario },
+                        selecionado && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+                      ]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
+                      {p.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
 
-          {/* Atalhos Globais de Vagas */}
+          {/* Atalhos Globais de Turnos: Manhã, Tarde e Noite */}
           <View style={styles.presetsVagasGlobalContainer}>
             <Text style={[styles.presetsTitulo, { color: theme.textoSecundario }]}>⚡ APLICAR EM TODOS OS DIAS ATIVOS</Text>
             <View style={styles.presetsVagasGlobalLinha}>
-              <TouchableOpacity
-                style={[styles.presetVagaChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
-                onPress={() => aplicarPresetVagasGlobal('10_vagas')}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.presetVagaChipTexto, { color: theme.textoPrimario }]}>
-                  10 Vagas (2x5: 07h-12h e 13h-18h)
-                </Text>
-              </TouchableOpacity>
+              {[
+                { id: 'manha', label: '☀️ Manhã (06h-11h)' },
+                { id: 'tarde', label: '🌤️ Tarde (12h-17h)' },
+                { id: 'noite', label: '🌙 Noite (18h-23h)' },
+              ].map((t) => {
+                const listaTurno =
+                  t.id === 'manha' ? HORARIOS_MANHA : t.id === 'tarde' ? HORARIOS_TARDE : HORARIOS_NOITE;
+                const diasAtivosLista = todasDatas.filter((d) => diasAtivosMap[dataLocal(d)]);
+                const ativoGlobal =
+                  diasAtivosLista.length > 0 &&
+                  diasAtivosLista.every((d) => {
+                    const horas = horariosMap[dataLocal(d)] || [];
+                    return listaTurno.some((h) => horas.includes(h));
+                  });
 
-              <TouchableOpacity
-                style={[styles.presetVagaChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
-                onPress={() => aplicarPresetVagasGlobal('15_vagas')}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.presetVagaChipTexto, { color: theme.textoPrimario }]}>
-                  15 Vagas (3x5 Sem Fechar)
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Opção Simples "Liberar agora" & Switch de Sincronização */}
-          <View style={{ gap: 8 }}>
-            <View style={[styles.linhaLiberarAgoraContainer, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
-              <View style={styles.linhaLiberarAgoraEsquerda}>
-                <Zap size={16} color={abrirImediatamente ? theme.verde : theme.textoSecundario} />
-                <Text style={[styles.linhaLiberarAgoraTexto, { color: theme.textoPrimario }]}>
-                  Liberar agora
-                </Text>
-              </View>
-              <Switch
-                value={abrirImediatamente}
-                onValueChange={setAbrirImediatamente}
-                trackColor={{ false: isEscuro ? '#27272A' : '#E4E4E7', true: theme.verde }}
-                thumbColor={abrirImediatamente ? '#FFFFFF' : (isEscuro ? '#71717A' : '#A1A1AA')}
-              />
-            </View>
-
-            {/* Switch de Sincronização Automática */}
-            <View style={[styles.syncRow, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
-              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Sparkles size={14} color={sincronizarAuto ? theme.ouro : theme.textoSecundario} />
-                <Text style={[styles.syncTexto, { color: theme.textoPrimario }]}>
-                  Sincronizar edições em todos os dias
-                </Text>
-              </View>
-              <Switch
-                value={sincronizarAuto}
-                onValueChange={setSincronizarAuto}
-                trackColor={{ false: isEscuro ? '#27272A' : '#E4E4E7', true: theme.ouro }}
-                thumbColor={sincronizarAuto ? '#FFFFFF' : (isEscuro ? '#71717A' : '#A1A1AA')}
-              />
+                return (
+                  <TouchableOpacity
+                    key={t.id}
+                    style={[
+                      styles.presetVagaChip,
+                      { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                      ativoGlobal && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+                    ]}
+                    onPress={() => handleToggleTurnoGlobal(t.id as any)}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.presetVagaChipTexto,
+                        { color: theme.textoSecundario },
+                        ativoGlobal && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+                      ]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
+                      {t.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
           {/* CARD DE SUGESTÃO DE REPLICAÇÃO CONTEXTUAL */}
-          {sugestaoReplicacao && !sincronizarAuto && (
+          {sugestaoReplicacao && (
             <View style={[styles.cardReplicacao, { backgroundColor: theme.superficie, borderColor: theme.ouro }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
@@ -733,6 +776,10 @@ export default function PrepararAgenda() {
                     const diaSemanaIdx = (data.getDay() + 6) % 7; // 0 = Seg, ..., 6 = Dom
                     const nomeDiaAtual = NOMES_DIAS[diaSemanaIdx];
 
+                    const temManha = horasAtivas.some((h) => HORARIOS_MANHA.includes(h));
+                    const temTarde = horasAtivas.some((h) => HORARIOS_TARDE.includes(h));
+                    const temNoite = horasAtivas.some((h) => HORARIOS_NOITE.includes(h));
+
                     return (
                       <View key={strData} style={[styles.diaContainer, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
                         <View style={styles.diaCabecalho}>
@@ -757,62 +804,187 @@ export default function PrepararAgenda() {
                           />
                         </View>
 
-                        {/* Grade de 15 Horários em 3 Linhas de 5 Colunas */}
+                        {/* Turnos e Horários de 6 Colunas */}
                         {diaAberto && (
                           <View style={styles.horariosWrapper}>
-                            {/* Atalhos Rápidos por Dia */}
+                            {/* Botões de Seleção de Turnos do Dia */}
                             <View style={styles.diaAtalhosLinha}>
                               <TouchableOpacity
-                                style={[styles.diaAtalhoChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
-                                onPress={() => handleDefinirHorariosDia(strData, HORARIOS_PADRAO_10, diaSemanaIdx, nomeDiaAtual)}
+                                style={[
+                                  styles.diaAtalhoChip,
+                                  { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                                  temManha && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+                                ]}
+                                onPress={() => handleToggleTurnoDia(strData, 'manha', diaSemanaIdx, nomeDiaAtual)}
                                 activeOpacity={0.7}
                               >
-                                <Text style={[styles.diaAtalhoTexto, { color: theme.textoPrimario }]}>10 vagas (2x5)</Text>
+                                <Text
+                                  style={[
+                                    styles.diaAtalhoTexto,
+                                    { color: theme.textoSecundario },
+                                    temManha && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+                                  ]}
+                                >
+                                  ☀️ Manhã
+                                </Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                style={[
+                                  styles.diaAtalhoChip,
+                                  { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                                  temTarde && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+                                ]}
+                                onPress={() => handleToggleTurnoDia(strData, 'tarde', diaSemanaIdx, nomeDiaAtual)}
+                                activeOpacity={0.7}
+                              >
+                                <Text
+                                  style={[
+                                    styles.diaAtalhoTexto,
+                                    { color: theme.textoSecundario },
+                                    temTarde && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+                                  ]}
+                                >
+                                  🌤️ Tarde
+                                </Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                style={[
+                                  styles.diaAtalhoChip,
+                                  { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                                  temNoite && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+                                ]}
+                                onPress={() => handleToggleTurnoDia(strData, 'noite', diaSemanaIdx, nomeDiaAtual)}
+                                activeOpacity={0.7}
+                              >
+                                <Text
+                                  style={[
+                                    styles.diaAtalhoTexto,
+                                    { color: theme.textoSecundario },
+                                    temNoite && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+                                  ]}
+                                >
+                                  🌙 Noite
+                                </Text>
                               </TouchableOpacity>
 
                               <TouchableOpacity
                                 style={[styles.diaAtalhoChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
-                                onPress={() => handleDefinirHorariosDia(strData, HORARIOS_PADRAO_15, diaSemanaIdx, nomeDiaAtual)}
-                                activeOpacity={0.7}
-                              >
-                                <Text style={[styles.diaAtalhoTexto, { color: theme.textoPrimario }]}>15 vagas (3x5)</Text>
-                              </TouchableOpacity>
-
-                              <TouchableOpacity
-                                style={[styles.diaAtalhoChip, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
-                                onPress={() => handleDefinirHorariosDia(strData, [], diaSemanaIdx, nomeDiaAtual)}
+                                onPress={() => handleLimparDia(strData, diaSemanaIdx, nomeDiaAtual)}
                                 activeOpacity={0.7}
                               >
                                 <Text style={[styles.diaAtalhoTexto, { color: theme.textoSecundario }]}>Limpar</Text>
                               </TouchableOpacity>
                             </View>
 
-                            {/* Grade de 5 colunas */}
-                            <View style={styles.horariosGranularesGrid}>
-                              {HORARIOS_GRADE_15.map((hora) => {
-                                const ativo = horasAtivas.includes(hora);
-                                return (
-                                  <TouchableOpacity
-                                    key={hora}
-                                    style={[
-                                      styles.chipHorario,
-                                      { backgroundColor: theme.superficie2, borderColor: theme.borda },
-                                      ativo && { backgroundColor: theme.ouro, borderColor: theme.ouro },
-                                    ]}
-                                    onPress={() => handleToggleHorario(strData, hora, diaSemanaIdx, nomeDiaAtual)}
-                                    activeOpacity={0.7}
-                                  >
-                                    <Text style={[
-                                      styles.chipHorarioTexto,
-                                      { color: theme.textoSecundario },
-                                      ativo && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
-                                    ]}>
-                                      {hora}
-                                    </Text>
-                                  </TouchableOpacity>
-                                );
-                              })}
-                            </View>
+                            {/* 1. Turno da Manhã (06:00 às 11:00) */}
+                            {temManha && (
+                              <View style={styles.turnoBloco}>
+                                <Text style={[styles.turnoTitulo, { color: theme.ouroTexto }]}>☀️ MANHÃ (06h - 11h)</Text>
+                                <View style={styles.turnoLinhaSlots}>
+                                  {HORARIOS_MANHA.map((hora) => {
+                                    const ativo = horasAtivas.includes(hora);
+                                    return (
+                                      <TouchableOpacity
+                                        key={hora}
+                                        style={[
+                                          styles.chipHorario6,
+                                          { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                                          ativo && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+                                        ]}
+                                        onPress={() => handleToggleHorario(strData, hora, diaSemanaIdx, nomeDiaAtual)}
+                                        activeOpacity={0.7}
+                                      >
+                                        <Text
+                                          style={[
+                                            styles.chipHorarioTexto6,
+                                            { color: theme.textoSecundario },
+                                            ativo && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+                                          ]}
+                                        >
+                                          {hora}
+                                        </Text>
+                                      </TouchableOpacity>
+                                    );
+                                  })}
+                                </View>
+                              </View>
+                            )}
+
+                            {/* 2. Turno da Tarde (12:00 às 17:00) */}
+                            {temTarde && (
+                              <View style={styles.turnoBloco}>
+                                <Text style={[styles.turnoTitulo, { color: theme.ouroTexto }]}>🌤️ TARDE (12h - 17h)</Text>
+                                <View style={styles.turnoLinhaSlots}>
+                                  {HORARIOS_TARDE.map((hora) => {
+                                    const ativo = horasAtivas.includes(hora);
+                                    return (
+                                      <TouchableOpacity
+                                        key={hora}
+                                        style={[
+                                          styles.chipHorario6,
+                                          { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                                          ativo && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+                                        ]}
+                                        onPress={() => handleToggleHorario(strData, hora, diaSemanaIdx, nomeDiaAtual)}
+                                        activeOpacity={0.7}
+                                      >
+                                        <Text
+                                          style={[
+                                            styles.chipHorarioTexto6,
+                                            { color: theme.textoSecundario },
+                                            ativo && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+                                          ]}
+                                        >
+                                          {hora}
+                                        </Text>
+                                      </TouchableOpacity>
+                                    );
+                                  })}
+                                </View>
+                              </View>
+                            )}
+
+                            {/* 3. Turno da Noite (18:00 às 23:00) */}
+                            {temNoite && (
+                              <View style={styles.turnoBloco}>
+                                <Text style={[styles.turnoTitulo, { color: theme.ouroTexto }]}>🌙 NOITE (18h - 23h)</Text>
+                                <View style={styles.turnoLinhaSlots}>
+                                  {HORARIOS_NOITE.map((hora) => {
+                                    const ativo = horasAtivas.includes(hora);
+                                    return (
+                                      <TouchableOpacity
+                                        key={hora}
+                                        style={[
+                                          styles.chipHorario6,
+                                          { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                                          ativo && { backgroundColor: theme.ouro, borderColor: theme.ouro },
+                                        ]}
+                                        onPress={() => handleToggleHorario(strData, hora, diaSemanaIdx, nomeDiaAtual)}
+                                        activeOpacity={0.7}
+                                      >
+                                        <Text
+                                          style={[
+                                            styles.chipHorarioTexto6,
+                                            { color: theme.textoSecundario },
+                                            ativo && { color: theme.textoEscuroSobreOuro, fontFamily: FontFamily.bold },
+                                          ]}
+                                        >
+                                          {hora}
+                                        </Text>
+                                      </TouchableOpacity>
+                                    );
+                                  })}
+                                </View>
+                              </View>
+                            )}
+
+                            {!temManha && !temTarde && !temNoite && (
+                              <Text style={[styles.nenhumTurnoTexto, { color: theme.textoSecundario }]}>
+                                Nenhum turno ativo para este dia. Toque em Manhã, Tarde ou Noite para abrir horários.
+                              </Text>
+                            )}
                           </View>
                         )}
                       </View>
@@ -823,8 +995,8 @@ export default function PrepararAgenda() {
             );
           })}
 
-          {/* Horário de Abertura Programada */}
-          {!abrirImediatamente && (
+          {/* Horário de Abertura Programada: Exibido no modo Semanal */}
+          {isModoSemanal && (
             <>
               <Text style={[styles.secaoTitulo, { color: theme.textoSecundario }]}>HORÁRIO DE ABERTURA PROGRAMADA</Text>
               <View style={styles.horariosContainer}>
@@ -859,20 +1031,33 @@ export default function PrepararAgenda() {
             </>
           )}
 
-          {/* Botão de Salvar / Liberar */}
+          {/* Botão Principal: Programar e Ativar Agenda */}
           <Botao
             label={
               salvando
                 ? 'Salvando vagas...'
-                : abrirImediatamente
-                ? 'Liberar agora'
-                : 'Programar e Ativar Agenda'
+                : isModoSemanal
+                ? 'Programar e Ativar Agenda'
+                : 'Salvar e Ativar Agenda'
             }
-            iconeEsquerda={<Zap size={18} color="#FFFFFF" />}
-            onPress={salvar}
+            iconeEsquerda={<Calendar size={18} color={theme.textoEscuroSobreOuro} />}
+            onPress={() => salvar(false)}
             desabilitado={salvando || totalVagas === 0}
-            estiloContainer={abrirImediatamente ? { ...styles.botaoSalvar, backgroundColor: theme.verde } : styles.botaoSalvar}
+            estiloContainer={styles.botaoSalvar}
           />
+
+          {/* Botão Secundário Discreto: Liberar agora */}
+          <TouchableOpacity
+            style={styles.botaoLiberarDiscreto}
+            onPress={() => salvar(true)}
+            disabled={salvando || totalVagas === 0}
+            activeOpacity={0.7}
+          >
+            <Zap size={15} color={theme.verde} />
+            <Text style={[styles.botaoLiberarDiscretoTexto, { color: theme.verde }]}>
+              Liberar agora (abrir vagas imediatamente)
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
       )}
     </SafeAreaView>
@@ -995,15 +1180,17 @@ const createStyles = (theme: ThemePalette) =>
       fontSize: FontSize.labelXs,
       letterSpacing: 0.5,
     },
-    presetsLinhaScroll: {
+    presetsLinhaRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      justifyContent: 'space-between',
+      gap: 6,
       paddingVertical: 2,
     },
     presetChip: {
+      flex: 1,
       paddingVertical: 7,
-      paddingHorizontal: 14,
+      paddingHorizontal: 4,
       borderRadius: Radii.md,
       borderWidth: 1,
       alignItems: 'center',
@@ -1011,7 +1198,7 @@ const createStyles = (theme: ThemePalette) =>
     },
     presetChipTexto: {
       fontFamily: FontFamily.semiBold,
-      fontSize: 12,
+      fontSize: 11,
       textAlign: 'center',
     },
     presetsVagasGlobalContainer: {
@@ -1019,12 +1206,12 @@ const createStyles = (theme: ThemePalette) =>
     },
     presetsVagasGlobalLinha: {
       flexDirection: 'row',
-      gap: 8,
+      gap: 6,
     },
     presetVagaChip: {
       flex: 1,
       paddingVertical: 8,
-      paddingHorizontal: 6,
+      paddingHorizontal: 4,
       borderRadius: Radii.md,
       borderWidth: 1,
       alignItems: 'center',
@@ -1034,27 +1221,6 @@ const createStyles = (theme: ThemePalette) =>
       fontFamily: FontFamily.semiBold,
       fontSize: 11,
       textAlign: 'center',
-    },
-    linhaLiberarAgoraContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: theme.superficie,
-      borderRadius: Radii.md,
-      paddingHorizontal: Spacing.md,
-      paddingVertical: 12,
-      borderWidth: 1,
-      borderColor: theme.borda,
-    },
-    linhaLiberarAgoraEsquerda: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
-    linhaLiberarAgoraTexto: {
-      fontFamily: FontFamily.bold,
-      fontSize: 14,
-      color: theme.textoPrimario,
     },
     secaoTitulo: {
       fontFamily: FontFamily.bold,
@@ -1111,7 +1277,7 @@ const createStyles = (theme: ThemePalette) =>
       color: theme.textoSecundario,
     },
     horariosWrapper: {
-      gap: 8,
+      gap: 10,
       paddingTop: Spacing.sm,
       borderTopWidth: 1,
       borderTopColor: theme.borda,
@@ -1121,34 +1287,53 @@ const createStyles = (theme: ThemePalette) =>
       gap: 6,
     },
     diaAtalhoChip: {
-      paddingVertical: 4,
-      paddingHorizontal: 8,
+      flex: 1,
+      paddingVertical: 6,
+      paddingHorizontal: 4,
       borderRadius: Radii.sm,
       borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     diaAtalhoTexto: {
       fontFamily: FontFamily.medium,
       fontSize: 10.5,
+      textAlign: 'center',
     },
-    horariosGranularesGrid: {
+    turnoBloco: {
+      gap: 4,
+    },
+    turnoTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: 10.5,
+      letterSpacing: 0.5,
+      marginBottom: 2,
+    },
+    turnoLinhaSlots: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 5,
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 4,
     },
-    chipHorario: {
-      width: '18.7%',
+    chipHorario6: {
+      flex: 1,
       height: 34,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: Radii.md,
-      backgroundColor: theme.superficie2,
+      borderRadius: Radii.sm,
       borderWidth: 1,
-      borderColor: theme.borda,
     },
-    chipHorarioTexto: {
-      fontFamily: FontFamily.bold,
+    chipHorarioTexto6: {
+      fontFamily: FontFamily.semiBold,
       fontSize: 11,
       textAlign: 'center',
+    },
+    nenhumTurnoTexto: {
+      fontFamily: FontFamily.regular,
+      fontSize: 11.5,
+      textAlign: 'center',
+      paddingVertical: 6,
+      lineHeight: 16,
     },
     horariosContainer: {
       flexDirection: 'row',
@@ -1186,21 +1371,22 @@ const createStyles = (theme: ThemePalette) =>
       lineHeight: 16,
     },
     botaoSalvar: {
-      backgroundColor: theme.verde,
+      backgroundColor: theme.ouro,
       marginTop: Spacing.xs,
     },
-    syncRow: {
+    botaoLiberarDiscreto: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: Spacing.sm,
       paddingHorizontal: Spacing.md,
-      paddingVertical: 10,
-      borderRadius: Radii.md,
-      borderWidth: 1,
+      marginTop: 2,
     },
-    syncTexto: {
-      fontFamily: FontFamily.medium,
-      fontSize: 12,
+    botaoLiberarDiscretoTexto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: 13,
+      textAlign: 'center',
     },
     cardReplicacao: {
       borderRadius: Radii.lg,

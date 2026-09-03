@@ -58,8 +58,8 @@ export default function DetalheBarbearia() {
       const servicosAtuais = barbeariaSelecionada.servicos && barbeariaSelecionada.servicos.length > 0
         ? barbeariaSelecionada.servicos
         : isV
-        ? (SERVICOS_REAIS_CATALOGO as any[])
-        : [];
+          ? (SERVICOS_REAIS_CATALOGO as any[])
+          : [];
       return {
         ...barbeariaSelecionada,
         servicos: servicosAtuais,
@@ -130,7 +130,7 @@ export default function DetalheBarbearia() {
   }
 
   const abrirUrl = (url: string | null | undefined) => {
-    if (url) Linking.openURL(url).catch(() => {});
+    if (url) Linking.openURL(url).catch(() => { });
   };
 
   const estaSelecionada = barbeariaSelecionada?.id === barbearia.id;
@@ -145,8 +145,8 @@ export default function DetalheBarbearia() {
   const descricaoExibida = isTeste
     ? 'Teste'
     : isVieira
-    ? 'Tradição, estilo e o melhor atendimento para o seu visual. Cortes modernos, barba na navalha e cuidados masculinos de alto nível.'
-    : barbearia.descricao;
+      ? 'Tradição, estilo e o melhor atendimento para o seu visual. Cortes modernos, barba na navalha e cuidados masculinos de alto nível.'
+      : barbearia.descricao;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -402,8 +402,8 @@ export default function DetalheBarbearia() {
                     barbearia.banner_url
                       ? { uri: barbearia.banner_url }
                       : isVieira
-                      ? require('@/assets/barbearia-vieira-banner.png')
-                      : require('@/assets/banner-na-regua.png')
+                        ? require('@/assets/barbearia-vieira-banner.png')
+                        : require('@/assets/banner-na-regua.png')
                   }
                   style={styles.galeriaBannerImg}
                   resizeMode="cover"

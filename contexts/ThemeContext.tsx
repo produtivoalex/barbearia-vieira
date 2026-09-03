@@ -2,8 +2,69 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useColorScheme } from 'react-native';
 import { TemaEscuro, TemaClaro, type ThemePalette, type TipoModoTema } from '@/theme/colors';
+import { useBarbearia, type TemaTenant } from '@/contexts/BarbeariaContext';
 
 const STORAGE_KEY_TEMA = '@barbearia/modo-tema';
+
+function hexParaRgba(hex: string, alpha: number): string {
+  if (!hex || typeof hex !== 'string') return `rgba(203, 161, 74, ${alpha})`;
+  let limpo = hex.replace('#', '').trim();
+  if (limpo.length === 3) {
+    limpo = limpo
+      .split('')
+      .map((c) => c + c)
+      .join('');
+  }
+  if (limpo.length !== 6) return `rgba(203, 161, 74, ${alpha})`;
+  const r = parseInt(limpo.substring(0, 2), 16);
+  const g = parseInt(limpo.substring(2, 4), 16);
+  const b = parseInt(limpo.substring(4, 6), 16);
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return `rgba(203, 161, 74, ${alpha})`;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+export function gerarPaletaTenant(
+  base: ThemePalette,
+  temaTenant?: TemaTenant | null,
+  isEscuro: boolean = true
+): ThemePalette {
+  if (!temaTenant || !temaTenant.primary) {
+    return base;
+  }
+
+  const primary = temaTenant.primary;
+  const accent = temaTenant.accent || primary;
+  const card = temaTenant.card;
+  const background = temaTenant.background;
+  const text = temaTenant.text;
+  const secondaryText = temaTenant.secondaryText;
+  const border = temaTenant.border;
+
+  return {
+    ...base,
+    // Cores de marca / destaque que adaptam o app todo
+    ouro: primary,
+    ouroClaro: accent,
+    ouroEscuro: primary,
+    ouroVibrante: accent,
+    ouroTexto: primary,
+    ouroTranslucido: hexParaRgba(primary, isEscuro ? 0.16 : 0.12),
+    ouroGlow: hexParaRgba(primary, isEscuro ? 0.30 : 0.22),
+    bordaOuro: hexParaRgba(primary, isEscuro ? 0.40 : 0.32),
+
+    // Cores de superfície & fundo (se customizadas ou adaptadas)
+    fundo: background || base.fundo,
+    superficie: card || base.superficie,
+    superficie2: card ? hexParaRgba(card, 0.85) : base.superficie2,
+    superficie3: card ? hexParaRgba(card, 0.70) : base.superficie3,
+    borda: border || (card ? hexParaRgba(primary, 0.12) : base.borda),
+    bordaDestaque: hexParaRgba(primary, 0.25),
+
+    // Tipografia
+    textoPrimario: text || base.textoPrimario,
+    textoSecundario: secondaryText || base.textoSecundario,
+  };
+}
 
 interface ThemeContextData {
   modoTema: TipoModoTema;
@@ -19,6 +80,9 @@ const ThemeContext = createContext<ThemeContextData>({} as ThemeContextData);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const schemeOS = useColorScheme(); // 'dark' | 'light' | null
+  const { barbearia } = useBarbearia();
+  const temaTenant = barbearia?.tema as TemaTenant | undefined;
+
   // O primeiro contato do produto é claro; a preferência do usuário continua soberana.
   const [modoTema, setModoTemaState] = useState<TipoModoTema>('claro');
   const [carregandoTema, setCarregandoTema] = useState(true);
@@ -62,10 +126,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     await setModoTema(proximo);
   }, [isEscuro, setModoTema]);
 
-  // Paleta de cores ativa
+  // Paleta de cores ativa com injeção em tempo real das preferências da barbearia
   const theme = useMemo(() => {
-    return isEscuro ? TemaEscuro : TemaClaro;
-  }, [isEscuro]);
+    const base = isEscuro ? TemaEscuro : TemaClaro;
+    return gerarPaletaTenant(base, temaTenant, isEscuro);
+  }, [isEscuro, temaTenant]);
 
   const value = useMemo(
     () => ({
@@ -99,3 +164,4 @@ export function useTheme(): ThemeContextData {
   }
   return context;
 }
+

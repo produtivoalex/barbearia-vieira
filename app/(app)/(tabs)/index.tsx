@@ -110,12 +110,12 @@ export default function TelaHome() {
   const modoDropsProgramado = barbearia?.modo_agenda === 'drops' && agenda?.status === 'programada';
   const abertura = agenda?.data_abertura_programada
     ? new Date(agenda.data_abertura_programada).toLocaleString('pt-BR', {
-        weekday: 'long',
-        day: '2-digit',
-        month: 'long',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
     : 'Abertura em breve';
 
   return (
@@ -298,8 +298,8 @@ export default function TelaHome() {
                 {carregandoAgenda
                   ? 'Verificando vagas...'
                   : agendaPermiteReserva
-                  ? 'Agenda Aberta'
-                  : 'Vagas Esgotadas'}
+                    ? 'Agenda Aberta'
+                    : 'Vagas Esgotadas'}
               </Text>
             </View>
 
@@ -445,8 +445,8 @@ export default function TelaHome() {
                     barbearia?.banner_url
                       ? { uri: barbearia.banner_url }
                       : (barbearia?.slug === 'barbearia-vieira' || !barbearia?.slug)
-                      ? require('@/assets/barbearia-vieira-banner.png')
-                      : require('@/assets/banner-na-regua.png')
+                        ? require('@/assets/barbearia-vieira-banner.png')
+                        : require('@/assets/banner-na-regua.png')
                   }
                   style={styles.vitrineFotoBanner}
                   resizeMode="cover"

@@ -99,6 +99,12 @@ export default function TabsBarbeiroLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="gerenciar-equipe"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

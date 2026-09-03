@@ -61,7 +61,8 @@
           "locationAlwaysAndWhenInUsePermission": "Permita que o Na Régua localize as barbearias mais próximas de você."
         }
       ],
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true

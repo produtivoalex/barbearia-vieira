@@ -17,10 +17,12 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   AlertTriangle,
   Building2,
+  ChevronLeft,
   ChevronRight,
   Compass,
   MapPin,
   Phone,
+  Plus,
   Search,
   Scissors,
   ShieldCheck,
@@ -151,9 +153,16 @@ export default function ListaBarbearias() {
     const isTeste = item.slug.includes('teste') || item.nome?.toLowerCase().includes('teste');
     const isVieira = item.slug === 'barbearia-vieira' || item.nome?.toLowerCase().includes('vieira');
 
+    const enderecoAbreviado = (item.endereco || '')
+      .replace(/^rua[:\s]+/i, 'R. ')
+      .replace(/^avenida[:\s]+/i, 'Av. ')
+      .replace(/\brua\b/gi, 'R.')
+      .replace(/\bavenida\b/gi, 'Av.')
+      .trim();
+
     const localizacao = isVieira
-      ? 'São José do Divino, PI, Rua Jeova Monte, 120, Brancas'
-      : [item.cidade ? `${item.cidade}, PI` : '', item.endereco, item.bairro].filter(Boolean).join(', ') || 'Localização a confirmar';
+      ? 'São José do Divino, PI, R. Jeova Monte, 120, Brancas'
+      : [item.cidade ? `${item.cidade}, PI` : '', enderecoAbreviado, item.bairro].filter(Boolean).join(', ') || 'Localização a confirmar';
 
     const descricaoExibida = isTeste
       ? 'Teste'
@@ -316,17 +325,40 @@ export default function ListaBarbearias() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.fundo }]} edges={['top']}>
       {/* Header Principal */}
-      <View style={styles.header}>
+      <View style={[styles.header, modoPainel && styles.headerPainel]}>
+        {modoPainel && (
+          <View style={styles.headerPainelTopo}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.btnVoltarPainel}
+              activeOpacity={0.7}
+            >
+              <ChevronLeft size={24} color={theme.textoPrimario} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.btnNovaUnidadeHeader, { backgroundColor: theme.ouro }]}
+              onPress={() => router.push('/(app)/(barbeiro)/cadastrar-barbearia')}
+              activeOpacity={0.8}
+            >
+              <Plus size={16} color={theme.textoEscuroSobreOuro} />
+              <Text style={[styles.btnNovaUnidadeHeaderTexto, { color: theme.textoEscuroSobreOuro }]}>
+                Nova Unidade
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.headerTexto}>
           <Text style={[styles.eyebrow, { color: theme.ouroTexto }]}>
-            {modoPainel ? 'PAINEL PROFISSIONAL' : 'NA RÉGUA'}
+            {modoPainel ? 'GESTÃO DE UNIDADES' : 'NA RÉGUA'}
           </Text>
           <Text style={[styles.titulo, { color: theme.textoPrimario }]}>
-            {modoPainel ? 'Selecione a Barbearia' : 'Descubra as Melhores Barbearias 💈'}
+            {modoPainel ? 'Filiais' : 'Descubra as Melhores Barbearias 💈'}
           </Text>
           <Text style={[styles.subtitulo, { color: theme.textoSecundario }]}>
             {modoPainel
-              ? 'Gerencie agendamentos, equipe e faturamento da sua unidade.'
+              ? 'Alterne entre suas filiais ou cadastre uma nova unidade.'
               : 'Encontre estilo, tradição e conveniência perto de você.'}
           </Text>
         </View>
@@ -407,7 +439,7 @@ export default function ListaBarbearias() {
           }
           ListFooterComponent={
             <TouchableOpacity
-              style={[styles.cardFooterCadastro, { backgroundColor: theme.superficie, borderColor: theme.borda }]}
+              style={[styles.cardFooterCadastro, { backgroundColor: theme.superficie, borderColor: theme.bordaOuro }]}
               activeOpacity={0.8}
               onPress={() => router.push('/(app)/(barbeiro)/cadastrar-barbearia')}
             >
@@ -415,8 +447,14 @@ export default function ListaBarbearias() {
                 <Store size={22} color={theme.ouroTexto} />
               </View>
               <View style={styles.cardFooterTextos}>
-                <Text style={[styles.cardFooterTitulo, { color: theme.textoPrimario }]}>Tem uma Barbearia?</Text>
-                <Text style={[styles.cardFooterSub, { color: theme.textoSecundario }]}>Cadastre seu estabelecimento e apareça aqui na vitrine</Text>
+                <Text style={[styles.cardFooterTitulo, { color: theme.ouroTexto }]}>
+                  {modoPainel ? '+ Cadastrar Nova Filial' : 'Tem uma Barbearia?'}
+                </Text>
+                <Text style={[styles.cardFooterSub, { color: theme.textoSecundario }]}>
+                  {modoPainel
+                    ? 'Adicione uma nova unidade da sua rede com equipe, serviços e agenda próprios'
+                    : 'Cadastre seu estabelecimento e apareça aqui na vitrine'}
+                </Text>
               </View>
               <ChevronRight size={18} color={theme.ouroTexto} />
             </TouchableOpacity>
@@ -445,6 +483,30 @@ const createStyles = (theme: ThemePalette) =>
       paddingHorizontal: Spacing.telaH,
       paddingTop: Spacing.sm,
       paddingBottom: Spacing.xs,
+    },
+    headerPainel: {
+      paddingTop: Spacing.xs,
+    },
+    headerPainelTopo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: Spacing.xs,
+    },
+    btnVoltarPainel: {
+      padding: 4,
+    },
+    btnNovaUnidadeHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: Radii.full,
+    },
+    btnNovaUnidadeHeaderTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 12,
     },
     headerTexto: { gap: 3 },
     eyebrow: {

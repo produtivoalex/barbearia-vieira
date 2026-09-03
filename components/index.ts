@@ -17,3 +17,4 @@ export { LogoBarbearia } from './LogoBarbearia';
 export { IlustracaoServico, identificarTipoServico } from './IlustracaoServico';
 export type { TipoServicoId } from './IlustracaoServico';
 export { IndicadorEtapas } from './IndicadorEtapas';
+export { MidiaGaleriaCard, isMidiaVideo, isMidiaGif } from './MidiaGaleriaCard';

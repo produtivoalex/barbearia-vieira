@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
+import type { TemaTenant } from '@/contexts/BarbeariaContext';
+
 export interface BarbeariaPublica {
   id: string;
   slug: string;
@@ -19,7 +21,7 @@ export interface BarbeariaPublica {
   distancia_km?: number | null;
   total_resultados?: number;
   servicos?: Array<{ id: string; nome: string; descricao: string | null; preco: number }>;
-  tema?: Record<string, string> | null;
+  tema?: TemaTenant | Record<string, any> | null;
   modo_agenda?: 'continua' | 'drops';
   dias_janela_agendamento?: number;
   comissao_padrao?: number;
@@ -34,6 +36,18 @@ export interface BarbeariaPublica {
   modo_duracao?: 'fixo_1h' | 'tempo_servico';
   step_agendamento_min?: number;
   intervalo_descanso_min?: number;
+  horario_funcionamento_padrao?: HorarioFuncionamentoPadrao | null;
+}
+
+export interface HorarioFuncionamentoPadrao {
+  inicio: string;
+  fim: string;
+  tem_intervalo: boolean;
+  intervalo_inicio?: string;
+  intervalo_fim?: string;
+  intervalo_duracao_min?: number;
+  turnos_padrao?: Array<'manha' | 'tarde' | 'noite'>;
+  dias_padrao?: 'seg_sex' | 'seg_sab' | 'ter_dom' | 'todos';
 }
 
 export const CAMPOS_REGRAS_BARBEARIA = 'modo_agenda, dias_janela_agendamento, comissao_padrao, regras_fidelidade, mimo_ativo';
