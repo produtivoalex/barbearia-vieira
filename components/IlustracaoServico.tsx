@@ -201,62 +201,295 @@ export const BIBLIOTECA_SERVICOS: {
   },
 ];
 
-/** Identifica o tipo de ilustração usando o nome oficial do serviço. */
+/** Identifica o tipo de ilustração usando o nome oficial ou parcial do serviço. */
 export function identificarTipoServico(id?: string, nome?: string, categoria?: string): TipoServicoId {
   const str = `${id || ''} ${nome || ''}`.toLowerCase();
   const nomeNorm = (nome || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
+    .toLowerCase()
+    .trim();
 
-  // ── Combos (maior prioridade) ──
-  if (nomeNorm.includes('combo') || categoria === 'combos') return 'combo_vip';
+  // ── 1. Cortes Especiais (Altíssima especificidade: Infantil, Kids, Moicano, Cacheado, etc.) ──
+  // Deve vir antes de tudo para evitar que palavras como "corte infantil" caiam em "corte_social"
+  if (
+    nomeNorm.startsWith('inf') ||
+    nomeNorm.includes('infant') ||
+    nomeNorm.includes('kid') ||
+    nomeNorm.includes('crianc') ||
+    nomeNorm.includes('bebe') ||
+    nomeNorm.includes('junior') ||
+    nomeNorm.includes('garoto') ||
+    nomeNorm.includes('menino')
+  ) {
+    return 'corte_infantil';
+  }
 
-  // ── Coloração & Tratamento ──
-  if (nomeNorm.includes('nevou')) return 'nevou';
-  if (nomeNorm.includes('platinado') || nomeNorm.includes('loiro') || nomeNorm.includes('descolorid')) return 'platinado';
-  if (nomeNorm.includes('pigmentacao') || nomeNorm.includes('pigmenta') || nomeNorm.includes('cobertura de branco') || categoria === 'coloracao') return 'pigmentacao_capilar';
-  if (nomeNorm.includes('luzes') || nomeNorm.includes('mechas') || nomeNorm.includes('mechas')) return 'luzes_masculinas';
+  // ── 2. Nevou (Cabelo Todo Branco - DEVE vir antes de platinado/descoloração) ──
+  if (
+    nomeNorm.startsWith('nev') ||
+    nomeNorm.includes('nevou') ||
+    nomeNorm.includes('nevo') ||
+    nomeNorm.includes('nevado') ||
+    nomeNorm.includes('cabelo branco') ||
+    nomeNorm.includes('fio branco')
+  ) {
+    return 'nevou';
+  }
 
-  // ── Cortes Especiais ──
-  if (nomeNorm.includes('infantil') || nomeNorm.includes('crianca') || nomeNorm.includes('bebe') || nomeNorm.includes('junior')) return 'corte_infantil';
-  if (nomeNorm.includes('moicano') || nomeNorm.includes('undercut')) return 'corte_moicano';
-  if (nomeNorm.includes('cacheado') || nomeNorm.includes('black') || nomeNorm.includes('afro') || nomeNorm.includes('cachos')) return 'corte_cacheado';
-  if (nomeNorm.includes('acabamento') || nomeNorm.includes('lineup') || nomeNorm.includes('refino') || nomeNorm.includes('reto')) return 'acabamento';
-  if (nomeNorm.includes('desenho') && (nomeNorm.includes('cabelo') || nomeNorm.includes('capilar'))) return 'desenho_cabelo';
+  // ── 3. Platinado & Loiro ──
+  if (
+    nomeNorm.startsWith('plat') ||
+    nomeNorm.includes('platinad') ||
+    nomeNorm.includes('platina') ||
+    nomeNorm.includes('loiro') ||
+    nomeNorm.includes('loira') ||
+    nomeNorm.includes('descolor') ||
+    nomeNorm.includes('blonde')
+  ) {
+    return 'platinado';
+  }
 
-  // ── Cortes Clássicos ──
-  if (nomeNorm.includes('corte degrade') || nomeNorm.includes('fade') || nomeNorm.includes('degrade')) return 'corte_degrade';
-  if (nomeNorm.includes('corte navalhado') || nomeNorm.includes('navalha') || nomeNorm.includes('navalhado')) return 'corte_navalhado';
-  if (nomeNorm.includes('social todo na maquina') || nomeNorm.includes('corte na maquina') || nomeNorm.includes('maquina')) return 'social_maquina';
-  if (nomeNorm.includes('corte social') || nomeNorm.includes('social')) return 'corte_social';
+  // ── 4. Luzes & Mechas ──
+  if (
+    nomeNorm.startsWith('luz') ||
+    nomeNorm.includes('luzes') ||
+    nomeNorm.includes('mecha') ||
+    nomeNorm.includes('reflexo') ||
+    nomeNorm.includes('touca')
+  ) {
+    return 'luzes_masculinas';
+  }
 
-  // ── Barba ──
-  if (nomeNorm.includes('hot towel') || nomeNorm.includes('toalha quente') || nomeNorm.includes('shave')) return 'hot_towel';
-  if (nomeNorm.includes('barba completa') || nomeNorm.includes('barba premium') || nomeNorm.includes('barba tratamento')) return 'barba_completa';
-  if (nomeNorm.includes('barba desenhada') || nomeNorm.includes('barba modelada')) return 'barba_desenhada';
-  if (nomeNorm.includes('barba simples') || nomeNorm.includes('barba aparada')) return 'barba_simples';
-  if (nomeNorm.includes('barba') || categoria === 'barba') return 'barba_desenhada';
+  // ── 5. Micropigmentação (DEVE vir antes de pigmentação geral) ──
+  if (
+    nomeNorm.startsWith('micro') ||
+    nomeNorm.includes('micropigment') ||
+    nomeNorm.includes('calvic') ||
+    nomeNorm.includes('camuflagem') ||
+    categoria === 'micropigmentacao'
+  ) {
+    return 'micropigmentacao';
+  }
 
-  // ── Estética ──
-  if (nomeNorm.includes('micropigmentacao') || nomeNorm.includes('micropigmenta') || nomeNorm.includes('falhas') || nomeNorm.includes('calvicie') || categoria === 'micropigmentacao') return 'micropigmentacao';
-  if (nomeNorm.includes('sobrancelha') || categoria === 'sobrancelha') return 'sobrancelha';
-  if (nomeNorm.includes('limpeza') || nomeNorm.includes('pele') || nomeNorm.includes('mascara') || categoria === 'limpeza_de_pele') return 'limpeza_de_pele';
+  // ── 6. Pigmentação Capilar & Barba ──
+  if (
+    nomeNorm.startsWith('pigment') ||
+    nomeNorm.includes('pigmenta') ||
+    nomeNorm.includes('tintura') ||
+    nomeNorm.includes('tingir') ||
+    nomeNorm.includes('cobertura de branco') ||
+    categoria === 'coloracao'
+  ) {
+    return 'pigmentacao_capilar';
+  }
 
-  // ── Fallbacks via id/str genérico ──
+  // ── 7. Moicano & Undercut ──
+  if (
+    nomeNorm.startsWith('moic') ||
+    nomeNorm.includes('moican') ||
+    nomeNorm.includes('undercut') ||
+    nomeNorm.includes('mohawk')
+  ) {
+    return 'corte_moicano';
+  }
+
+  // ── 8. Cacheado, Afro & Black Power ──
+  if (
+    nomeNorm.startsWith('cach') ||
+    nomeNorm.includes('cachead') ||
+    nomeNorm.includes('afro') ||
+    nomeNorm.includes('black') ||
+    nomeNorm.includes('crespo') ||
+    nomeNorm.includes('sponge') ||
+    nomeNorm.includes('nudred')
+  ) {
+    return 'corte_cacheado';
+  }
+
+  // ── 9. Desenho & Freestyle no Cabelo ──
+  if (
+    !nomeNorm.includes('barba') &&
+    (nomeNorm.startsWith('desen') ||
+      nomeNorm.includes('desenh') ||
+      nomeNorm.includes('hair tattoo') ||
+      nomeNorm.includes('freestyle') ||
+      nomeNorm.includes('risco') ||
+      nomeNorm.includes('risquinh') ||
+      nomeNorm.includes('tribal'))
+  ) {
+    return 'desenho_cabelo';
+  }
+
+  // ── 10. Acabamento & Pezinho ──
+  if (
+    nomeNorm.startsWith('pez') ||
+    nomeNorm.includes('pezinho') ||
+    nomeNorm.startsWith('acab') ||
+    nomeNorm.includes('acabament') ||
+    nomeNorm.includes('lineup') ||
+    nomeNorm.includes('line up') ||
+    nomeNorm.includes('contorno') ||
+    nomeNorm.includes('costeleta')
+  ) {
+    return 'acabamento';
+  }
+
+  // ── 11. Toalha Quente & Shave Ritual ──
+  if (
+    nomeNorm.startsWith('toalh') ||
+    nomeNorm.includes('toalha quente') ||
+    nomeNorm.includes('hot towel') ||
+    nomeNorm.startsWith('shav') ||
+    nomeNorm.includes('shave')
+  ) {
+    return 'hot_towel';
+  }
+
+  // ── 12. Barba Completa & Barboterapia Premium ──
+  if (
+    nomeNorm.includes('barba completa') ||
+    nomeNorm.includes('barboterap') ||
+    nomeNorm.includes('terapia da barba') ||
+    nomeNorm.includes('barba premium') ||
+    nomeNorm.includes('spa da barba') ||
+    nomeNorm.includes('barba vip')
+  ) {
+    return 'barba_completa';
+  }
+
+  // ── 13. Barba Desenhada & Modelada ──
+  if (
+    nomeNorm.includes('barba desenhada') ||
+    nomeNorm.includes('barba modelada') ||
+    nomeNorm.includes('desenhar barba') ||
+    nomeNorm.includes('modelar barba')
+  ) {
+    return 'barba_desenhada';
+  }
+
+  // ── 14. Barba Simples & Aparo ──
+  if (
+    nomeNorm.includes('barba simples') ||
+    nomeNorm.includes('aparar barba') ||
+    nomeNorm.includes('acertar barba') ||
+    nomeNorm.includes('baixar barba') ||
+    nomeNorm.includes('barba rapida')
+  ) {
+    return 'barba_simples';
+  }
+
+  // ── 15. Barba Genérico ──
+  if (nomeNorm.startsWith('barb') || nomeNorm.includes('barba') || categoria === 'barba') {
+    return 'barba_desenhada';
+  }
+
+  // ── 16. Sobrancelha ──
+  if (
+    nomeNorm.startsWith('sobran') ||
+    nomeNorm.includes('sobrancelh') ||
+    nomeNorm.includes('pinca') ||
+    categoria === 'sobrancelha'
+  ) {
+    return 'sobrancelha';
+  }
+
+  // ── 17. Limpeza de Pele & Estética ──
+  if (
+    nomeNorm.startsWith('limp') ||
+    nomeNorm.includes('limpeza') ||
+    nomeNorm.includes('black mask') ||
+    nomeNorm.includes('esfoliac') ||
+    nomeNorm.includes('facial') ||
+    nomeNorm.includes('cravos') ||
+    categoria === 'limpeza_de_pele'
+  ) {
+    return 'limpeza_de_pele';
+  }
+
+  // ── 18. Combos & VIP ──
+  if (
+    nomeNorm.includes('combo') ||
+    nomeNorm.includes('cabelo e barba') ||
+    nomeNorm.includes('corte e barba') ||
+    nomeNorm.includes('cabelo + barba') ||
+    nomeNorm.includes('corte + barba') ||
+    nomeNorm.includes('barba e cabelo') ||
+    nomeNorm.includes('vip') ||
+    categoria === 'combos'
+  ) {
+    return 'combo_vip';
+  }
+
+  // ── 19. Corte Navalhado ──
+  if (
+    nomeNorm.startsWith('naval') ||
+    nomeNorm.includes('navalhad') ||
+    nomeNorm.includes('navalha') ||
+    nomeNorm.includes('zero navalha') ||
+    nomeNorm.includes('lamina')
+  ) {
+    return 'corte_navalhado';
+  }
+
+  // ── 20. Corte na Máquina / Militar ──
+  if (
+    nomeNorm.startsWith('maq') ||
+    nomeNorm.includes('maquina') ||
+    nomeNorm.includes('militar') ||
+    nomeNorm.includes('buzz cut') ||
+    nomeNorm.includes('raspado') ||
+    nomeNorm.includes('pente unico')
+  ) {
+    return 'social_maquina';
+  }
+
+  // ── 21. Degradê / Fade ──
+  if (
+    nomeNorm.startsWith('deg') ||
+    nomeNorm.includes('degrad') ||
+    nomeNorm.startsWith('fad') ||
+    nomeNorm.includes('fade') ||
+    nomeNorm.includes('disfarc') ||
+    nomeNorm.includes('taper')
+  ) {
+    return 'corte_degrade';
+  }
+
+  // ── 22. Corte Social / Tesoura Clássico ──
+  if (
+    nomeNorm.includes('social') ||
+    nomeNorm.includes('tesour') ||
+    nomeNorm.includes('classic') ||
+    nomeNorm.includes('executiv') ||
+    nomeNorm.includes('tradicion')
+  ) {
+    return 'corte_social';
+  }
+
+  // ── Fallbacks via str / id ──
+  if (str.includes('infant') || str.includes('kid') || str.includes('crianc')) return 'corte_infantil';
+  if (str.includes('nevou') || str.includes('nevo')) return 'nevou';
+  if (str.includes('platinad') || str.includes('loiro')) return 'platinado';
+  if (str.includes('luzes') || str.includes('mecha')) return 'luzes_masculinas';
   if (str.includes('combo')) return 'combo_vip';
-  if (str.includes('nevou')) return 'nevou';
-  if (str.includes('platinado') || str.includes('loiro')) return 'platinado';
   if (str.includes('degrad') || str.includes('fade')) return 'corte_degrade';
   if (str.includes('navalhad') || str.includes('navalha')) return 'corte_navalhado';
-  if (str.includes('maquina') || str.includes('máquina')) return 'social_maquina';
-  if (str.includes('infantil') || str.includes('crianca')) return 'corte_infantil';
+  if (str.includes('maquina')) return 'social_maquina';
   if (str.includes('moicano')) return 'corte_moicano';
   if (str.includes('cacheado') || str.includes('afro')) return 'corte_cacheado';
-  if (str.includes('social') || categoria === 'cortes') return 'corte_social';
-  if (str.includes('barba desenhada') || str.includes('desenhada')) return 'barba_desenhada';
-  if (str.includes('hot towel') || str.includes('toalha')) return 'hot_towel';
+  if (str.includes('desenho')) return 'desenho_cabelo';
+  if (str.includes('pezinho') || str.includes('acabamento')) return 'acabamento';
+  if (str.includes('toalha') || str.includes('shave')) return 'hot_towel';
+  if (str.includes('sobrancelha')) return 'sobrancelha';
+  if (str.includes('limpeza')) return 'limpeza_de_pele';
   if (str.includes('barba')) return 'barba_desenhada';
+
+  if (categoria === 'barba') return 'barba_desenhada';
+  if (categoria === 'coloracao' || categoria === 'quimicas') return 'pigmentacao_capilar';
+  if (categoria === 'sobrancelha') return 'sobrancelha';
+  if (categoria === 'limpeza_de_pele' || categoria === 'cuidados') return 'limpeza_de_pele';
+  if (categoria === 'combos') return 'combo_vip';
 
   return 'corte_social';
 }

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -153,18 +153,45 @@ export default function TelaBarbeiroMais() {
     return `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}/${hoje.getFullYear()}`;
   }
 
+  // Referência para controlar se a descrição atual foi inserida por sugestão automática
+  const sugestaoDescricaoAutoAplicadaRef = useRef<string | null>(null);
+
+  function aplicarSugestaoDescricao(sug: SugestaoServico) {
+    setDescricaoForm(sug.descricao);
+    sugestaoDescricaoAutoAplicadaRef.current = sug.descricao;
+    if (!imagemUrlForm && sug.tipoId) {
+      setIconeForm(sug.tipoId as TipoServicoId);
+    }
+    if (!servicoEmEdicao) {
+      if (sug.categoria) {
+        setCategoriaForm(sug.categoria as CategoriaServico);
+      }
+      if (sug.duracaoPadrao && (!duracaoForm || duracaoForm === '30')) {
+        setDuracaoForm(String(sug.duracaoPadrao));
+      }
+    }
+  }
+
   function handleNomeChange(novoNome: string) {
     setNomeForm(novoNome);
+
+    // 1. Dedução inteligente imediata do ícone pelo nome digitado (tempo real)
+    const tipoDeduzido = identificarTipoServico(undefined, novoNome, categoriaForm);
+
+    // 2. Consulta ao banco inteligente de sugestões (descrição, categoria, duração)
     const sugestao = sugerirDescricaoPorNome(novoNome);
+
     if (sugestao) {
       setSugestaoDescricaoAtiva(sugestao);
-      if (!descricaoForm.trim()) {
+
+      // Se a descrição estiver vazia ou se ainda for a última sugestão automática, atualiza suavemente
+      if (!descricaoForm.trim() || descricaoForm === sugestaoDescricaoAutoAplicadaRef.current) {
         setDescricaoForm(sugestao.descricao);
+        sugestaoDescricaoAutoAplicadaRef.current = sugestao.descricao;
       }
-      if (!servicoEmEdicao) {
-        if (!imagemUrlForm && sugestao.tipoId) {
-          setIconeForm(sugestao.tipoId as TipoServicoId);
-        }
+
+      if (!servicoEmEdicao && !imagemUrlForm) {
+        setIconeForm(sugestao.tipoId as TipoServicoId);
         if (sugestao.categoria) {
           setCategoriaForm(sugestao.categoria as CategoriaServico);
         }
@@ -174,6 +201,17 @@ export default function TelaBarbeiroMais() {
       }
     } else {
       setSugestaoDescricaoAtiva(null);
+
+      // Se não tem sugestão de texto mas o barbeiro está digitando um tipo reconhecível, atualiza o ícone
+      if (!servicoEmEdicao && !imagemUrlForm && tipoDeduzido) {
+        setIconeForm(tipoDeduzido);
+      }
+
+      // Se apagou o nome ou não há mais match e a descrição era a sugestão automática, limpa a descrição
+      if (novoNome.trim().length === 0 && descricaoForm === sugestaoDescricaoAutoAplicadaRef.current) {
+        setDescricaoForm('');
+        sugestaoDescricaoAutoAplicadaRef.current = null;
+      }
     }
   }
 
@@ -183,6 +221,7 @@ export default function TelaBarbeiroMais() {
     setPrecoForm('');
     setDuracaoForm('30');
     setDescricaoForm('');
+    sugestaoDescricaoAutoAplicadaRef.current = null;
     setCategoriaForm('cortes');
     setIconeForm('corte_degrade');
     setImagemUrlForm(null);
@@ -935,7 +974,7 @@ export default function TelaBarbeiroMais() {
               {sugestaoDescricaoAtiva && (
                 <TouchableOpacity
                   style={[styles.boxSugestaoProntaCompacto, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}
-                  onPress={() => setDescricaoForm(sugestaoDescricaoAtiva.descricao)}
+                  onPress={() => aplicarSugestaoDescricao(sugestaoDescricaoAtiva)}
                   activeOpacity={0.7}
                 >
                   <Sparkles size={14} color={theme.ouroTexto} style={{ marginTop: 2 }} />
@@ -963,7 +1002,7 @@ export default function TelaBarbeiroMais() {
                   <Text style={[styles.labelCampoCompacto, { color: theme.textoSecundario }]}>DESCRIÇÃO</Text>
                   {sugestaoDescricaoAtiva && descricaoForm !== sugestaoDescricaoAtiva.descricao && (
                     <TouchableOpacity
-                      onPress={() => setDescricaoForm(sugestaoDescricaoAtiva.descricao)}
+                      onPress={() => aplicarSugestaoDescricao(sugestaoDescricaoAtiva)}
                       style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
                     >
                       <Sparkles size={10} color={theme.ouroTexto} />
@@ -976,7 +1015,10 @@ export default function TelaBarbeiroMais() {
                 <TextInput
                   style={[styles.inputModalDescricaoCompacta, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
                   value={descricaoForm}
-                  onChangeText={setDescricaoForm}
+                  onChangeText={(texto) => {
+                    setDescricaoForm(texto);
+                    sugestaoDescricaoAutoAplicadaRef.current = null;
+                  }}
                   placeholder="Detalhes ou diferenciais do serviço..."
                   placeholderTextColor={theme.textoDesabilitado}
                   multiline
