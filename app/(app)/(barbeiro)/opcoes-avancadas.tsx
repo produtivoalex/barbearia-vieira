@@ -114,6 +114,32 @@ export default function TelaOpcoesAvancadas() {
     barbearia?.mimo_ativo?.validade_dias ? String(barbearia.mimo_ativo.validade_dias) : '7'
   );
 
+function somarMinutosHora(horaStr: string, minutos: number): string {
+  const [h, m] = (horaStr || '12:00').split(':').map(Number);
+  const totalMin = (isNaN(h) ? 12 : h) * 60 + (isNaN(m) ? 0 : m) + minutos;
+  const hFinal = Math.floor(totalMin / 60) % 24;
+  const mFinal = totalMin % 60;
+  return `${String(hFinal).padStart(2, '0')}:${String(mFinal).padStart(2, '0')}`;
+}
+
+function calcularDiferencaMinutos(horaInicio: string, horaFim: string): number {
+  const [h1, m1] = (horaInicio || '12:00').split(':').map(Number);
+  const [h2, m2] = (horaFim || '13:00').split(':').map(Number);
+  let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+  if (diff <= 0) diff = 60;
+  return diff;
+}
+
+const OPCOES_DURACAO_PAUSA = [
+  { min: 30, label: '30 min' },
+  { min: 60, label: '1 hora' },
+  { min: 90, label: '1h 30m' },
+  { min: 120, label: '2 horas' },
+  { min: 150, label: '2h 30m' },
+  { min: 180, label: '3 horas' },
+  { min: 240, label: '4 horas' },
+];
+
   // Horários de Funcionamento Padrão da Barbearia
   const [horarioInicio, setHorarioInicio] = useState<string>(
     barbearia?.horario_funcionamento_padrao?.inicio || '08:00'
@@ -127,8 +153,19 @@ export default function TelaOpcoesAvancadas() {
   const [intervaloInicio, setIntervaloInicio] = useState<string>(
     barbearia?.horario_funcionamento_padrao?.intervalo_inicio || '12:00'
   );
+  const [intervaloDuracaoMin, setIntervaloDuracaoMin] = useState<number>(() => {
+    const salvo = (barbearia?.horario_funcionamento_padrao as any)?.intervalo_duracao_min;
+    if (salvo) return Number(salvo);
+    const inicio = barbearia?.horario_funcionamento_padrao?.intervalo_inicio || '12:00';
+    const fim = barbearia?.horario_funcionamento_padrao?.intervalo_fim || '13:00';
+    return calcularDiferencaMinutos(inicio, fim);
+  });
   const [intervaloFim, setIntervaloFim] = useState<string>(
-    barbearia?.horario_funcionamento_padrao?.intervalo_fim || '13:00'
+    barbearia?.horario_funcionamento_padrao?.intervalo_fim ||
+      somarMinutosHora(
+        barbearia?.horario_funcionamento_padrao?.intervalo_inicio || '12:00',
+        60
+      )
   );
   const [turnosPadrao, setTurnosPadrao] = useState<Array<'manha' | 'tarde' | 'noite'>>(
     barbearia?.horario_funcionamento_padrao?.turnos_padrao || ['manha', 'tarde', 'noite']
@@ -136,6 +173,68 @@ export default function TelaOpcoesAvancadas() {
   const [diasPadrao, setDiasPadrao] = useState<'seg_sex' | 'seg_sab' | 'ter_dom' | 'todos'>(
     barbearia?.horario_funcionamento_padrao?.dias_padrao || 'seg_sab'
   );
+
+  const handleToggleTurnoPadrao = (turno: 'manha' | 'tarde' | 'noite') => {
+    if (turnosPadrao.includes(turno)) {
+      if (turnosPadrao.length > 1) {
+        setTurnosPadrao(turnosPadrao.filter((t) => t !== turno));
+      }
+    } else {
+      setTurnosPadrao([...turnosPadrao, turno]);
+    }
+  };
+
+  // Opções dinâmicas de início conforme turnos ativos
+  const opcoesHorarioInicio = useMemo(() => {
+    const temManha = turnosPadrao.includes('manha');
+    const temTarde = turnosPadrao.includes('tarde');
+    const temNoite = turnosPadrao.includes('noite');
+
+    if (temManha) return ['06:00', '07:00', '08:00', '09:00', '10:00'];
+    if (temTarde) return ['12:00', '13:00', '14:00', '15:00', '16:00'];
+    if (temNoite) return ['18:00', '19:00', '20:00', '21:00'];
+    return ['08:00', '09:00', '10:00'];
+  }, [turnosPadrao]);
+
+  // Opções dinâmicas de fechamento conforme turnos ativos
+  const opcoesHorarioFim = useMemo(() => {
+    const temManha = turnosPadrao.includes('manha');
+    const temTarde = turnosPadrao.includes('tarde');
+    const temNoite = turnosPadrao.includes('noite');
+
+    if (temNoite) return ['20:00', '21:00', '22:00', '23:00'];
+    if (temTarde) return ['16:00', '17:00', '18:00', '19:00'];
+    if (temManha) return ['10:00', '11:00', '12:00', '13:00'];
+    return ['18:00', '19:00', '20:00'];
+  }, [turnosPadrao]);
+
+  // Opções dinâmicas de início da pausa conforme turnos ativos
+  const opcoesInicioPausa = useMemo(() => {
+    const temManha = turnosPadrao.includes('manha');
+    const temTarde = turnosPadrao.includes('tarde');
+    const temNoite = turnosPadrao.includes('noite');
+
+    if (temManha && temTarde && temNoite) {
+      return ['11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '16:30', '17:00', '17:30', '18:00'];
+    }
+    if (temManha && temTarde) {
+      return ['11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30'];
+    }
+    if (temTarde && temNoite) {
+      return ['16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'];
+    }
+    if (temManha) {
+      return ['09:00', '09:30', '10:00', '10:30', '11:00'];
+    }
+    if (temTarde) {
+      return ['13:30', '14:00', '14:30', '15:00', '15:30', '16:00'];
+    }
+    if (temNoite) {
+      return ['19:00', '19:30', '20:00', '20:30', '21:00'];
+    }
+    return ['11:30', '12:00', '12:30', '13:00', '13:30', '14:00'];
+  }, [turnosPadrao]);
+
 
   const [disparandoPush, setDisparandoPush] = useState(false);
   const [salvandoRegras, setSalvandoRegras] = useState(false);
@@ -260,6 +359,16 @@ export default function TelaOpcoesAvancadas() {
       dias_janela_agendamento: diasJanela,
       comissao_padrao: comissaoNum,
       regras_fidelidade: fidelidadePayload,
+      horario_funcionamento_padrao: {
+        inicio: horarioInicio,
+        fim: horarioFim,
+        tem_intervalo: temIntervalo,
+        intervalo_inicio: intervaloInicio,
+        intervalo_fim: intervaloFim,
+        intervalo_duracao_min: intervaloDuracaoMin,
+        turnos_padrao: turnosPadrao,
+        dias_padrao: diasPadrao,
+      },
       mimo_ativo: {
         ativo: mimoAtivo,
         tipo: mimoTipo,
@@ -511,7 +620,173 @@ export default function TelaOpcoesAvancadas() {
               )}
             </View>
 
-            {/* 3. Comissão Padrão da Equipe */}
+            {/* 3. Horários de Funcionamento & Pausas Avançadas */}
+            <View style={styles.blocoRegra}>
+              <Text style={styles.blocoRegraTitulo}>Horários de Funcionamento & Intervalos</Text>
+              <Text style={styles.blocoRegraDesc}>Configure o expediente padrão e intervalos prolongados da barbearia.</Text>
+
+              {/* Turnos Padrão */}
+              <Text style={[styles.campoLabel, { marginTop: 8 }]}>Turnos de Atendimento:</Text>
+              <View style={styles.janelaDiasRow}>
+                {[
+                  { id: 'manha', label: '☀️ Manhã' },
+                  { id: 'tarde', label: '🌤️ Tarde' },
+                  { id: 'noite', label: '🌙 Noite' },
+                ].map((t) => {
+                  const ativo = turnosPadrao.includes(t.id as any);
+                  return (
+                    <TouchableOpacity
+                      key={t.id}
+                      style={[styles.chipTurno, ativo && styles.chipTurnoAtivo]}
+                      onPress={() => handleToggleTurnoPadrao(t.id as any)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.chipTurnoTexto, ativo && styles.chipTurnoTextoAtivo]}>
+                        {t.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Início e Fechamento Dinâmicos */}
+              <View style={{ marginTop: 8, gap: 8 }}>
+                <View>
+                  <Text style={styles.campoLabel}>Início do Expediente:</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                    {opcoesHorarioInicio.map((h) => (
+                      <TouchableOpacity
+                        key={h}
+                        style={[styles.chipHora, horarioInicio === h && styles.chipHoraAtivo]}
+                        onPress={() => setHorarioInicio(h)}
+                      >
+                        <Text style={[styles.chipHoraTexto, horarioInicio === h && styles.chipHoraTextoAtivo]}>{h}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+
+                <View>
+                  <Text style={styles.campoLabel}>Fechamento do Expediente:</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                    {opcoesHorarioFim.map((h) => (
+                      <TouchableOpacity
+                        key={h}
+                        style={[styles.chipHora, horarioFim === h && styles.chipHoraAtivo]}
+                        onPress={() => setHorarioFim(h)}
+                      >
+                        <Text style={[styles.chipHoraTexto, horarioFim === h && styles.chipHoraTextoAtivo]}>{h}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </View>
+
+              {/* Intervalo / Pausa Avançada */}
+              <View style={[styles.fidelidadeHeader, { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.borda }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.blocoRegraTitulo, { fontSize: 13 }]}>Pausa / Intervalo de Atendimento</Text>
+                  <Text style={styles.blocoRegraDesc}>Bloqueia automaticamente o horário de almoço ou descanso na agenda.</Text>
+                </View>
+                <Switch
+                  value={temIntervalo}
+                  onValueChange={setTemIntervalo}
+                  trackColor={{ false: theme.borda, true: theme.ouro }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+
+              {temIntervalo && (
+                <View style={{ marginTop: 8, gap: 10 }}>
+                  {/* 1. Início da Pausa */}
+                  <View>
+                    <Text style={styles.campoLabel}>Início do Intervalo:</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                      {opcoesInicioPausa.map((h) => {
+                        const ativo = intervaloInicio === h;
+                        return (
+                          <TouchableOpacity
+                            key={h}
+                            style={[styles.chipHora, ativo && styles.chipHoraAtivo]}
+                            onPress={() => {
+                              setIntervaloInicio(h);
+                              setIntervaloFim(somarMinutosHora(h, intervaloDuracaoMin));
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={[styles.chipHoraTexto, ativo && styles.chipHoraTextoAtivo]}>{h}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+
+                  {/* 2. Duração da Pausa (Suporte a intervalos prolongados) */}
+                  <View>
+                    <Text style={styles.campoLabel}>Duração do Intervalo / Descanso:</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                      {OPCOES_DURACAO_PAUSA.map((d) => {
+                        const ativo = intervaloDuracaoMin === d.min;
+                        return (
+                          <TouchableOpacity
+                            key={d.min}
+                            style={[styles.chipHora, ativo && styles.chipHoraAtivo]}
+                            onPress={() => {
+                              setIntervaloDuracaoMin(d.min);
+                              setIntervaloFim(somarMinutosHora(intervaloInicio, d.min));
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={[styles.chipHoraTexto, ativo && styles.chipHoraTextoAtivo]}>{d.label}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+
+                  {/* 3. Card Resumo do Bloqueio de Pausa */}
+                  <View style={[styles.resumoPausaCard, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
+                    <Clock size={16} color={theme.ouroTexto} />
+                    <Text style={[styles.resumoPausaTexto, { color: theme.ouroTexto }]}>
+                      Bloqueio ativo: <Text style={{ fontFamily: FontFamily.bold }}>das {intervaloInicio} às {intervaloFim}</Text> ({OPCOES_DURACAO_PAUSA.find((d) => d.min === intervaloDuracaoMin)?.label || `${intervaloDuracaoMin} min`} sem agendamentos).
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Dias de Funcionamento Padrão */}
+              <View style={{ marginTop: 10 }}>
+                <Text style={styles.campoLabel}>Dias Padrão de Funcionamento:</Text>
+                <View style={styles.diasPadraoLinha}>
+                  {[
+                    { id: 'seg_sex', label: 'Seg - Sex' },
+                    { id: 'seg_sab', label: 'Seg - Sáb' },
+                    { id: 'ter_dom', label: 'Ter - Dom' },
+                    { id: 'todos', label: 'Todos (7D)' },
+                  ].map((d) => {
+                    const ativo = diasPadrao === d.id;
+                    return (
+                      <TouchableOpacity
+                        key={d.id}
+                        style={[styles.chipDiaPadrao, ativo && styles.chipDiaPadraoAtivo]}
+                        onPress={() => setDiasPadrao(d.id as any)}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[styles.chipDiaPadraoTexto, ativo && styles.chipDiaPadraoTextoAtivo]}
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                        >
+                          {d.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            </View>
+
+            {/* 4. Comissão Padrão da Equipe */}
             <View style={styles.blocoRegra}>
               <Text style={styles.blocoRegraTitulo}>Comissão Padrão da Equipe (%)</Text>
               <Text style={styles.blocoRegraDesc}>Percentual padrão pago aos barbeiros nos relatórios de fechamento de caixa.</Text>
