@@ -81,12 +81,7 @@ export default function TelaOpcoesAvancadas() {
   const [intervaloDescanso, setIntervaloDescanso] = useState<number>(
     barbearia?.intervalo_descanso_min || 0
   );
-  const [diasJanela, setDiasJanela] = useState<number>(
-    barbearia?.dias_janela_agendamento || 14
-  );
-  const [comissaoPadrao, setComissaoPadrao] = useState<string>(
-    barbearia?.comissao_padrao !== undefined ? String(barbearia.comissao_padrao) : '50'
-  );
+  const [diasJanela, setDiasJanela] = useState<number>(barbearia?.dias_janela_agendamento || 14);
 
   // Fidelidade
   const [fidelidadeAtiva, setFidelidadeAtiva] = useState<boolean>(
@@ -783,23 +778,6 @@ const OPCOES_DURACAO_PAUSA = [
                     );
                   })}
                 </View>
-              </View>
-            </View>
-
-            {/* 4. Comissão Padrão da Equipe */}
-            <View style={styles.blocoRegra}>
-              <Text style={styles.blocoRegraTitulo}>Comissão Padrão da Equipe (%)</Text>
-              <Text style={styles.blocoRegraDesc}>Percentual padrão pago aos barbeiros nos relatórios de fechamento de caixa.</Text>
-              <View style={styles.inputComissaoWrapper}>
-                <TextInput
-                  style={styles.inputComissao}
-                  value={comissaoPadrao}
-                  onChangeText={setComissaoPadrao}
-                  keyboardType="numeric"
-                  placeholder="50"
-                  placeholderTextColor={Colors.textoDesabilitado}
-                />
-                <Text style={styles.inputComissaoSufixo}>% de comissão</Text>
               </View>
             </View>
 

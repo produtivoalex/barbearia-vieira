@@ -62,18 +62,37 @@ export default function TelaHome() {
   const [fotoModal, setFotoModal] = useState<string | null>(null);
 
   const localizacaoCabecalho = useMemo(() => {
-    if (!barbearia) return 'São José do Divino, PI, Rua Jeova Monte, 120, Brancas';
+    if (!barbearia) {
+      return {
+        cidade: 'São José do Divino, PI',
+        ruaBairro: 'R. Jeova Monte, 120, Brancas',
+      };
+    }
     const isVieira = barbearia.slug === 'barbearia-vieira' || barbearia.id === '7917fb7a-e118-4928-b16b-94e4f26f8591';
     if (isVieira) {
-      return 'São José do Divino, PI, Rua Jeova Monte, 120, Brancas';
+      return {
+        cidade: 'São José do Divino, PI',
+        ruaBairro: 'R. Jeova Monte, 120, Brancas',
+      };
     }
-    const cidadeEstado = barbearia.cidade ? `${barbearia.cidade}, PI` : 'São José do Divino, PI';
-    const partes = [
-      cidadeEstado,
-      barbearia.endereco,
-      barbearia.bairro,
-    ].filter(Boolean);
-    return partes.join(', ');
+    const cidadeEstado = barbearia.cidade
+      ? (barbearia.cidade.includes(',') ? barbearia.cidade : `${barbearia.cidade}, PI`)
+      : 'São José do Divino, PI';
+
+    let enderecoAbreviado = (barbearia.endereco || '')
+      .replace(/^rua[:\s]+/i, 'R. ')
+      .replace(/^avenida[:\s]+/i, 'Av. ')
+      .replace(/\brua\b/gi, 'R.')
+      .replace(/\bavenida\b/gi, 'Av.')
+      .trim();
+
+    const partesLinha2 = [enderecoAbreviado, barbearia.bairro].filter(Boolean);
+    const ruaBairro = partesLinha2.join(', ') || 'Centro';
+
+    return {
+      cidade: cidadeEstado,
+      ruaBairro,
+    };
   }, [barbearia]);
 
   // Primeiro nome para a saudação
@@ -135,7 +154,7 @@ export default function TelaHome() {
               </Text>
             </View>
             <Text style={[styles.localHeader, { color: theme.ouroTexto }]} numberOfLines={2}>
-              {localizacaoCabecalho}
+              {localizacaoCabecalho.cidade}{'\n'}{localizacaoCabecalho.ruaBairro}
             </Text>
           </View>
         </TouchableOpacity>

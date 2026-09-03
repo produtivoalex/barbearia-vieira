@@ -57,6 +57,7 @@ import {
   identificarTipoServico,
   type TipoServicoId,
 } from '@/components/IlustracaoServico';
+import { sugerirDescricaoPorNome, type SugestaoServico } from '@/lib/descricoesServicos';
 import { uploadImagemTenant, removerMidiaStorage } from '@/lib/storage';
 import { Colors, FontFamily, FontSize, Spacing, Radii, Shadows, type ThemePalette } from '@/theme';
 import { usePerfil } from '@/hooks/usePerfil';
@@ -104,6 +105,8 @@ export default function TelaBarbeiroMais() {
 
   // Estados de Criação / Edição Completa de Serviço
   const [modalEditorServico, setModalEditorServico] = useState(false);
+  const [modalSeletorImagem, setModalSeletorImagem] = useState(false);
+  const [sugestaoDescricaoAtiva, setSugestaoDescricaoAtiva] = useState<SugestaoServico | null>(null);
   const [servicoEmEdicao, setServicoEmEdicao] = useState<Servico | null>(null);
   const [nomeForm, setNomeForm] = useState('');
   const [precoForm, setPrecoForm] = useState('');
@@ -150,6 +153,30 @@ export default function TelaBarbeiroMais() {
     return `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}/${hoje.getFullYear()}`;
   }
 
+  function handleNomeChange(novoNome: string) {
+    setNomeForm(novoNome);
+    const sugestao = sugerirDescricaoPorNome(novoNome);
+    if (sugestao) {
+      setSugestaoDescricaoAtiva(sugestao);
+      if (!descricaoForm.trim()) {
+        setDescricaoForm(sugestao.descricao);
+      }
+      if (!servicoEmEdicao) {
+        if (!imagemUrlForm && sugestao.tipoId) {
+          setIconeForm(sugestao.tipoId as TipoServicoId);
+        }
+        if (sugestao.categoria) {
+          setCategoriaForm(sugestao.categoria as CategoriaServico);
+        }
+        if (sugestao.duracaoPadrao && (!duracaoForm || duracaoForm === '30')) {
+          setDuracaoForm(String(sugestao.duracaoPadrao));
+        }
+      }
+    } else {
+      setSugestaoDescricaoAtiva(null);
+    }
+  }
+
   function abrirNovoServico() {
     setServicoEmEdicao(null);
     setNomeForm('');
@@ -160,6 +187,8 @@ export default function TelaBarbeiroMais() {
     setIconeForm('corte_degrade');
     setImagemUrlForm(null);
     setCorMolduraForm(barbearia?.tema?.frameColor || barbearia?.tema?.primary || '#CBA14A');
+    setSugestaoDescricaoAtiva(null);
+    setMostrarBiblioteca(false);
     setModalEditorServico(true);
   }
 
@@ -173,8 +202,12 @@ export default function TelaBarbeiroMais() {
     setIconeForm((s.icone as TipoServicoId) || null);
     setImagemUrlForm(s.imagem_url || null);
     setCorMolduraForm(s.cor_moldura || barbearia?.tema?.frameColor || barbearia?.tema?.primary || '#CBA14A');
+    const sug = sugerirDescricaoPorNome(s.nome);
+    setSugestaoDescricaoAtiva(sug);
+    setMostrarBiblioteca(false);
     setModalEditorServico(true);
   }
+
 
   async function escolherFotoCustomizadaServico() {
     if (!barbearia) return;
@@ -761,15 +794,27 @@ export default function TelaBarbeiroMais() {
             >
               {servicos.map((s) => (
                 <View key={s.id} style={[styles.servicoItem, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
-                  <IlustracaoServico
-                    id={s.id}
-                    nome={s.nome}
-                    categoria={s.categoria}
-                    imagemUrl={s.imagem_url}
-                    tipoPredefinido={s.icone as any}
-                    corMoldura={s.cor_moldura || barbearia?.tema?.frameColor || barbearia?.tema?.primary || theme.ouro}
-                    tamanho={48}
-                  />
+                  <TouchableOpacity
+                    onPress={() => {
+                      abrirEditarServicoCompleto(s);
+                      setModalSeletorImagem(true);
+                    }}
+                    activeOpacity={0.7}
+                    style={styles.servicoFotoToque}
+                  >
+                    <IlustracaoServico
+                      id={s.id}
+                      nome={s.nome}
+                      categoria={s.categoria}
+                      imagemUrl={s.imagem_url}
+                      tipoPredefinido={s.icone as any}
+                      corMoldura={s.cor_moldura || barbearia?.tema?.frameColor || barbearia?.tema?.primary || theme.ouro}
+                      tamanho={48}
+                    />
+                    <View style={[styles.badgeIconeTrocarFoto, { backgroundColor: theme.ouro }]}>
+                      <Camera size={9} color="#09090B" />
+                    </View>
+                  </TouchableOpacity>
 
                   <View style={styles.servicoInfo}>
                     <Text style={[styles.servicoNome, { color: theme.textoPrimario }]}>{s.nome}</Text>
@@ -850,37 +895,50 @@ export default function TelaBarbeiroMais() {
               keyboardDismissMode="interactive"
               automaticallyAdjustKeyboardInsets={true}
             >
-              {/* ── Prévia da Ilustração atual ── */}
-              <View style={styles.editorPreviewRow}>
-                <IlustracaoServico
-                  nome={nomeForm}
-                  categoria={categoriaForm}
-                  imagemUrl={imagemUrlForm}
-                  tipoPredefinido={iconeForm}
-                  corMoldura={corMolduraForm || theme.ouro}
-                  tamanho={64}
-                />
+              {/* ── Seletor Interativo de Imagem / Ilustração ── */}
+              <View style={[styles.cardSeletorImagemServico, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                <TouchableOpacity
+                  style={styles.previewImagemServicoContainer}
+                  onPress={() => setModalSeletorImagem(true)}
+                  activeOpacity={0.8}
+                >
+                  <IlustracaoServico
+                    id={servicoEmEdicao?.id}
+                    nome={nomeForm || 'Serviço'}
+                    categoria={categoriaForm}
+                    imagemUrl={imagemUrlForm}
+                    tipoPredefinido={iconeForm as any}
+                    corMoldura={corMolduraForm || barbearia?.tema?.frameColor || barbearia?.tema?.primary || theme.ouro}
+                    tamanho={60}
+                  />
+                  <View style={[styles.badgeTrocarFotoFlutuante, { backgroundColor: theme.ouro }]}>
+                    <Camera size={11} color="#09090B" />
+                  </View>
+                </TouchableOpacity>
+
                 <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={[styles.editorPreviewLabel, { color: theme.textoSecundario }]}>ILUSTRAÇÃO ATUAL</Text>
-                  <Text style={[styles.editorPreviewNome, { color: theme.textoPrimario }]}>
-                    {iconeForm
-                      ? (BIBLIOTECA_SERVICOS.find((b) => b.id === iconeForm)?.label ?? iconeForm)
-                      : imagemUrlForm ? 'Foto personalizada' : 'Automático'}
+                  <Text style={[styles.tituloSeletorImagem, { color: theme.textoPrimario }]}>
+                    {imagemUrlForm ? 'Foto do Dispositivo' : 'Ilustração do Catálogo'}
+                  </Text>
+                  <Text style={[styles.subSeletorImagem, { color: theme.textoSecundario }]}>
+                    {imagemUrlForm
+                      ? 'Imagem personalizada da galeria'
+                      : `Ícone: ${BIBLIOTECA_SERVICOS.find((b) => b.id === iconeForm)?.label || 'Padrão'}`}
                   </Text>
                   <TouchableOpacity
-                    style={[styles.btnTrocarIlustracao, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}
-                    onPress={() => setMostrarBiblioteca((v) => !v)}
+                    style={[styles.btnEscolherImagem, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}
+                    onPress={() => setModalSeletorImagem(true)}
                     activeOpacity={0.7}
                   >
-                    <Palette size={12} color={theme.ouroTexto} />
-                    <Text style={[styles.btnTrocarIlustracaoTexto, { color: theme.ouroTexto }]}>
-                      {mostrarBiblioteca ? 'Fechar biblioteca' : 'Trocar ilustração'}
+                    <Camera size={12} color={theme.ouroTexto} />
+                    <Text style={[styles.btnEscolherImagemTexto, { color: theme.ouroTexto }]}>
+                      {imagemUrlForm ? 'Trocar Foto / Ícone' : 'Escolher Foto da Galeria'}
                     </Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
-              {/* ── Sugestão automática em tempo real ── */}
+              {/* ── Sugestão automática de ilustração em tempo real ── */}
               {tipoSugerido && labelSugerida && (
                 <TouchableOpacity
                   style={[styles.chipSugestao, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}
@@ -896,7 +954,7 @@ export default function TelaBarbeiroMais() {
                     tamanho={36}
                   />
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.chipSugestaoLabel, { color: theme.textoSecundario }]}>✨ SUGESTÃO AUTOMÁTICA</Text>
+                    <Text style={[styles.chipSugestaoLabel, { color: theme.textoSecundario }]}>✨ SUGESTÃO AUTOMÁTICA DE ILUSTRAÇÃO</Text>
                     <Text style={[styles.chipSugestaoNome, { color: theme.ouroTexto }]}>{labelSugerida}</Text>
                   </View>
                   <View style={[styles.chipSugestaoBotao, { backgroundColor: theme.ouro }]}>
@@ -905,7 +963,7 @@ export default function TelaBarbeiroMais() {
                 </TouchableOpacity>
               )}
 
-              {/* ── Biblioteca de ilustrações ── */}
+              {/* ── Biblioteca rápida de ilustrações ── */}
               {mostrarBiblioteca && (
                 <View style={[styles.bibliotecaContainer, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
                   <Text style={[styles.bibliotecaTitulo, { color: theme.textoSecundario }]}>BIBLIOTECA DE ILUSTRAÇÕES</Text>
@@ -949,12 +1007,12 @@ export default function TelaBarbeiroMais() {
                 </View>
               )}
 
-              <Text style={[styles.labelCampo, { color: theme.textoSecundario }]}>NOME DO SERVIÇO</Text>
+              <Text style={[styles.labelCampo, { color: theme.textoSecundario, marginTop: 10 }]}>NOME DO SERVIÇO</Text>
               <TextInput
                 style={[styles.inputModal, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
                 value={nomeForm}
-                onChangeText={setNomeForm}
-                placeholder="Ex: Corte Degradê, Barboterapia"
+                onChangeText={handleNomeChange}
+                placeholder="Ex: Corte Degradê, Barboterapia, Nevou"
                 placeholderTextColor={theme.textoDesabilitado}
                 returnKeyType="next"
               />
@@ -987,7 +1045,44 @@ export default function TelaBarbeiroMais() {
                 </View>
               </View>
 
-              <Text style={[styles.labelCampo, { color: theme.textoSecundario }]}>DESCRIÇÃO (OPCIONAL)</Text>
+              {/* Cabeçalho da Descrição com Sugestão Inteligente */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                <Text style={[styles.labelCampo, { color: theme.textoSecundario, marginTop: 0 }]}>DESCRIÇÃO</Text>
+                {sugestaoDescricaoAtiva && (
+                  <TouchableOpacity
+                    onPress={() => setDescricaoForm(sugestaoDescricaoAtiva.descricao)}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                  >
+                    <Sparkles size={12} color={theme.ouroTexto} />
+                    <Text style={{ fontFamily: FontFamily.bold, fontSize: 11, color: theme.ouroTexto }}>
+                      Usar sugestão
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Box de Sugestão Pronta (Banco de Descrições) */}
+              {sugestaoDescricaoAtiva && descricaoForm !== sugestaoDescricaoAtiva.descricao && (
+                <TouchableOpacity
+                  style={[styles.boxSugestaoPronta, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}
+                  onPress={() => setDescricaoForm(sugestaoDescricaoAtiva.descricao)}
+                  activeOpacity={0.7}
+                >
+                  <Sparkles size={14} color={theme.ouroTexto} style={{ marginTop: 2 }} />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={[styles.boxSugestaoTitulo, { color: theme.ouroTexto }]}>
+                      Sugestão pronta para "{sugestaoDescricaoAtiva.nomeSugerido}":
+                    </Text>
+                    <Text style={[styles.boxSugestaoTexto, { color: theme.textoPrimario }]}>
+                      "{sugestaoDescricaoAtiva.descricao}"
+                    </Text>
+                    <Text style={[styles.boxSugestaoAcao, { color: theme.ouroTexto }]}>
+                      Toque para preencher automaticamente ✨
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+
               <TextInput
                 style={[styles.inputModal, styles.inputDescricao, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
                 value={descricaoForm}
@@ -1018,6 +1113,141 @@ export default function TelaBarbeiroMais() {
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ─── Modal de Escolha de Imagem / Ilustração de Serviço ─── */}
+      <Modal
+        visible={modalSeletorImagem}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalSeletorImagem(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setModalSeletorImagem(false)} />
+          <View style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda, maxHeight: '85%' }]}>
+            <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
+
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.modalTitulo, { color: theme.textoPrimario }]}>
+                  Foto & Ilustração do Serviço
+                </Text>
+                <Text style={[styles.modalSubtitulo, { color: theme.textoSecundario }]}>
+                  Escolha uma foto da galeria ou um ícone da biblioteca pronta.
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setModalSeletorImagem(false)}>
+                <X size={20} color={theme.textoSecundario} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.xl, gap: Spacing.md }}>
+              {/* OPÇÃO 1: FOTO DO DISPOSITIVO */}
+              <View style={[styles.blocoOpcaoImagem, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={[styles.circuloIconeOpcao, { backgroundColor: theme.ouroTranslucido }]}>
+                    <Camera size={20} color={theme.ouroTexto} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.tituloOpcaoImagem, { color: theme.textoPrimario }]}>
+                      Galeria do Dispositivo
+                    </Text>
+                    <Text style={[styles.descOpcaoImagem, { color: theme.textoSecundario }]}>
+                      Envie uma foto real do corte ou procedimento feita na sua barbearia.
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.btnCarregarFotoGaleria, { backgroundColor: theme.ouro }]}
+                  onPress={escolherFotoCustomizadaServico}
+                  disabled={enviandoFotoServico}
+                  activeOpacity={0.8}
+                >
+                  {enviandoFotoServico ? (
+                    <ActivityIndicator size="small" color="#09090B" />
+                  ) : (
+                    <>
+                      <Plus size={16} color="#09090B" />
+                      <Text style={styles.btnCarregarFotoGaleriaTexto}>
+                        {imagemUrlForm ? 'Trocar Foto da Galeria' : 'Escolher Foto da Galeria'}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                {imagemUrlForm && (
+                  <TouchableOpacity
+                    style={styles.btnRemoverFotoCustomizada}
+                    onPress={() => {
+                      setImagemUrlForm(null);
+                      setIconeForm('corte_degrade');
+                    }}
+                  >
+                    <Trash2 size={13} color={theme.erro} />
+                    <Text style={[styles.btnRemoverFotoCustomizadaTexto, { color: theme.erro }]}>
+                      Remover foto personalizada e usar ilustrações
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* OPÇÃO 2: BIBLIOTECA DE ILUSTRAÇÕES DE LUXO */}
+              <View>
+                <Text style={[styles.secaoTituloBiblioteca, { color: theme.textoPrimario }]}>
+                  Biblioteca Pronta para Todos os Barbeiros
+                </Text>
+                <Text style={[styles.secaoSubBiblioteca, { color: theme.textoSecundario }]}>
+                  Ilustrações profissionais para todos os tipos de atendimento:
+                </Text>
+
+                <View style={styles.gridIlustracoesBiblioteca}>
+                  {BIBLIOTECA_SERVICOS.map((b) => {
+                    const selecionado = !imagemUrlForm && iconeForm === b.id;
+                    return (
+                      <TouchableOpacity
+                        key={b.id}
+                        style={[
+                          styles.cardItemBiblioteca,
+                          { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                          selecionado && [styles.cardItemBibliotecaAtivo, { borderColor: theme.ouro, backgroundColor: theme.ouroTranslucido }],
+                        ]}
+                        onPress={() => {
+                          setImagemUrlForm(null);
+                          setIconeForm(b.id);
+                          setModalSeletorImagem(false);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <IlustracaoServico
+                          tipoPredefinido={b.id}
+                          corMoldura={corMolduraForm || barbearia?.tema?.frameColor || barbearia?.tema?.primary || theme.ouro}
+                          tamanho={52}
+                        />
+                        <Text
+                          style={[
+                            styles.nomeItemBiblioteca,
+                            { color: theme.textoPrimario },
+                            selecionado && { color: theme.ouroTexto, fontFamily: FontFamily.bold },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {b.label}
+                        </Text>
+
+                        {selecionado && (
+                          <View style={[styles.badgeCheckBiblioteca, { backgroundColor: theme.ouro }]}>
+                            <Check size={11} color="#09090B" />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
 
       {/* ─── Modal de Reajuste Individual ─── */}
@@ -1914,6 +2144,185 @@ const createStyles = (theme: ThemePalette) =>
     inputDescricao: {
       minHeight: 72,
       paddingTop: 10,
+    },
+    servicoFotoToque: {
+      position: 'relative',
+    },
+    badgeIconeTrocarFoto: {
+      position: 'absolute',
+      bottom: -2,
+      right: -2,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1.5,
+      borderColor: '#09090B',
+    },
+    cardSeletorImagemServico: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: Spacing.md,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      gap: Spacing.md,
+      marginBottom: Spacing.xs,
+    },
+    previewImagemServicoContainer: {
+      position: 'relative',
+    },
+    badgeTrocarFotoFlutuante: {
+      position: 'absolute',
+      bottom: -3,
+      right: -3,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1.5,
+      borderColor: '#09090B',
+    },
+    tituloSeletorImagem: {
+      fontFamily: FontFamily.bold,
+      fontSize: 14,
+    },
+    subSeletorImagem: {
+      fontFamily: FontFamily.regular,
+      fontSize: 11.5,
+    },
+    btnEscolherImagem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 5,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: Radii.sm,
+      borderWidth: 1,
+      marginTop: 2,
+    },
+    btnEscolherImagemTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 11,
+    },
+    boxSugestaoPronta: {
+      flexDirection: 'row',
+      gap: 8,
+      padding: 10,
+      borderRadius: Radii.sm,
+      borderWidth: 1,
+      marginBottom: 6,
+    },
+    boxSugestaoTitulo: {
+      fontFamily: FontFamily.bold,
+      fontSize: 11.5,
+    },
+    boxSugestaoTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: 11.5,
+      lineHeight: 16,
+    },
+    boxSugestaoAcao: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: 10.5,
+      marginTop: 2,
+    },
+    modalSubtitulo: {
+      fontFamily: FontFamily.regular,
+      fontSize: 12,
+      marginTop: 2,
+    },
+    blocoOpcaoImagem: {
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      padding: Spacing.md,
+      gap: Spacing.sm,
+    },
+    circuloIconeOpcao: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    tituloOpcaoImagem: {
+      fontFamily: FontFamily.bold,
+      fontSize: 14,
+    },
+    descOpcaoImagem: {
+      fontFamily: FontFamily.regular,
+      fontSize: 12,
+      marginTop: 1,
+    },
+    btnCarregarFotoGaleria: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 11,
+      borderRadius: Radii.sm,
+      marginTop: 2,
+    },
+    btnCarregarFotoGaleriaTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 13,
+      color: '#09090B',
+    },
+    btnRemoverFotoCustomizada: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 5,
+      paddingVertical: 6,
+    },
+    btnRemoverFotoCustomizadaTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: 11.5,
+    },
+    secaoTituloBiblioteca: {
+      fontFamily: FontFamily.bold,
+      fontSize: 14,
+    },
+    secaoSubBiblioteca: {
+      fontFamily: FontFamily.regular,
+      fontSize: 12,
+      marginBottom: Spacing.sm,
+    },
+    gridIlustracoesBiblioteca: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    cardItemBiblioteca: {
+      width: '31.3%',
+      aspectRatio: 0.95,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 6,
+      gap: 4,
+      position: 'relative',
+    },
+    cardItemBibliotecaAtivo: {
+      borderWidth: 1.5,
+    },
+    nomeItemBiblioteca: {
+      fontFamily: FontFamily.medium,
+      fontSize: 10.5,
+      textAlign: 'center',
+    },
+    badgeCheckBiblioteca: {
+      position: 'absolute',
+      top: 4,
+      right: 4,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     opcaoTemaCard: {
       flexDirection: 'row',
