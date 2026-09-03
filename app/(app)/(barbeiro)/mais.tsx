@@ -868,9 +868,9 @@ export default function TelaBarbeiroMais() {
         animationType="slide"
         onRequestClose={() => setModalEditorServico(false)}
       >
-        <View style={[styles.modalOverlay, Platform.OS === 'ios' && alturaTeclado > 0 && { paddingBottom: alturaTeclado }]}>
+        <View style={styles.modalOverlay}>
           <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setModalEditorServico(false)} />
-          <View style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda, maxHeight: '92%' }]}>
+          <View style={[styles.modalEditorSheet, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
             <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
 
             <View style={styles.modalHeader}>
@@ -884,8 +884,8 @@ export default function TelaBarbeiroMais() {
 
             <ScrollView
               showsVerticalScrollIndicator={false}
-              style={{ flexShrink: 1 }}
-              contentContainerStyle={{ paddingBottom: Spacing.xl, gap: 10 }}
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingBottom: Spacing.giant, gap: 10 }}
               nestedScrollEnabled={true}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
@@ -1718,6 +1718,16 @@ const createStyles = (theme: ThemePalette) =>
       paddingBottom: Spacing.giant,
       borderWidth: 1,
       gap: Spacing.md,
+    },
+    modalEditorSheet: {
+      flex: 1,
+      marginTop: Platform.OS === 'android' ? 36 : 54,
+      borderTopLeftRadius: Radii.xl,
+      borderTopRightRadius: Radii.xl,
+      paddingHorizontal: Spacing.telaH,
+      paddingTop: Spacing.sm,
+      borderWidth: 1,
+      gap: Spacing.xs,
     },
     modalTraco: {
       width: 36,
