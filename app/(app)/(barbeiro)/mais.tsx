@@ -868,13 +868,9 @@ export default function TelaBarbeiroMais() {
         animationType="slide"
         onRequestClose={() => setModalEditorServico(false)}
       >
-        <KeyboardAvoidingView
-          style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-        >
+        <View style={[styles.modalOverlay, alturaTeclado > 0 && { paddingBottom: alturaTeclado }]}>
           <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setModalEditorServico(false)} />
-          <View style={[styles.modalConteudo, styles.modalEditorConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
+          <View style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda, maxHeight: alturaTeclado > 0 ? '75%' : '90%' }]}>
             <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
 
             <View style={styles.modalHeader}>
@@ -887,15 +883,14 @@ export default function TelaBarbeiroMais() {
             </View>
 
             <ScrollView
-              showsVerticalScrollIndicator={false}
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.editorScrollContent}
+              showsVerticalScrollIndicator={true}
+              style={{ maxHeight: 520, flexShrink: 1 }}
+              contentContainerStyle={{ paddingBottom: Spacing.xl }}
               nestedScrollEnabled={true}
               keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              automaticallyAdjustKeyboardInsets={true}
+              keyboardDismissMode="on-drag"
             >
-              {/* ── Seletor Interativo de Imagem / Ilustração ── */}
+              {/* Seletor Interativo de Imagem / Ilustração */}
               <View style={[styles.cardSeletorImagemServico, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
                 <TouchableOpacity
                   style={styles.previewImagemServicoContainer}
@@ -932,80 +927,11 @@ export default function TelaBarbeiroMais() {
                   >
                     <Camera size={12} color={theme.ouroTexto} />
                     <Text style={[styles.btnEscolherImagemTexto, { color: theme.ouroTexto }]}>
-                      {imagemUrlForm ? 'Trocar Foto / Ícone' : 'Escolher Foto da Galeria'}
+                      {imagemUrlForm ? 'Trocar Imagem' : 'Escolher Foto da Galeria'}
                     </Text>
                   </TouchableOpacity>
                 </View>
               </View>
-
-              {/* ── Sugestão automática de ilustração em tempo real ── */}
-              {tipoSugerido && labelSugerida && (
-                <TouchableOpacity
-                  style={[styles.chipSugestao, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}
-                  onPress={() => {
-                    setIconeForm(tipoSugerido);
-                    setImagemUrlForm(null);
-                  }}
-                  activeOpacity={0.75}
-                >
-                  <IlustracaoServico
-                    tipoPredefinido={tipoSugerido}
-                    corMoldura={corMolduraForm || theme.ouro}
-                    tamanho={36}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.chipSugestaoLabel, { color: theme.textoSecundario }]}>✨ SUGESTÃO AUTOMÁTICA DE ILUSTRAÇÃO</Text>
-                    <Text style={[styles.chipSugestaoNome, { color: theme.ouroTexto }]}>{labelSugerida}</Text>
-                  </View>
-                  <View style={[styles.chipSugestaoBotao, { backgroundColor: theme.ouro }]}>
-                    <Text style={styles.chipSugestaoBotaoTexto}>Usar</Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-
-              {/* ── Biblioteca rápida de ilustrações ── */}
-              {mostrarBiblioteca && (
-                <View style={[styles.bibliotecaContainer, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
-                  <Text style={[styles.bibliotecaTitulo, { color: theme.textoSecundario }]}>BIBLIOTECA DE ILUSTRAÇÕES</Text>
-                  <View style={styles.bibliotecaGrid}>
-                    {BIBLIOTECA_SERVICOS.map((item) => (
-                      <TouchableOpacity
-                        key={item.id}
-                        style={[
-                          styles.bibliotecaItem,
-                          { borderColor: iconeForm === item.id ? theme.ouro : theme.borda, backgroundColor: iconeForm === item.id ? theme.ouroTranslucido : theme.superficie },
-                        ]}
-                        onPress={() => {
-                          setIconeForm(item.id);
-                          setImagemUrlForm(null);
-                          setMostrarBiblioteca(false);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <IlustracaoServico
-                          tipoPredefinido={item.id}
-                          corMoldura={iconeForm === item.id ? theme.ouro : theme.borda}
-                          tamanho={44}
-                        />
-                        <Text
-                          style={[
-                            styles.bibliotecaItemLabel,
-                            { color: iconeForm === item.id ? theme.ouroTexto : theme.textoSecundario },
-                          ]}
-                          numberOfLines={2}
-                        >
-                          {item.label}
-                        </Text>
-                        {iconeForm === item.id && (
-                          <View style={[styles.bibliotecaItemCheck, { backgroundColor: theme.ouro }]}>
-                            <Check size={10} color="#09090B" />
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              )}
 
               <Text style={[styles.labelCampo, { color: theme.textoSecundario, marginTop: 10 }]}>NOME DO SERVIÇO</Text>
               <TextInput
@@ -1014,7 +940,6 @@ export default function TelaBarbeiroMais() {
                 onChangeText={handleNomeChange}
                 placeholder="Ex: Corte Degradê, Barboterapia, Nevou"
                 placeholderTextColor={theme.textoDesabilitado}
-                returnKeyType="next"
               />
 
               <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
@@ -1027,7 +952,6 @@ export default function TelaBarbeiroMais() {
                     placeholder="35,00"
                     placeholderTextColor={theme.textoDesabilitado}
                     keyboardType="numeric"
-                    returnKeyType="next"
                   />
                 </View>
 
@@ -1040,7 +964,6 @@ export default function TelaBarbeiroMais() {
                     placeholder="30"
                     placeholderTextColor={theme.textoDesabilitado}
                     keyboardType="numeric"
-                    returnKeyType="next"
                   />
                 </View>
               </View>
@@ -1053,7 +976,7 @@ export default function TelaBarbeiroMais() {
                     onPress={() => setDescricaoForm(sugestaoDescricaoAtiva.descricao)}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
                   >
-                    <Sparkles size={12} color={theme.ouroTexto} />
+                    <Sparkles size={11} color={theme.ouroTexto} />
                     <Text style={{ fontFamily: FontFamily.bold, fontSize: 11, color: theme.ouroTexto }}>
                       Usar sugestão
                     </Text>
@@ -1061,17 +984,16 @@ export default function TelaBarbeiroMais() {
                 )}
               </View>
 
-              {/* Box de Sugestão Pronta (Banco de Descrições) */}
               {sugestaoDescricaoAtiva && descricaoForm !== sugestaoDescricaoAtiva.descricao && (
                 <TouchableOpacity
                   style={[styles.boxSugestaoPronta, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}
                   onPress={() => setDescricaoForm(sugestaoDescricaoAtiva.descricao)}
                   activeOpacity={0.7}
                 >
-                  <Sparkles size={14} color={theme.ouroTexto} style={{ marginTop: 2 }} />
+                  <Sparkles size={13} color={theme.ouroTexto} style={{ marginTop: 2 }} />
                   <View style={{ flex: 1, gap: 2 }}>
                     <Text style={[styles.boxSugestaoTitulo, { color: theme.ouroTexto }]}>
-                      Sugestão pronta para "{sugestaoDescricaoAtiva.nomeSugerido}":
+                      Sugestão para "{sugestaoDescricaoAtiva.nomeSugerido}":
                     </Text>
                     <Text style={[styles.boxSugestaoTexto, { color: theme.textoPrimario }]}>
                       "{sugestaoDescricaoAtiva.descricao}"
@@ -1092,8 +1014,6 @@ export default function TelaBarbeiroMais() {
                 multiline
                 numberOfLines={3}
                 textAlignVertical="top"
-                returnKeyType="done"
-                blurOnSubmit
               />
 
               <TouchableOpacity
@@ -1112,7 +1032,7 @@ export default function TelaBarbeiroMais() {
               </TouchableOpacity>
             </ScrollView>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* ─── Modal de Escolha de Imagem / Ilustração de Serviço ─── */}
@@ -2023,15 +1943,7 @@ const createStyles = (theme: ThemePalette) =>
       color: '#09090B',
     },
 
-    /* ─── MODAL EDITOR DE SERVIÇO (layout sem teclado sobrepondo) ─── */
-    modalEditorConteudo: {
-      maxHeight: '92%',
-      flex: 0,
-    },
-    editorScrollContent: {
-      paddingBottom: Spacing.giant,
-      gap: 2,
-    },
+    /* ─── MODAL EDITOR DE SERVIÇO ─── */
     editorPreviewRow: {
       flexDirection: 'row',
       alignItems: 'center',
