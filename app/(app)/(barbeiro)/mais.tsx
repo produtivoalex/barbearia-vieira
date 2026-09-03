@@ -734,7 +734,7 @@ export default function TelaBarbeiroMais() {
 
       {/* ─── Modal da Tabela de Serviços & Reajustes ─── */}
       <Modal
-        visible={modalAtivo === 'servicos'}
+        visible={modalAtivo === 'servicos' && !modalEditorServico && !modalSeletorImagem && !servicoParaReajuste && !modalLoteAberto}
         transparent
         animationType="fade"
         onRequestClose={() => setModalAtivo(null)}
@@ -863,7 +863,7 @@ export default function TelaBarbeiroMais() {
 
       {/* ─── Modal de Edição Completa de Serviço ─── */}
       <Modal
-        visible={modalEditorServico}
+        visible={modalEditorServico && !modalSeletorImagem}
         transparent
         animationType="slide"
         onRequestClose={() => setModalEditorServico(false)}

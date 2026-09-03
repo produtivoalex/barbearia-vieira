@@ -1201,7 +1201,7 @@ const createStyles = (theme: ThemePalette) => StyleSheet.create({
   },
   modalVideoCard: {
     width: '85%',
-    backgroundColor: '#1C1C22',
+    backgroundColor: theme.superficie,
     borderRadius: Radii.xl,
     borderWidth: 1,
     borderColor: theme.bordaOuro,
@@ -1224,7 +1224,7 @@ const createStyles = (theme: ThemePalette) => StyleSheet.create({
   modalVideoTitulo: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyLg,
-    color: '#FFFFFF',
+    color: theme.textoPrimario,
     textAlign: 'center',
   },
   modalVideoSub: {

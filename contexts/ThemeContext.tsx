@@ -40,6 +40,23 @@ export function gerarPaletaTenant(
   const secondaryText = temaTenant.secondaryText;
   const border = temaTenant.border;
 
+  // Se estiver no Modo Claro, preserva a base clara (fundos, cards e textos pretos/cinzas com alto contraste)
+  // e injeta a marca personalizada da barbearia apenas nos destaques (ouro, bordas, botões)
+  if (!isEscuro) {
+    return {
+      ...base,
+      ouro: primary,
+      ouroClaro: accent,
+      ouroEscuro: primary,
+      ouroVibrante: accent,
+      ouroTexto: primary,
+      ouroTranslucido: hexParaRgba(primary, 0.12),
+      ouroGlow: hexParaRgba(primary, 0.22),
+      bordaOuro: hexParaRgba(primary, 0.32),
+      bordaDestaque: hexParaRgba(primary, 0.25),
+    };
+  }
+
   return {
     ...base,
     // Cores de marca / destaque que adaptam o app todo
@@ -48,11 +65,11 @@ export function gerarPaletaTenant(
     ouroEscuro: primary,
     ouroVibrante: accent,
     ouroTexto: primary,
-    ouroTranslucido: hexParaRgba(primary, isEscuro ? 0.16 : 0.12),
-    ouroGlow: hexParaRgba(primary, isEscuro ? 0.30 : 0.22),
-    bordaOuro: hexParaRgba(primary, isEscuro ? 0.40 : 0.32),
+    ouroTranslucido: hexParaRgba(primary, 0.16),
+    ouroGlow: hexParaRgba(primary, 0.30),
+    bordaOuro: hexParaRgba(primary, 0.40),
 
-    // Cores de superfície & fundo (se customizadas ou adaptadas)
+    // Cores de superfície & fundo no modo escuro
     fundo: background || base.fundo,
     superficie: card || base.superficie,
     superficie2: card ? hexParaRgba(card, 0.85) : base.superficie2,
