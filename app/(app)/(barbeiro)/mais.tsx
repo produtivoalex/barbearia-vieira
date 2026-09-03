@@ -868,9 +868,9 @@ export default function TelaBarbeiroMais() {
         animationType="slide"
         onRequestClose={() => setModalEditorServico(false)}
       >
-        <View style={[styles.modalOverlay, alturaTeclado > 0 && { paddingBottom: alturaTeclado }]}>
+        <View style={[styles.modalOverlay, Platform.OS === 'ios' && alturaTeclado > 0 && { paddingBottom: alturaTeclado }]}>
           <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setModalEditorServico(false)} />
-          <View style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda, maxHeight: alturaTeclado > 0 ? '75%' : '90%' }]}>
+          <View style={[styles.modalConteudo, { backgroundColor: theme.superficie, borderColor: theme.borda, maxHeight: '92%' }]}>
             <View style={[styles.modalTraco, { backgroundColor: theme.textoDesabilitado }]} />
 
             <View style={styles.modalHeader}>
@@ -883,17 +883,17 @@ export default function TelaBarbeiroMais() {
             </View>
 
             <ScrollView
-              showsVerticalScrollIndicator={true}
-              style={{ maxHeight: 520, flexShrink: 1 }}
-              contentContainerStyle={{ paddingBottom: Spacing.xl }}
+              showsVerticalScrollIndicator={false}
+              style={{ flexShrink: 1 }}
+              contentContainerStyle={{ paddingBottom: Spacing.xl, gap: 10 }}
               nestedScrollEnabled={true}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
             >
-              {/* Seletor Interativo de Imagem / Ilustração */}
-              <View style={[styles.cardSeletorImagemServico, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
+              {/* ── Bloco Superior Integrado: Foto do Serviço + Nome ── */}
+              <View style={[styles.blocoTopoServicoIntegrado, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}>
                 <TouchableOpacity
-                  style={styles.previewImagemServicoContainer}
+                  style={styles.avatarServicoEdicao}
                   onPress={() => setModalSeletorImagem(true)}
                   activeOpacity={0.8}
                 >
@@ -904,49 +904,93 @@ export default function TelaBarbeiroMais() {
                     imagemUrl={imagemUrlForm}
                     tipoPredefinido={iconeForm as any}
                     corMoldura={corMolduraForm || barbearia?.tema?.frameColor || barbearia?.tema?.primary || theme.ouro}
-                    tamanho={60}
+                    tamanho={52}
                   />
                   <View style={[styles.badgeTrocarFotoFlutuante, { backgroundColor: theme.ouro }]}>
-                    <Camera size={11} color="#09090B" />
+                    <Camera size={10} color="#09090B" />
                   </View>
                 </TouchableOpacity>
 
-                <View style={{ flex: 1, gap: 4 }}>
-                  <Text style={[styles.tituloSeletorImagem, { color: theme.textoPrimario }]}>
-                    {imagemUrlForm ? 'Foto do Dispositivo' : 'Ilustração do Catálogo'}
-                  </Text>
-                  <Text style={[styles.subSeletorImagem, { color: theme.textoSecundario }]}>
-                    {imagemUrlForm
-                      ? 'Imagem personalizada da galeria'
-                      : `Ícone: ${BIBLIOTECA_SERVICOS.find((b) => b.id === iconeForm)?.label || 'Padrão'}`}
-                  </Text>
-                  <TouchableOpacity
-                    style={[styles.btnEscolherImagem, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}
-                    onPress={() => setModalSeletorImagem(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Camera size={12} color={theme.ouroTexto} />
-                    <Text style={[styles.btnEscolherImagemTexto, { color: theme.ouroTexto }]}>
-                      {imagemUrlForm ? 'Trocar Imagem' : 'Escolher Foto da Galeria'}
-                    </Text>
-                  </TouchableOpacity>
+                <View style={{ flex: 1, gap: 3 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text style={[styles.labelCampoCompacto, { color: theme.textoSecundario }]}>NOME DO SERVIÇO</Text>
+                    <TouchableOpacity onPress={() => setModalSeletorImagem(true)}>
+                      <Text style={[styles.linkTrocarFoto, { color: theme.ouroTexto }]}>
+                        {imagemUrlForm ? 'Trocar foto' : 'Trocar ícone'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TextInput
+                    style={[styles.inputModalCompacto, { backgroundColor: theme.superficie, borderColor: theme.borda, color: theme.textoPrimario }]}
+                    value={nomeForm}
+                    onChangeText={handleNomeChange}
+                    placeholder="Ex: Corte Degradê, Barboterapia"
+                    placeholderTextColor={theme.textoDesabilitado}
+                    returnKeyType="next"
+                  />
                 </View>
               </View>
 
-              <Text style={[styles.labelCampo, { color: theme.textoSecundario, marginTop: 10 }]}>NOME DO SERVIÇO</Text>
-              <TextInput
-                style={[styles.inputModal, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
-                value={nomeForm}
-                onChangeText={handleNomeChange}
-                placeholder="Ex: Corte Degradê, Barboterapia, Nevou"
-                placeholderTextColor={theme.textoDesabilitado}
-              />
+              {/* ── Sugestão Pronta de Descrição (Aparece imediatamente abaixo do Nome) ── */}
+              {sugestaoDescricaoAtiva && (
+                <TouchableOpacity
+                  style={[styles.boxSugestaoProntaCompacto, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}
+                  onPress={() => setDescricaoForm(sugestaoDescricaoAtiva.descricao)}
+                  activeOpacity={0.7}
+                >
+                  <Sparkles size={14} color={theme.ouroTexto} style={{ marginTop: 2 }} />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Text style={[styles.boxSugestaoTitulo, { color: theme.ouroTexto }]}>
+                        Sugestão para "{sugestaoDescricaoAtiva.nomeSugerido}":
+                      </Text>
+                      {descricaoForm !== sugestaoDescricaoAtiva.descricao && (
+                        <Text style={{ fontFamily: FontFamily.bold, fontSize: 10.5, color: theme.ouroTexto }}>
+                          Aplicar ✨
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={[styles.boxSugestaoTexto, { color: theme.textoPrimario }]} numberOfLines={2}>
+                      "{sugestaoDescricaoAtiva.descricao}"
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
 
+              {/* ── Campo Descrição ── */}
+              <View style={{ gap: 3 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={[styles.labelCampoCompacto, { color: theme.textoSecundario }]}>DESCRIÇÃO</Text>
+                  {sugestaoDescricaoAtiva && descricaoForm !== sugestaoDescricaoAtiva.descricao && (
+                    <TouchableOpacity
+                      onPress={() => setDescricaoForm(sugestaoDescricaoAtiva.descricao)}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
+                    >
+                      <Sparkles size={10} color={theme.ouroTexto} />
+                      <Text style={{ fontFamily: FontFamily.bold, fontSize: 10.5, color: theme.ouroTexto }}>
+                        Usar sugestão
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <TextInput
+                  style={[styles.inputModalDescricaoCompacta, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
+                  value={descricaoForm}
+                  onChangeText={setDescricaoForm}
+                  placeholder="Detalhes ou diferenciais do serviço..."
+                  placeholderTextColor={theme.textoDesabilitado}
+                  multiline
+                  numberOfLines={2}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              {/* ── Preço e Duração lado a lado ── */}
               <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.labelCampo, { color: theme.textoSecundario }]}>PREÇO (R$)</Text>
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Text style={[styles.labelCampoCompacto, { color: theme.textoSecundario }]}>PREÇO (R$)</Text>
                   <TextInput
-                    style={[styles.inputModal, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
+                    style={[styles.inputModalCompacto, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
                     value={precoForm}
                     onChangeText={setPrecoForm}
                     placeholder="35,00"
@@ -955,10 +999,10 @@ export default function TelaBarbeiroMais() {
                   />
                 </View>
 
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.labelCampo, { color: theme.textoSecundario }]}>DURAÇÃO (MIN)</Text>
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Text style={[styles.labelCampoCompacto, { color: theme.textoSecundario }]}>DURAÇÃO (MIN)</Text>
                   <TextInput
-                    style={[styles.inputModal, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
+                    style={[styles.inputModalCompacto, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
                     value={duracaoForm}
                     onChangeText={setDuracaoForm}
                     placeholder="30"
@@ -968,56 +1012,8 @@ export default function TelaBarbeiroMais() {
                 </View>
               </View>
 
-              {/* Cabeçalho da Descrição com Sugestão Inteligente */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                <Text style={[styles.labelCampo, { color: theme.textoSecundario, marginTop: 0 }]}>DESCRIÇÃO</Text>
-                {sugestaoDescricaoAtiva && (
-                  <TouchableOpacity
-                    onPress={() => setDescricaoForm(sugestaoDescricaoAtiva.descricao)}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-                  >
-                    <Sparkles size={11} color={theme.ouroTexto} />
-                    <Text style={{ fontFamily: FontFamily.bold, fontSize: 11, color: theme.ouroTexto }}>
-                      Usar sugestão
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {sugestaoDescricaoAtiva && descricaoForm !== sugestaoDescricaoAtiva.descricao && (
-                <TouchableOpacity
-                  style={[styles.boxSugestaoPronta, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}
-                  onPress={() => setDescricaoForm(sugestaoDescricaoAtiva.descricao)}
-                  activeOpacity={0.7}
-                >
-                  <Sparkles size={13} color={theme.ouroTexto} style={{ marginTop: 2 }} />
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={[styles.boxSugestaoTitulo, { color: theme.ouroTexto }]}>
-                      Sugestão para "{sugestaoDescricaoAtiva.nomeSugerido}":
-                    </Text>
-                    <Text style={[styles.boxSugestaoTexto, { color: theme.textoPrimario }]}>
-                      "{sugestaoDescricaoAtiva.descricao}"
-                    </Text>
-                    <Text style={[styles.boxSugestaoAcao, { color: theme.ouroTexto }]}>
-                      Toque para preencher automaticamente ✨
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-
-              <TextInput
-                style={[styles.inputModal, styles.inputDescricao, { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario }]}
-                value={descricaoForm}
-                onChangeText={setDescricaoForm}
-                placeholder="Detalhes ou diferenciais do serviço..."
-                placeholderTextColor={theme.textoDesabilitado}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-              />
-
               <TouchableOpacity
-                style={[styles.botaoConfirmarModal, { backgroundColor: theme.ouro, marginTop: Spacing.md }]}
+                style={[styles.botaoConfirmarModal, { backgroundColor: theme.ouro, marginTop: 4 }]}
                 onPress={handleSalvarServicoCompleto}
                 disabled={salvandoServico}
                 activeOpacity={0.8}
@@ -2056,6 +2052,50 @@ const createStyles = (theme: ThemePalette) =>
     inputDescricao: {
       minHeight: 72,
       paddingTop: 10,
+    },
+    blocoTopoServicoIntegrado: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 10,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+      gap: 12,
+    },
+    avatarServicoEdicao: {
+      position: 'relative',
+    },
+    labelCampoCompacto: {
+      fontFamily: FontFamily.bold,
+      fontSize: 10,
+      letterSpacing: 0.5,
+    },
+    linkTrocarFoto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: 11,
+    },
+    inputModalCompacto: {
+      borderWidth: 1,
+      borderRadius: Radii.sm,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+      fontSize: FontSize.bodySm,
+      fontFamily: FontFamily.medium,
+    },
+    boxSugestaoProntaCompacto: {
+      flexDirection: 'row',
+      gap: 8,
+      padding: 9,
+      borderRadius: Radii.sm,
+      borderWidth: 1,
+    },
+    inputModalDescricaoCompacta: {
+      borderWidth: 1,
+      borderRadius: Radii.sm,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      fontSize: FontSize.bodySm,
+      fontFamily: FontFamily.regular,
+      minHeight: 52,
     },
     servicoFotoToque: {
       position: 'relative',
