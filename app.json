@@ -23,7 +23,7 @@
         "backgroundColor": "#0E0E0E"
       },
       "package": "com.barbearia.vieira",
-      "versionCode": 2
+      "versionCode": 3
     },
     "web": {
       "bundler": "metro",
