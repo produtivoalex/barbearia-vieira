@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 14.0.0"
+    "version": ">= 14.0.0",
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
@@ -31,7 +32,8 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://fnvenkcpucpuucovunzf.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZudmVua2NwdWNwdXVjb3Z1bnpmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5OTMwMTgsImV4cCI6MjEwMjU2OTAxOH0.Oh24sXRZu5yV8KXe9tFHfGlSpmSpaffWBx_dDHMXVVA",
-        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "298975067668-43aslvk8h34vgl147onvfmbl6vql20kr.apps.googleusercontent.com"
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "298975067668-43aslvk8h34vgl147onvfmbl6vql20kr.apps.googleusercontent.com",
+        "GRADLE_OPTS": "-Dorg.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=512m"
       }
     }
   },
