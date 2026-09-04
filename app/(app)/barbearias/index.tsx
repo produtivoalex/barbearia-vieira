@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -63,7 +63,7 @@ export default function ListaBarbearias() {
   const [excluindoId, setExcluindoId] = useState<string | null>(null);
   const { perfil } = usePerfil();
   const { barbearia: barbeariaAtiva, selecionarBarbearia } = useBarbearia();
-  const { coordenadas, permissaoConcedida } = useLocalizacao(true);
+  const { coordenadas, permissaoConcedida, obterLocalizacao } = useLocalizacao(true);
 
   const modoPainel = modo === 'painel';
   const somenteVinculos = modoPainel || perfil?.role === 'barbeiro';
@@ -73,6 +73,13 @@ export default function ListaBarbearias() {
     longitude: coordenadas?.longitude,
     somenteVinculos,
   });
+
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([
+      recarregar(),
+      obterLocalizacao(true),
+    ]);
+  }, [recarregar, obterLocalizacao]);
 
   // Lista única de cidades para filtros rápidos
   const cidadesDisponiveis = useMemo(() => {
@@ -160,9 +167,13 @@ export default function ListaBarbearias() {
       .replace(/\bavenida\b/gi, 'Av.')
       .trim();
 
+    const cidadeFormatada = item.cidade
+      ? (item.cidade.includes(',') || item.cidade.includes('-') ? item.cidade : item.cidade)
+      : '';
+
     const localizacao = isVieira
       ? 'São José do Divino, PI, R. Jeova Monte, 120, Brancas'
-      : [item.cidade ? `${item.cidade}, PI` : '', enderecoAbreviado, item.bairro].filter(Boolean).join(', ') || 'Localização a confirmar';
+      : [cidadeFormatada, enderecoAbreviado, item.bairro].filter(Boolean).join(', ') || 'Localização a confirmar';
 
     const descricaoExibida = isTeste
       ? 'Teste'
@@ -172,11 +183,25 @@ export default function ListaBarbearias() {
 
     const corDestaque = item.tema?.primary || theme.ouro;
 
+    // Coordenadas oficiais da matriz Barbearia Vieira (Rua Jeová Monte, 120, Brancas, São José do Divino - PI)
+    const COORDENADAS_OFICIAIS_VIEIRA = {
+      latitude: -3.8118,
+      longitude: -41.8318,
+    };
+
     let distanciaKm: number | null = null;
     if (coordenadas?.latitude && coordenadas?.longitude) {
-      const latBarbearia = isVieira ? -3.6074 : (item as any).latitude ?? -3.6074;
-      const lonBarbearia = isVieira ? -41.8242 : (item as any).longitude ?? -41.8242;
-      distanciaKm = calcularDistanciaKm(coordenadas.latitude, coordenadas.longitude, latBarbearia, lonBarbearia);
+      const latBanco = Number((item as any).latitude);
+      const lonBanco = Number((item as any).longitude);
+      const temCoordsValidas = !isNaN(latBanco) && !isNaN(lonBanco) && latBanco !== 0 && lonBanco !== 0 && latBanco !== -5.092 && latBanco !== -3.6074;
+
+      if (isVieira) {
+        distanciaKm = calcularDistanciaKm(coordenadas.latitude, coordenadas.longitude, COORDENADAS_OFICIAIS_VIEIRA.latitude, COORDENADAS_OFICIAIS_VIEIRA.longitude);
+      } else if (temCoordsValidas) {
+        distanciaKm = calcularDistanciaKm(coordenadas.latitude, coordenadas.longitude, latBanco, lonBanco);
+      } else if (item.distancia_km !== null && item.distancia_km !== undefined) {
+        distanciaKm = Number(item.distancia_km);
+      }
     } else if (item.distancia_km !== null && item.distancia_km !== undefined) {
       distanciaKm = Number(item.distancia_km);
     }
@@ -215,7 +240,9 @@ export default function ListaBarbearias() {
               <View style={styles.badgeDistancia}>
                 <MapPin size={10} color={Colors.ouro} />
                 <Text style={styles.badgeDistanciaTexto}>
-                  {distanciaKm < 1
+                  {distanciaKm < 0.05
+                    ? 'No local'
+                    : distanciaKm < 1
                     ? `${Math.round(Number(distanciaKm) * 1000)} m`
                     : `${Number(distanciaKm).toFixed(1)} km`}
                 </Text>
@@ -260,12 +287,12 @@ export default function ListaBarbearias() {
             </View>
 
             <View style={styles.titulosContainer}>
-              <Text style={[styles.nomeBarbearia, { color: theme.textoPrimario }]} numberOfLines={1}>
+              <Text style={[styles.nomeBarbearia, { color: theme.textoPrimario }]}>
                 {item.nome}
               </Text>
               <View style={styles.localLinha}>
-                <MapPin size={13} color={corDestaque} />
-                <Text style={[styles.localTexto, { color: theme.ouroTexto }]} numberOfLines={1}>
+                <MapPin size={13} color={corDestaque} style={{ marginTop: 2 }} />
+                <Text style={[styles.localTexto, { color: theme.ouroTexto }]}>
                   {localizacao}
                 </Text>
               </View>
@@ -273,49 +300,83 @@ export default function ListaBarbearias() {
           </View>
 
           {descricaoExibida ? (
-            <Text style={[styles.descricaoBarbearia, { color: theme.textoSecundario }]} numberOfLines={2}>
+            <Text style={[styles.descricaoBarbearia, { color: theme.textoSecundario }]}>
               {descricaoExibida}
             </Text>
           ) : null}
 
           {/* Rodapé do Card com Ações */}
           <View style={styles.cardAcoes}>
-            <TouchableOpacity
-              style={[styles.btnDetalhes, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
-              onPress={() => router.push({ pathname: '/(app)/barbearias/[slug]', params: { slug: item.slug } })}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.btnDetalhesTexto, { color: theme.textoPrimario }]}>Ver Vitrine</Text>
-            </TouchableOpacity>
+            {!isVieira ? (
+              <>
+                <View style={styles.linhaAcoesAuxiliares}>
+                  <TouchableOpacity
+                    style={[styles.btnDetalhes, styles.btnFlex, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
+                    onPress={() => router.push({ pathname: '/(app)/barbearias/[slug]', params: { slug: item.slug } })}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.btnDetalhesTexto, { color: theme.textoPrimario }]}>Ver Vitrine</Text>
+                  </TouchableOpacity>
 
-            {!isVieira && (
-              <TouchableOpacity
-                style={[styles.btnExcluirCard, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}
-                onPress={() => handleExcluirBarbearia(item)}
-                disabled={excluindoId === item.id}
-                activeOpacity={0.7}
-              >
-                {excluindoId === item.id ? (
-                  <ActivityIndicator size="small" color={theme.erro} />
-                ) : (
-                  <>
-                    <Trash2 size={14} color={theme.erro} />
-                    <Text style={[styles.btnExcluirCardTexto, { color: theme.erro }]}>Excluir</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.btnExcluirCard, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}
+                    onPress={() => handleExcluirBarbearia(item)}
+                    disabled={excluindoId === item.id}
+                    activeOpacity={0.7}
+                  >
+                    {excluindoId === item.id ? (
+                      <ActivityIndicator size="small" color={theme.erro} />
+                    ) : (
+                      <>
+                        <Trash2 size={14} color={theme.erro} />
+                        <Text style={[styles.btnExcluirCardTexto, { color: theme.erro }]}>Excluir</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.btnEscolher,
+                    styles.btnEscolherLargo,
+                    isAtiva && styles.btnEscolherAtivo,
+                    { backgroundColor: isAtiva ? 'transparent' : corDestaque, borderColor: corDestaque },
+                  ]}
+                  onPress={() => handleEscolherBarbearia(item)}
+                  activeOpacity={0.8}
+                >
+                  <Scissors size={15} color={isAtiva ? corDestaque : theme.textoEscuroSobreOuro} />
+                  <Text style={[styles.btnEscolherTexto, isAtiva ? { color: corDestaque } : { color: theme.textoEscuroSobreOuro }]}>
+                    {isAtiva ? 'Acessar Barbearia' : 'Escolher Barbearia'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <View style={styles.linhaAcoesUnica}>
+                <TouchableOpacity
+                  style={[styles.btnDetalhes, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
+                  onPress={() => router.push({ pathname: '/(app)/barbearias/[slug]', params: { slug: item.slug } })}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.btnDetalhesTexto, { color: theme.textoPrimario }]}>Ver Vitrine</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.btnEscolher,
+                    isAtiva && styles.btnEscolherAtivo,
+                    { backgroundColor: isAtiva ? 'transparent' : corDestaque, borderColor: corDestaque },
+                  ]}
+                  onPress={() => handleEscolherBarbearia(item)}
+                  activeOpacity={0.8}
+                >
+                  <Scissors size={15} color={isAtiva ? corDestaque : theme.textoEscuroSobreOuro} />
+                  <Text style={[styles.btnEscolherTexto, isAtiva ? { color: corDestaque } : { color: theme.textoEscuroSobreOuro }]}>
+                    {isAtiva ? 'Acessar Barbearia' : 'Escolher Barbearia'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             )}
-
-            <TouchableOpacity
-              style={[styles.btnEscolher, isAtiva && styles.btnEscolherAtivo, { backgroundColor: isAtiva ? 'transparent' : corDestaque, borderColor: corDestaque }]}
-              onPress={() => handleEscolherBarbearia(item)}
-              activeOpacity={0.8}
-            >
-              <Scissors size={15} color={isAtiva ? corDestaque : theme.textoEscuroSobreOuro} />
-              <Text style={[styles.btnEscolherTexto, isAtiva ? { color: corDestaque } : { color: theme.textoEscuroSobreOuro }]}>
-                {isAtiva ? 'Acessar Barbearia' : 'Escolher Barbearia'}
-              </Text>
-            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -432,7 +493,7 @@ export default function ListaBarbearias() {
           refreshControl={
             <RefreshControl
               refreshing={carregando}
-              onRefresh={recarregar}
+              onRefresh={handleRefresh}
               tintColor={theme.ouro}
               colors={[theme.ouro]}
             />
@@ -673,7 +734,7 @@ const createStyles = (theme: ThemePalette) =>
     },
     topoCard: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: Spacing.md,
       marginTop: -Spacing.xl,
     },
@@ -685,6 +746,7 @@ const createStyles = (theme: ThemePalette) =>
       borderColor: theme.ouro,
       backgroundColor: theme.superficie,
       overflow: 'hidden',
+      marginTop: 2,
       ...Shadows.card,
     },
     logoImg: {
@@ -705,41 +767,62 @@ const createStyles = (theme: ThemePalette) =>
 
     titulosContainer: {
       flex: 1,
-      paddingTop: Spacing.md,
+      paddingTop: 4,
+      gap: 2,
     },
     nomeBarbearia: {
       color: theme.textoPrimario,
       fontFamily: FontFamily.bold,
       fontSize: FontSize.bodyLg,
+      lineHeight: 22,
     },
     localLinha: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: 4,
       marginTop: 2,
     },
     localTexto: {
+      flex: 1,
       color: theme.ouroClaro,
       fontFamily: FontFamily.medium,
       fontSize: FontSize.bodySm,
+      lineHeight: 18,
     },
 
     descricaoBarbearia: {
       color: theme.textoSecundario,
       fontFamily: FontFamily.regular,
       fontSize: FontSize.bodySm,
-      lineHeight: 18,
+      lineHeight: 20,
       marginTop: 2,
     },
 
     cardAcoes: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.sm,
       marginTop: Spacing.xs,
       paddingTop: Spacing.sm,
       borderTopWidth: 1,
       borderTopColor: theme.borda,
+      gap: Spacing.sm,
+    },
+    linhaAcoesAuxiliares: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+    },
+    linhaAcoesUnica: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+    },
+    btnFlex: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    btnEscolherLargo: {
+      width: '100%',
+      flex: undefined,
     },
     btnDetalhes: {
       paddingVertical: 10,

@@ -18,6 +18,8 @@ export interface BarbeariaPublica {
   fotos: unknown[];
   publicada?: boolean;
   status?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   distancia_km?: number | null;
   total_resultados?: number;
   servicos?: Array<{ id: string; nome: string; descricao: string | null; preco: number }>;
@@ -86,7 +88,7 @@ export function useBarbearias(filtros: FiltrosBarbearias = {}) {
 
       const { data, error } = await supabase
         .from('barbearias')
-        .select(`id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status, ${CAMPOS_REGRAS_BARBEARIA}`)
+        .select(`id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, latitude, longitude, publicada, status, ${CAMPOS_REGRAS_BARBEARIA}`)
         .in('id', ids)
         .order('nome');
       if (error) setErro(error.message);

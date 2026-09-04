@@ -5,7 +5,7 @@ set
   descricao = 'Tradição, estilo e o melhor atendimento para o seu visual. Cortes modernos, barba na navalha e cuidados masculinos de alto nível.',
   cidade = 'São José do Divino',
   bairro = 'Brancas',
-  endereco = 'Povoado Brancas, São José do Divino - PI',
+  endereco = 'Rua Jeova Monte, 120, Brancas',
   telefone = '(86) 98190-7478',
   whatsapp = '(86) 98190-7478',
   publicada = true,
@@ -22,7 +22,7 @@ set
   ),
   modo_agenda = 'continua',
   dias_janela_agendamento = 14,
-  latitude = -3.6074,
-  longitude = -41.8242,
+  latitude = -3.8118,
+  longitude = -41.8318,
   atualizado_em = timezone('utc'::text, now())
 where slug = 'barbearia-vieira';

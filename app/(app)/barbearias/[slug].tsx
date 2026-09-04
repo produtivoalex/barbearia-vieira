@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
   Modal,
+  Platform,
   Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,6 +30,7 @@ import {
   Sparkles,
   X,
   Play,
+  Navigation,
 } from 'lucide-react-native';
 import { buscarDetalheBarbearia, type BarbeariaPublica } from '@/hooks/useBarbearias';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
@@ -133,14 +135,36 @@ export default function DetalheBarbearia() {
     if (url) Linking.openURL(url).catch(() => { });
   };
 
+  const abrirMapa = () => {
+    const lat = isVieira ? -3.8118 : ((barbearia as any).latitude ?? null);
+    const lon = isVieira ? -41.8318 : ((barbearia as any).longitude ?? null);
+    const label = encodeURIComponent(barbearia.nome || 'Barbearia');
+    const query = (lat && lon)
+      ? `${lat},${lon}`
+      : encodeURIComponent([barbearia.endereco, barbearia.bairro, barbearia.cidade, 'Brasil'].filter(Boolean).join(', '));
+
+    const url = Platform.select({
+      ios: lat && lon ? `maps:0,0?q=${label}@${lat},${lon}` : `maps:0,0?q=${query}`,
+      android: lat && lon ? `geo:0,0?q=${lat},${lon}(${label})` : `geo:0,0?q=${query}`,
+      default: `https://www.google.com/maps/search/?api=1&query=${query}`,
+    });
+    Linking.openURL(url).catch(() => {
+      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`);
+    });
+  };
+
   const estaSelecionada = barbeariaSelecionada?.id === barbearia.id;
 
   const isTeste = barbearia.slug.includes('teste') || barbearia.nome?.toLowerCase().includes('teste');
   const corDestaque = barbearia.tema?.primary || theme.ouro;
 
+  const cidadeFormatada = barbearia.cidade
+    ? (barbearia.cidade.includes(',') || barbearia.cidade.includes('-') ? barbearia.cidade : barbearia.cidade)
+    : '';
+
   const localizacao = isVieira
     ? 'São José do Divino, PI, Rua Jeova Monte, 120, Brancas'
-    : [barbearia.cidade ? `${barbearia.cidade}, PI` : '', barbearia.endereco, barbearia.bairro].filter(Boolean).join(', ') || 'Endereço não informado';
+    : [cidadeFormatada, barbearia.endereco, barbearia.bairro].filter(Boolean).join(', ') || 'Endereço não informado';
 
   const descricaoExibida = isTeste
     ? 'Teste'
@@ -212,14 +236,28 @@ export default function DetalheBarbearia() {
           <Text style={styles.nome}>{barbearia.nome}</Text>
           {descricaoExibida ? <Text style={styles.descricao}>{descricaoExibida}</Text> : null}
 
-          <View style={styles.localLinha}>
+          <TouchableOpacity
+            style={styles.localLinha}
+            onPress={abrirMapa}
+            activeOpacity={0.75}
+          >
             <MapPin size={15} color={theme.ouro} />
             <Text style={styles.localTexto}>{localizacao}</Text>
-          </View>
+            <Navigation size={12} color={theme.ouroTexto} style={{ marginLeft: 6 }} />
+          </TouchableOpacity>
         </View>
 
-        {/* Botões de Ação de Contato (WhatsApp, Ligar, Instagram) */}
+        {/* Botões de Ação de Contato (WhatsApp, Ligar, Instagram, Como Chegar) */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.acoesScroll}>
+          <TouchableOpacity
+            style={[styles.acao, { borderColor: theme.bordaOuro, backgroundColor: theme.ouroTranslucido }]}
+            onPress={abrirMapa}
+            activeOpacity={0.75}
+          >
+            <Navigation size={17} color={theme.ouroTexto} />
+            <Text style={[styles.acaoTexto, { color: theme.ouroTexto, fontFamily: FontFamily.bold }]}>Como Chegar</Text>
+          </TouchableOpacity>
+
           {barbearia.whatsapp ? (
             <TouchableOpacity
               style={styles.acao}

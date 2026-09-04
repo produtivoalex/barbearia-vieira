@@ -76,7 +76,7 @@ export default function TelaHome() {
       };
     }
     const cidadeEstado = barbearia.cidade
-      ? (barbearia.cidade.includes(',') ? barbearia.cidade : `${barbearia.cidade}, PI`)
+      ? (barbearia.cidade.includes(',') || barbearia.cidade.includes('-') ? barbearia.cidade : barbearia.cidade)
       : 'São José do Divino, PI';
 
     let enderecoAbreviado = (barbearia.endereco || '')

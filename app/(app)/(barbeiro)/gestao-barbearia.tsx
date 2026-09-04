@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import {
   ArrowLeft,
   Camera,
@@ -166,8 +167,8 @@ export default function GestaoBarbearia() {
     setWhatsapp(zapReal);
     setPublicada(true);
 
-    // Se a Barbearia Vieira ainda tiver os dados provisórios no banco, atualiza automaticamente
-    if (isVieira && (barbearia.cidade === 'Teresina' || barbearia.endereco?.includes('Rua das Flores') || barbearia.descricao?.includes('tenant legado'))) {
+    // Se a Barbearia Vieira ainda tiver os dados provisórios no banco ou coordenadas antigas, atualiza automaticamente
+    if (isVieira && (barbearia.cidade === 'Teresina' || barbearia.endereco?.includes('Rua das Flores') || barbearia.descricao?.includes('tenant legado') || (barbearia as any).latitude === -5.092 || (barbearia as any).latitude === -3.6074 || !(barbearia as any).latitude)) {
       const dadosAtualizados = {
         nome: 'Barbearia Vieira',
         descricao: descReal,
@@ -176,6 +177,8 @@ export default function GestaoBarbearia() {
         endereco: enderecoReal,
         telefone: telReal,
         whatsapp: zapReal,
+        latitude: -3.8118,
+        longitude: -41.8318,
         publicada: true,
         status: 'ativa',
       };
@@ -218,6 +221,27 @@ export default function GestaoBarbearia() {
       return;
     }
     setSalvando(true);
+    const isVieira = barbearia.slug === 'barbearia-vieira' || barbearia.id === '7917fb7a-e118-4928-b16b-94e4f26f8591';
+
+    let latFinal: number | null = isVieira ? -3.8118 : ((barbearia as any).latitude ?? null);
+    let lonFinal: number | null = isVieira ? -41.8318 : ((barbearia as any).longitude ?? null);
+
+    // Se não for Vieira e não tiver coordenadas ainda, tenta geocodificar o novo endereço
+    if (!isVieira && (!latFinal || !lonFinal)) {
+      const partes = [endereco.trim(), bairro.trim(), cidade.trim(), 'Brasil'].filter(Boolean);
+      if (partes.length > 0) {
+        try {
+          const geo = await Location.geocodeAsync(partes.join(', '));
+          if (geo && geo.length > 0) {
+            latFinal = geo[0].latitude;
+            lonFinal = geo[0].longitude;
+          }
+        } catch (e) {
+          console.warn('[GestaoBarbearia] Falha ao geocodificar:', e);
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from('barbearias')
       .update({
@@ -228,11 +252,13 @@ export default function GestaoBarbearia() {
         endereco: endereco.trim() || null,
         telefone: telefone.trim() || null,
         whatsapp: whatsapp.trim() || null,
+        latitude: latFinal,
+        longitude: lonFinal,
         publicada,
         atualizado_em: new Date().toISOString(),
       })
       .eq('id', barbearia.id)
-      .select('id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status')
+      .select('id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, latitude, longitude, publicada, status')
       .single();
 
     setSalvando(false);

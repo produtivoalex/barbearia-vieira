@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as Location from 'expo-location';
 import { ArrowLeft, Building2, Check, Globe, Lock, Plus, Sparkles, Store } from 'lucide-react-native';
 import { useBarbearia } from '@/contexts/BarbeariaContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -100,7 +101,24 @@ export default function CadastrarBarbearia() {
         return;
       }
 
-      // 2. Insere a barbearia
+      // 2. Geocodifica automaticamente o endereço em qualquer cidade do Brasil
+      let latitude: number | null = null;
+      let longitude: number | null = null;
+
+      const partesEndereco = [endereco.trim(), bairro.trim(), cidade.trim(), 'Brasil'].filter(Boolean);
+      if (partesEndereco.length > 0) {
+        try {
+          const geo = await Location.geocodeAsync(partesEndereco.join(', '));
+          if (geo && geo.length > 0) {
+            latitude = geo[0].latitude;
+            longitude = geo[0].longitude;
+          }
+        } catch (e) {
+          console.warn('[CadastroBarbearia] Falha ao obter coordenadas do endereço:', e);
+        }
+      }
+
+      // 3. Insere a barbearia
       const { data: novaBarbearia, error: erroBarbearia } = await supabase
         .from('barbearias')
         .insert({
@@ -112,6 +130,8 @@ export default function CadastrarBarbearia() {
           endereco: endereco.trim() || null,
           telefone: telefone.trim() || null,
           whatsapp: whatsapp.trim() || null,
+          latitude,
+          longitude,
           publicada,
           status: 'ativa',
           tema: {
@@ -123,7 +143,7 @@ export default function CadastrarBarbearia() {
           },
           fotos: [],
         })
-        .select('id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, publicada, status')
+        .select('id, slug, nome, descricao, cidade, bairro, endereco, telefone, whatsapp, logo_url, banner_url, fotos, tema, latitude, longitude, publicada, status')
         .single();
 
       if (erroBarbearia || !novaBarbearia) {

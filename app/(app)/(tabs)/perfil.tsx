@@ -32,6 +32,7 @@ import {
   Smartphone,
   Check,
   MapPin,
+  Trash2,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Avatar, LogoBarbearia } from '@/components';
@@ -64,6 +65,32 @@ export default function TelaPerfil() {
     await supabase.auth.signOut();
   }
   const handleSair = handleConfirmarSair;
+
+  async function handleSolicitarExclusaoConta() {
+    Alert.alert(
+      'Excluir Conta Permanentemente',
+      'Deseja realmente excluir sua conta? Esta ação apagará seu perfil e histórico de atendimentos. Esta operação não pode ser desfeita.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sim, Excluir Minha Conta',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (session?.user?.id) {
+                await supabase.from('perfis').delete().eq('id', session.user.id);
+              }
+              await supabase.auth.signOut();
+              setModalAtivo(null);
+              Alert.alert('Conta excluída', 'Sua conta e seus dados foram removidos.');
+            } catch (err: any) {
+              Alert.alert('Erro', err?.message || 'Não foi possível concluir a exclusão.');
+            }
+          },
+        },
+      ]
+    );
+  }
 
   function handleAbrirWhatsApp() {
     const telefone = (barbearia?.whatsapp || barbearia?.telefone || '86981907478').replace(/\D/g, '');
@@ -470,6 +497,18 @@ export default function TelaPerfil() {
                     Nenhum outro cliente tem acesso ao seu perfil ou aos seus horários agendados. O sistema Na Régua garante total sigilo e proteção.
                   </Text>
                 </View>
+
+                {/* Botão de Exclusão de Conta Obrigatório pelas Lojas */}
+                <TouchableOpacity
+                  style={[styles.btnExcluirConta, { borderColor: 'rgba(239, 68, 68, 0.4)', backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}
+                  onPress={handleSolicitarExclusaoConta}
+                  activeOpacity={0.7}
+                >
+                  <Trash2 size={16} color={theme.erro} />
+                  <Text style={[styles.btnExcluirContaTexto, { color: theme.erro }]}>
+                    Excluir Minha Conta (LGPD)
+                  </Text>
+                </TouchableOpacity>
               </View>
             )}
 
@@ -791,5 +830,20 @@ const createStyles = (theme: ThemePalette) =>
   modalBotaoFecharTexto: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.bodyMd,
+  },
+  btnExcluirConta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: Radii.md,
+    borderWidth: 1,
+    marginTop: Spacing.sm,
+  },
+  btnExcluirContaTexto: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: FontSize.bodySm,
   },
 });
