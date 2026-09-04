@@ -24,3 +24,7 @@ supabase/.temp/
 
 # Scratch scripts
 scratch/
+
+# Android binary builds (exceed GitHub 100MB limit)
+*.apk
+*.aab
