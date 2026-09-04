@@ -1180,18 +1180,20 @@ export default function TelaBarbeiroMais() {
                         <IlustracaoServico
                           tipoPredefinido={b.id}
                           corMoldura={corMolduraForm || barbearia?.tema?.frameColor || barbearia?.tema?.primary || theme.ouro}
-                          tamanho={52}
+                          tamanho={50}
                         />
-                        <Text
-                          style={[
-                            styles.nomeItemBiblioteca,
-                            { color: theme.textoPrimario },
-                            selecionado && { color: theme.ouroTexto, fontFamily: FontFamily.bold },
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {b.label}
-                        </Text>
+                        <View style={styles.nomeContainerBiblioteca}>
+                          <Text
+                            style={[
+                              styles.nomeItemBiblioteca,
+                              { color: theme.textoPrimario },
+                              selecionado && { color: theme.ouroTexto, fontFamily: FontFamily.bold },
+                            ]}
+                            numberOfLines={2}
+                          >
+                            {b.label}
+                          </Text>
+                        </View>
 
                         {selecionado && (
                           <View style={[styles.badgeCheckBiblioteca, { backgroundColor: theme.ouro }]}>
@@ -2301,21 +2303,29 @@ const createStyles = (theme: ThemePalette) =>
     },
     cardItemBiblioteca: {
       width: '31.3%',
-      aspectRatio: 0.95,
+      aspectRatio: 0.88,
       borderRadius: Radii.md,
       borderWidth: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      padding: 6,
-      gap: 4,
+      paddingHorizontal: 4,
+      paddingVertical: 8,
+      gap: 6,
       position: 'relative',
     },
     cardItemBibliotecaAtivo: {
       borderWidth: 1.5,
     },
+    nomeContainerBiblioteca: {
+      minHeight: 28,
+      justifyContent: 'center',
+      alignItems: 'center',
+      width: '100%',
+    },
     nomeItemBiblioteca: {
       fontFamily: FontFamily.medium,
-      fontSize: 10.5,
+      fontSize: 10,
+      lineHeight: 13,
       textAlign: 'center',
     },
     badgeCheckBiblioteca: {
