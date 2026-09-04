@@ -100,8 +100,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { barbearia } = useBarbearia();
   const temaTenant = barbearia?.tema as TemaTenant | undefined;
 
-  // O primeiro contato do produto é claro; a preferência do usuário continua soberana.
-  const [modoTema, setModoTemaState] = useState<TipoModoTema>('claro');
+  // Por padrão, segue a preferência visual do sistema operacional do smartphone (Modo Escuro / Claro)
+  const [modoTema, setModoTemaState] = useState<TipoModoTema>('sistema');
   const [carregandoTema, setCarregandoTema] = useState(true);
 
   // Carrega preferência persistida
@@ -133,7 +133,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Determina se o tema ativo é escuro
   const isEscuro = useMemo(() => {
     if (modoTema === 'sistema') {
-      return schemeOS !== 'light';
+      return schemeOS === 'dark';
     }
     return modoTema === 'escuro';
   }, [modoTema, schemeOS]);
@@ -170,7 +170,7 @@ export function useTheme(): ThemeContextData {
   if (!context || !context.theme) {
     // Fallback caso chamado fora do provider
     return {
-      modoTema: 'claro',
+      modoTema: 'sistema',
       isEscuro: false,
       theme: TemaClaro,
       colors: TemaClaro,
