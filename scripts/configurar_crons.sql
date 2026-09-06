@@ -34,7 +34,7 @@ select cron.schedule(
   '*/5 * * * *',
   $$
   select net.http_post(
-    url := '<SUA_SUPABASE_URL>/functions/v1/auto-open-agenda',
+    url := 'https://fnvenkcpucpuucovunzf.supabase.co/functions/v1/auto-open-agenda',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer <SUA_SUPABASE_SERVICE_ROLE_KEY>'
@@ -51,7 +51,7 @@ select cron.schedule(
   '* * * * *',
   $$
   select net.http_post(
-    url := '<SUA_SUPABASE_URL>/functions/v1/process-notifications',
+    url := 'https://fnvenkcpucpuucovunzf.supabase.co/functions/v1/process-notifications',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer <SUA_SUPABASE_SERVICE_ROLE_KEY>'
