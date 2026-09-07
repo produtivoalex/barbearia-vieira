@@ -1,5 +1,27 @@
 # Progresso do Projeto (App Barbearia -> Na Régua)
 
+## Agendamento Manual, Controle Ampliado de Atrasos e Módulo Central de Avisos (07/09/2026)
+
+- **Renomeação de Encaixe para Agendamento Manual**:
+  - Em [hoje.tsx](file:///c:/Users/Alex/Documents/WORKSPACE/MEUS%20APPS/App%20Barbearia/app/(app)/(barbeiro)/hoje.tsx), substituído "Encaixe de Balcão" e "Encaixe Manual" por **"Agendamento Manual"** em todos os pontos do fluxo diário do barbeiro (cards de vagas diretas, modal de ferramentas e modal de cadastro de agendamento).
+- **Controle de Atraso Ampliado (+25 min e +35 min)**:
+  - Adicionados os botões `+25 min` e `+35 min` no card de "Informar Atraso Geral" no modal de ações rápidas, completando as opções de tolerância operacional: `+10 min`, `+15 min`, `+20 min`, `+25 min`, `+30 min` e `+35 min`.
+- **Módulo Central de "Enviar Avisos & Comunicados" (Substituição da Pausa da Tarde)**:
+  - Substituída a opção "Pausa da Tarde" pelo botão e modal completo **"Enviar Avisos & Comunicados"** (`modalAvisosVisible`), permitindo ao barbeiro controle total das mensagens e dos canais de divulgação.
+  - **Multi-canal de Disparo**:
+    1. **Disparar no App**: Envia aviso/notificação diretamente aos clientes com agendamentos marcados no dia através da tabela `notificacoes` do Supabase — sem necessidade de redes sociais.
+    2. **Status do WhatsApp**: Abre o WhatsApp pronto para envio aos clientes do dia ou postagem no Status da barbearia.
+    3. **Stories & Redes Sociais**: Abre compartilhamento nativo dos comunicados com suporte a Instagram e redes sociais.
+  - **Modelos Prontos & Favoritar com 1 Clique**:
+    - Catálogo de modelos pré-definidos (Pausa da Tarde, Horários Livres, Vaga de Última Hora, Agenda Aberta, Comunicado Geral).
+    - Opção de favoritar modelos com estrela (⭐) persistida no `AsyncStorage` e disparar diretamente com 1 clique.
+  - **Cards Visuais Estilizados para Stories**:
+    - Pré-visualização com 3 temas visuais: **Dark**, **Ouro** e **Clássico**.
+    - Header com a logo da barbearia, identificador oficial e rodapé estilizado.
+  - **Cadastro de Redes Sociais do Barbeiro**:
+    - Modal de configuração rápida para salvar o perfil do Instagram (sem @) e WhatsApp de divulgação no `AsyncStorage`, tornando o compartilhamento imediato.
+- **Validação de Tipos**: `npx tsc --noEmit` validado com **0 erros**.
+
 ## Otimização Visual da Preparação de Agenda e Limpeza em Meu Negócio (07/09/2026)
 
 - **Cabeçalho Direto e Compacto na Preparação de Agenda**: Em [preparar-agenda.tsx](file:///c:/Users/Alex/Documents/WORKSPACE/MEUS%20APPS/App%20Barbearia/app/(app)/(barbeiro)/preparar-agenda.tsx), substituído o card informativo volumoso ("Esta Semana (Modo Semanal)...") por um cabeçalho objetivo e limpo: **"Agenda Semanal"** (ou **"Agenda Mensal"** no modo de 30 dias) acompanhado de badge discreta com a contagem de vagas ativas, liberando espaço vertical e direcionando o foco imediatamente para as pré-configurações e grade de horários.
