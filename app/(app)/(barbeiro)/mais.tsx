@@ -31,7 +31,6 @@ import {
   Zap,
   Check,
   Store,
-  Building2,
   Plus,
   Camera,
   Trash2,
@@ -715,22 +714,6 @@ export default function TelaBarbeiroMais() {
               </Text>
               <ChevronRight size={16} color={theme.textoDesabilitado} />
             </TouchableOpacity>
-
-            <View style={[styles.divisorIos, { backgroundColor: theme.borda }]} />
-
-            {/* Cadastrar Nova Unidade */}
-            <TouchableOpacity
-              style={styles.itemIosLinha}
-              onPress={() => router.push('/(app)/(barbeiro)/cadastrar-barbearia')}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.itemIosIconeBox, { backgroundColor: theme.superficie2 }]}>
-                <Building2 size={16} color={theme.textoSecundario} />
-              </View>
-              <Text style={[styles.itemIosTitulo, { color: theme.textoPrimario }]}>Nova Unidade</Text>
-              <ChevronRight size={16} color={theme.textoDesabilitado} />
-            </TouchableOpacity>
-
             <View style={[styles.divisorIos, { backgroundColor: theme.borda }]} />
 
             {/* Segurança & Privacidade */}

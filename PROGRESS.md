@@ -1,5 +1,11 @@
 # Progresso do Projeto (App Barbearia -> Na Régua)
 
+## Otimização Visual da Preparação de Agenda e Limpeza em Meu Negócio (07/09/2026)
+
+- **Cabeçalho Direto e Compacto na Preparação de Agenda**: Em [preparar-agenda.tsx](file:///c:/Users/Alex/Documents/WORKSPACE/MEUS%20APPS/App%20Barbearia/app/(app)/(barbeiro)/preparar-agenda.tsx), substituído o card informativo volumoso ("Esta Semana (Modo Semanal)...") por um cabeçalho objetivo e limpo: **"Agenda Semanal"** (ou **"Agenda Mensal"** no modo de 30 dias) acompanhado de badge discreta com a contagem de vagas ativas, liberando espaço vertical e direcionando o foco imediatamente para as pré-configurações e grade de horários.
+- **Remoção de Ação Redundante em Meu Negócio**: Em [mais.tsx](file:///c:/Users/Alex/Documents/WORKSPACE/MEUS%20APPS/App%20Barbearia/app/(app)/(barbeiro)/mais.tsx), removido o item "Nova Unidade", visto que a tela "Filiais" já possui botão próprio e dedicado para adicionar novos estabelecimentos.
+- **Validação de Tipos**: `npx tsc --noEmit` validado com **0 erros**.
+
 ## Preparação e Publicação Google Play Store, Conformidade e Tema de Sistema (04/09/2026)
 
 - **Exclusão de Conta e Dados do Usuário (Play Store Data Safety)**: Criação das páginas públicas [excluir-conta.html](file:///c:/Users/Alex/Documents/WORKSPACE/MEUS%20APPS/App%20Barbearia/excluir-conta.html) e [public/excluir-conta.html](file:///c:/Users/Alex/Documents/WORKSPACE/MEUS%20APPS/App%20Barbearia/public/excluir-conta.html) para atender diretamente à exigência da Play Console de disponibilizar URL externa para solicitação de exclusão de dados e conta.

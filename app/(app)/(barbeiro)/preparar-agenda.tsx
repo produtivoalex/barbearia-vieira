@@ -598,28 +598,14 @@ export default function PrepararAgenda() {
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          {/* Card Resumo */}
-          <View style={[styles.resumoCard, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
-            <View style={[styles.resumoIconeWrapper, { backgroundColor: theme.ouroTranslucido }]}>
-              <Sparkles size={20} color={theme.ouroTexto} />
-            </View>
-            <View style={styles.resumoTexto}>
-              <Text style={[styles.resumoTitulo, { color: theme.textoPrimario }]}>
-                {isModoSemanal
-                  ? 'Esta Semana (Modo Semanal)'
-                  : isModoMes
-                  ? 'Mês Inteiro (Modo Livre)'
-                  : semanaOffset === 0
-                  ? 'Esta Semana'
-                  : 'Próxima Semana'}{' '}
-                ({totalVagas} vagas ativas)
-              </Text>
-              <Text style={[styles.resumoDescricao, { color: theme.textoSecundario }]}>
-                {isModoSemanal
-                  ? 'Configure os dias e horários da semana para a abertura programada aos clientes.'
-                  : isModoMes
-                  ? 'Libere os próximos 30 dias de uma vez só e desmarque facilmente os dias de folga.'
-                  : 'Todos os 7 dias da semana podem ser ativados livremente.'}
+          {/* Cabeçalho Simples e Direto */}
+          <View style={styles.resumoCabecalho}>
+            <Text style={[styles.resumoTituloSimples, { color: theme.textoPrimario }]}>
+              {isModoMes ? 'Agenda Mensal' : 'Agenda Semanal'}
+            </Text>
+            <View style={[styles.resumoVagasBadge, { backgroundColor: theme.ouroTranslucido, borderColor: theme.bordaOuro }]}>
+              <Text style={[styles.resumoVagasTexto, { color: theme.ouroTexto }]}>
+                {totalVagas} {totalVagas === 1 ? 'vaga ativa' : 'vagas ativas'}
               </Text>
             </View>
           </View>
@@ -1138,39 +1124,26 @@ const createStyles = (theme: ThemePalette) =>
       fontSize: FontSize.bodySm,
       color: theme.textoSecundario,
     },
-    resumoCard: {
+    resumoCabecalho: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: Spacing.sm,
-      backgroundColor: theme.superficie,
-      borderRadius: Radii.lg,
-      padding: Spacing.md,
-      borderWidth: 1,
-      borderColor: theme.borda,
-      ...Shadows.card,
-    },
-    resumoIconeWrapper: {
-      width: 36,
-      height: 36,
-      borderRadius: Radii.sm,
-      backgroundColor: theme.ouroTranslucido,
       alignItems: 'center',
-      justifyContent: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 2,
+      marginBottom: 2,
     },
-    resumoTexto: {
-      flex: 1,
-      gap: 2,
-    },
-    resumoTitulo: {
+    resumoTituloSimples: {
       fontFamily: FontFamily.bold,
-      fontSize: FontSize.bodyMd,
-      color: theme.textoPrimario,
+      fontSize: FontSize.headingSm,
     },
-    resumoDescricao: {
-      fontFamily: FontFamily.regular,
-      fontSize: FontSize.labelXs,
-      color: theme.textoSecundario,
-      lineHeight: 16,
+    resumoVagasBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: Radii.full,
+      borderWidth: 1,
+    },
+    resumoVagasTexto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: FontSize.bodySm,
     },
     presetsContainer: {
       gap: Spacing.xs,
