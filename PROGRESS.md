@@ -1,5 +1,24 @@
 # Progresso do Projeto (App Barbearia -> Na Régua)
 
+## Redesign Minimalista do Módulo "Avisos" com Canva Personalizável e Compartilhamento de Imagem (08/09/2026)
+
+- **Renomeação para "Avisos" e Layout Steve Jobs**:
+  - Módulo renomeado de "Avisos & Comunicados" para **"Avisos"**, com interface ultra limpa e minimalista.
+  - O **Canva Personalizável** ocupa o centro da tela em destaque principal.
+  - Abaixo do Canva, apenas dois seletores objetivos: **"Quando compartilhar"** (`Agora (Imediato)` / `Início do Expediente`) e **"Onde compartilhar"** (`No App`, `WhatsApp`, `Stories`, ou toggle `Marcar todos`), seguidos pelo botão de ação `Compartilhar Imagem`.
+- **Edição Sob Demanda no Próprio Canva**:
+  - Tocar no Canva abre o bottom sheet fluido de personalização (`modalEditorCanvaVisible`), permitindo ajustar:
+    - Modelos rápidos com 1 toque (*Pausa da Tarde*, *Horários Livres*, *Vaga Relâmpago*, *Agenda Aberta*, *Comunicado Geral*).
+    - Temas visuais: **Dark Obsidian** (🌙), **Ouro Imperial** (👑), **Clássico Barber** (💈) e **Clean White** (⚪).
+    - Edição de Tag de Cabeçalho, Título de Destaque e Mensagem completa.
+- **Componente Dedicado `CanvaAvisoCard.tsx`**:
+  - Componente refinado padrão Canva com moldura interna chanfrada, logo da barbearia, tag estilizada, divisor com tesoura/medalha de luxo, @ do Instagram, WhatsApp e selo *Na Régua*.
+  - Suporte a `forwardRef` para snapshot direto em memória.
+- **Geração e Compartilhamento de Imagem PNG Real**:
+  - Integração com `react-native-view-shot` (`captureRef`) e `expo-sharing` (`Sharing.shareAsync`).
+  - Ao compartilhar em qualquer rede social (WhatsApp Status/Chat, Instagram Stories/Feed), gera a **imagem gráfica PNG em alta definição** pronta para postagem direta, mantendo também o disparo automático de notificação no App para clientes do dia.
+- **Validação de Tipos**: `npx tsc --noEmit` validado com **0 erros**.
+
 ## Agendamento Manual, Controle Ampliado de Atrasos e Módulo Central de Avisos (07/09/2026)
 
 - **Renomeação de Encaixe para Agendamento Manual**:

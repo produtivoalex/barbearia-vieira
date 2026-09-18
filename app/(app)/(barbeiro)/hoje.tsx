@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   Switch,
   Share,
   TextInput,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -42,6 +43,10 @@ import {
   Instagram,
   Smartphone,
   Settings,
+  Edit3,
+  Layers,
+  Palette,
+  CheckCircle,
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
@@ -58,7 +63,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 
 interface ModeloAviso {
   id: string;
-  titulo: string;
+  nome: string;
   texto: string;
   icone: string;
   isPausaTarde?: boolean;
@@ -67,34 +72,34 @@ interface ModeloAviso {
 const MODELOS_AVISO_PADRAO: ModeloAviso[] = [
   {
     id: 'pausa_tarde',
-    titulo: 'Pausa da Tarde',
-    texto: 'Informamos que hoje não haverá expediente no período da tarde na barbearia. Retornamos amanhã com horário normal. Agradecemos a compreensão!',
-    icone: '⏰',
+    nome: 'Fechado à Tarde',
+    texto: 'A barbearia estará fechada hoje à tarde. Agradecemos a compreensão de todos!',
+    icone: '🌙',
     isPausaTarde: true,
   },
   {
     id: 'horarios_livres',
-    titulo: 'Horários Livres Hoje',
-    texto: 'Temos vagas disponíveis hoje para corte e barba! Agende seu horário em poucos segundos direto pelo app.',
-    icone: '💈',
-  },
-  {
-    id: 'vaga_relampago',
-    titulo: 'Vaga de Última Hora',
-    texto: 'Acabou de surgir um horário vago hoje! Quem tiver interesse pode garantir agora mesmo pelo app antes que esgote.',
+    nome: 'Vagas de Hoje',
+    texto: 'Temos horários disponíveis para hoje! Agende seu horário pelo app Na Régua.',
     icone: '⚡',
   },
   {
+    id: 'vaga_relampago',
+    nome: 'Horário Vago',
+    texto: 'Acabou de liberar um horário vago para hoje! Garanta sua vaga pelo app.',
+    icone: '💈',
+  },
+  {
     id: 'agenda_aberta',
-    titulo: 'Agenda da Semana Aberta',
-    texto: 'A agenda da semana já está liberada no aplicativo Na Régua! Garanta seu horário com antecedência.',
-    icone: '📅',
+    nome: 'Agenda Aberta',
+    texto: 'A agenda da semana já está aberta para novos agendamentos no app!',
+    icone: '🚀',
   },
   {
     id: 'comunicado_geral',
-    titulo: 'Aviso Importante',
-    texto: 'Comunicado aos nossos clientes: atendimento a todo vapor hoje na barbearia! Te aguardamos.',
-    icone: '📢',
+    nome: 'Atendimento Normal',
+    texto: 'Estamos atendendo normalmente hoje na barbearia! Te aguardamos.',
+    icone: '✨',
   },
 ];
 
@@ -179,15 +184,20 @@ export default function TelaBarbeiroHoje() {
   const [horaEncaixe, setHoraEncaixe] = useState<string>('');
   const [salvandoEncaixe, setSalvandoEncaixe] = useState(false);
 
-  // Estados do Módulo Enviar Avisos
+  // Estados do Módulo Avisos & Comunicados (Texto)
   const [modalAvisosVisible, setModalAvisosVisible] = useState(false);
   const [modalConfigRedesVisible, setModalConfigRedesVisible] = useState(false);
   const [modeloAtivoId, setModeloAtivoId] = useState<string>('pausa_tarde');
-  const [tituloAviso, setTituloAviso] = useState<string>('Pausa da Tarde');
   const [textoAviso, setTextoAviso] = useState<string>(
-    'Informamos que hoje não haverá expediente no período da tarde na barbearia. Retornamos amanhã com horário normal. Agradecemos a compreensão!'
+    'A barbearia estará fechada hoje à tarde. Agradecemos a compreensão de todos!'
   );
-  const [estiloCardAviso, setEstiloCardAviso] = useState<'dark' | 'gold' | 'classico'>('dark');
+  const [quandoCompartilhar, setQuandoCompartilhar] = useState<'agora' | 'horario'>('agora');
+  const [horarioEnvio, setHorarioEnvio] = useState<string>('12:00');
+  const [canais, setCanais] = useState<{ app: boolean; whats: boolean; stories: boolean }>({
+    app: true,
+    whats: true,
+    stories: true,
+  });
   const [favoritosAvisos, setFavoritosAvisos] = useState<string[]>(['pausa_tarde', 'horarios_livres']);
   const [redesSociais, setRedesSociais] = useState<{ instagram: string; whatsapp: string }>({
     instagram: '',
@@ -195,7 +205,7 @@ export default function TelaBarbeiroHoje() {
   });
   const [instagramInput, setInstagramInput] = useState('');
   const [whatsappInput, setWhatsappInput] = useState('');
-  const [disparandoAviso, setDisparandoAviso] = useState(false);
+  const [enviandoAviso, setEnviandoAviso] = useState(false);
 
   // Timer para atualizar o relógio a cada 30 segundos
   const [agora, setAgora] = useState(new Date());
@@ -301,7 +311,7 @@ export default function TelaBarbeiroHoje() {
     }
   }
 
-  // ─── LÓGICA DO MÓDULO DE ENVIAR AVISOS & REDES SOCIAIS ───
+  // ─── LÓGICA DO MÓDULO DE AVISOS & COMUNICADOS (TEXTO) ───
   useEffect(() => {
     async function carregarConfigsAvisos() {
       try {
@@ -315,7 +325,10 @@ export default function TelaBarbeiroHoje() {
         }
         if (redesStr) {
           const r = JSON.parse(redesStr);
-          setRedesSociais(r);
+          setRedesSociais({
+            instagram: r.instagram || '',
+            whatsapp: r.whatsapp || barbearia?.whatsapp || barbearia?.telefone || '',
+          });
           setInstagramInput(r.instagram || '');
           setWhatsappInput(r.whatsapp || barbearia?.whatsapp || barbearia?.telefone || '');
         } else {
@@ -340,113 +353,98 @@ export default function TelaBarbeiroHoje() {
       setRedesSociais(novo);
       await AsyncStorage.setItem(`@na_regua:redes_sociais_${bId}`, JSON.stringify(novo));
       setModalConfigRedesVisible(false);
-      Alert.alert('Redes Salvas! 📲', 'Suas redes foram cadastradas e já estão prontas para envio com 1 clique.');
+      Alert.alert('Redes Salvas! 📲', 'Suas redes foram cadastradas com sucesso.');
     } catch {
       Alert.alert('Erro ao salvar', 'Não foi possível salvar as redes sociais.');
     }
   }
 
-  async function handleToggleFavorito(id: string) {
-    const bId = barbearia?.id || 'padrao';
-    const novo = favoritosAvisos.includes(id)
-      ? favoritosAvisos.filter((f) => f !== id)
-      : [...favoritosAvisos, id];
-    setFavoritosAvisos(novo);
-    try {
-      await AsyncStorage.setItem(`@na_regua:avisos_favoritos_${bId}`, JSON.stringify(novo));
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
   function handleSelecionarModelo(modelo: ModeloAviso) {
     setModeloAtivoId(modelo.id);
-    setTituloAviso(modelo.titulo);
     setTextoAviso(modelo.texto);
   }
 
-  async function handleEnviarNoApp() {
+  function handleToggleCanal(canal: 'app' | 'whats' | 'stories') {
+    setCanais((prev) => ({ ...prev, [canal]: !prev[canal] }));
+  }
+
+  function handleToggleTodosCanais() {
+    const todosAtivos = canais.app && canais.whats && canais.stories;
+    setCanais({
+      app: !todosAtivos,
+      whats: !todosAtivos,
+      stories: !todosAtivos,
+    });
+  }
+
+  async function handleCompartilharCanva() {
     if (!textoAviso.trim()) {
-      Alert.alert('Mensagem vazia', 'Digite ou escolha um aviso antes de enviar.');
+      Alert.alert('Mensagem vazia', 'Digite a mensagem do aviso antes de compartilhar.');
       return;
     }
-    setDisparandoAviso(true);
+
+    if (!canais.app && !canais.whats && !canais.stories) {
+      Alert.alert('Selecione onde compartilhar', 'Marque pelo menos um canal (App, WhatsApp ou Redes).');
+      return;
+    }
+
+    setEnviandoAviso(true);
     try {
-      if (modeloAtivoId === 'pausa_tarde' || textoAviso.toLowerCase().includes('tarde')) {
-        await alternarTardeFechada(true);
+      // 1. Notificação no App (se marcado)
+      if (canais.app) {
+        try {
+          if (
+            modeloAtivoId === 'pausa_tarde' ||
+            textoAviso.toLowerCase().includes('tarde') ||
+            textoAviso.toLowerCase().includes('fechad')
+          ) {
+            await alternarTardeFechada(true).catch(() => {});
+          }
+
+          if (barbearia?.id) {
+            await supabase.from('notifications').insert({
+              barbearia_id: barbearia.id,
+              tipo: 'aviso_geral',
+              titulo: 'Comunicado da Barbearia',
+              mensagem: textoAviso.trim(),
+              dados: {
+                barbearia_id: barbearia.id,
+                tipo: 'comunicado_barbeiro',
+                horario_envio: quandoCompartilhar === 'horario' ? horarioEnvio : 'imediato',
+              },
+            });
+          }
+        } catch (appErr) {
+          console.log('Aviso interno no app:', appErr);
+        }
       }
 
-      if (barbearia?.id) {
-        await supabase.from('notifications').insert({
-          tipo: 'aviso_geral',
-          titulo: tituloAviso || 'Aviso da Barbearia',
-          mensagem: textoAviso.trim(),
-          dados: { barbearia_id: barbearia.id, tipo: 'comunicado_barbeiro' },
-        });
+      // 2. Compartilhamento de Texto (WhatsApp / Redes)
+      if (canais.whats || canais.stories) {
+        const contatosStr = [
+          redesSociais.whatsapp ? `WhatsApp: ${redesSociais.whatsapp}` : '',
+          redesSociais.instagram ? `@${redesSociais.instagram}` : '',
+        ].filter(Boolean).join(' • ');
+
+        const mensagemFinal = `${nomeBarbearia.toUpperCase()}\n\nCOMUNICADO:\n${textoAviso.trim()}\n\n${contatosStr ? `${contatosStr}\n\n` : ''}Agende pelo App Na Régua`;
+
+        try {
+          await Share.share({
+            title: `Aviso - ${nomeBarbearia}`,
+            message: mensagemFinal,
+          });
+        } catch (shareErr) {
+          console.log('Share cancelado:', shareErr);
+        }
       }
 
-      Alert.alert(
-        'Aviso Publicado no App! 📢',
-        'O comunicado foi enviado com sucesso e os clientes visualizarão o aviso ao acessar o aplicativo.'
-      );
       setModalAvisosVisible(false);
+      Alert.alert('Enviado com sucesso! 🚀', 'Seu comunicado foi compartilhado.');
     } catch (err: any) {
-      Alert.alert('Erro ao publicar no app', err.message || 'Tente novamente.');
+      console.log('Erro geral ao compartilhar:', err);
+      Alert.alert('Erro', 'Não foi possível compartilhar: ' + (err?.message || ''));
     } finally {
-      setDisparandoAviso(false);
-    }
-  }
-
-  async function handleCompartilharWhatsApp() {
-    if (!textoAviso.trim()) {
-      Alert.alert('Mensagem vazia', 'Digite ou escolha um aviso antes de enviar.');
-      return;
-    }
-    const msg = `📢 *${(tituloAviso || 'AVISO').toUpperCase()}*\n\n${textoAviso.trim()}\n\n💈 *${nomeBarbearia}*\n📲 Agende seu horário pelo app Na Régua!`;
-    try {
-      await Share.share({
-        title: tituloAviso,
-        message: msg,
-      });
-    } catch {
-      const urlWhats = `whatsapp://send?text=${encodeURIComponent(msg)}`;
-      Linking.openURL(urlWhats).catch(() => {
-        Alert.alert('Aviso', 'Não foi possível abrir o WhatsApp automaticamente.');
-      });
-    }
-  }
-
-  async function handleCompartilharStories() {
-    if (!textoAviso.trim()) {
-      Alert.alert('Mensagem vazia', 'Digite ou escolha um aviso antes de enviar.');
-      return;
-    }
-    const instaTag = redesSociais.instagram ? ` @${redesSociais.instagram}` : '';
-    const msg = `✨ *${(tituloAviso || 'COMUNICADO').toUpperCase()}*\n\n${textoAviso.trim()}\n\n💈 *${nomeBarbearia}*${instaTag}\n📲 Baixe o app Na Régua para agendamento online!`;
-
-    try {
-      await Share.share({
-        title: `${tituloAviso} - ${nomeBarbearia}`,
-        message: msg,
-      });
-    } catch {
-      Alert.alert('Erro', 'Não foi possível acionar o compartilhamento.');
-    }
-  }
-
-  function handleDisparoRapido(modelo: ModeloAviso, canal: 'app' | 'whats' | 'stories') {
-    handleSelecionarModelo(modelo);
-    if (canal === 'app') {
-      setTimeout(() => handleEnviarNoApp(), 100);
-    } else if (canal === 'whats') {
-      const msg = `📢 *${modelo.titulo.toUpperCase()}*\n\n${modelo.texto}\n\n💈 *${nomeBarbearia}*\n📲 Agende seu horário pelo app Na Régua!`;
-      Share.share({ message: msg }).catch(() => {
-        Linking.openURL(`whatsapp://send?text=${encodeURIComponent(msg)}`).catch(() => {});
-      });
-    } else {
-      const instaTag = redesSociais.instagram ? ` @${redesSociais.instagram}` : '';
-      const msg = `✨ *${modelo.titulo.toUpperCase()}*\n\n${modelo.texto}\n\n💈 *${nomeBarbearia}*${instaTag}\n📲 Baixe o app Na Régua para agendar!`;
-      Share.share({ message: msg }).catch(() => {});
+      setEnviandoAviso(false);
     }
   }
 
@@ -1260,7 +1258,7 @@ export default function TelaBarbeiroHoje() {
                 </View>
               </View>
 
-              {/* Opção 4: Enviar Avisos & Comunicados */}
+              {/* Opção 4: Avisos (Canva Personalizável) */}
               <TouchableOpacity
                 style={[styles.itemAcaoRapida, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
                 onPress={() => {
@@ -1273,8 +1271,8 @@ export default function TelaBarbeiroHoje() {
                   <Megaphone size={18} color={theme.ouroTexto} />
                 </View>
                 <View style={styles.itemAcaoTexto}>
-                  <Text style={[styles.itemAcaoTitulo, { color: theme.textoPrimario }]}>Enviar Avisos & Comunicados</Text>
-                  <Text style={[styles.itemAcaoSub, { color: theme.textoSecundario }]}>Avisos no app, WhatsApp e redes sociais</Text>
+                  <Text style={[styles.itemAcaoTitulo, { color: theme.textoPrimario }]}>Avisos</Text>
+                  <Text style={[styles.itemAcaoSub, { color: theme.textoSecundario }]}>Canva personalizável para WhatsApp, Stories e App</Text>
                 </View>
                 <ChevronRight size={16} color={theme.textoSecundario} />
               </TouchableOpacity>
@@ -1526,7 +1524,7 @@ export default function TelaBarbeiroHoje() {
         </Pressable>
       </Modal>
 
-      {/* ─── MODAL CENTRAL DE ENVIAR AVISOS & COMUNICADOS ─── */}
+      {/* ─── MODAL CENTRAL DE AVISOS & COMUNICADOS (TEXTO) ─── */}
       <Modal
         visible={modalAvisosVisible}
         transparent
@@ -1537,125 +1535,73 @@ export default function TelaBarbeiroHoje() {
           <Pressable style={[styles.modalConteudoAvisos, { backgroundColor: theme.superficie, borderColor: theme.borda }]} onPress={(e) => e.stopPropagation()}>
             <View style={[styles.modalTraco, { backgroundColor: theme.bordaDestaque }]} />
 
+            {/* Header Super Limpo */}
             <View style={styles.modalHeader}>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Megaphone size={18} color={theme.ouroTexto} />
-                  <Text style={[styles.modalTitulo, { color: theme.textoPrimario }]}>Enviar Avisos & Comunicados</Text>
+                  <Text style={[styles.modalTitulo, { color: theme.textoPrimario }]}>Enviar Comunicado</Text>
                 </View>
                 <Text style={[styles.modalSub, { color: theme.textoSecundario }]}>
-                  App • WhatsApp • Stories & Redes Sociais
+                  Divulgue avisos rápidos para WhatsApp, App e Redes
                 </Text>
               </View>
 
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <TouchableOpacity
-                  onPress={() => setModalConfigRedesVisible(true)}
-                  style={[styles.btnConfigRedesTopo, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
-                  activeOpacity={0.7}
-                >
-                  <Settings size={16} color={theme.ouroTexto} />
-                  <Text style={[styles.btnConfigRedesTopoTexto, { color: theme.ouroTexto }]}>Redes</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => setModalAvisosVisible(false)}
-                  style={styles.modalBtnFechar}
-                  activeOpacity={0.7}
-                >
-                  <X size={20} color={theme.textoSecundario} />
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                onPress={() => setModalAvisosVisible(false)}
+                style={styles.modalBtnFechar}
+                activeOpacity={0.7}
+              >
+                <X size={20} color={theme.textoSecundario} />
+              </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalAvisosScroll}>
-              {/* 1. Modelos Prontos & Favoritos com 1 Toque */}
-              <View style={styles.secaoAvisosBloco}>
-                <View style={styles.secaoAvisosHeaderRow}>
-                  <Text style={[styles.secaoAvisosLabel, { color: theme.ouroTexto }]}>MODELOS PRONTOS & FAVORITOS</Text>
-                  <Text style={[styles.secaoAvisosDica, { color: theme.textoSecundario }]}>Toque na ⭐ para favoritar</Text>
-                </View>
-
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modelosScroll}>
+              {/* 1. Modelos Prontos (1 Toque) */}
+              <View style={styles.secaoControleLinha}>
+                <Text style={[styles.secaoControleLabel, { color: theme.ouroTexto }]}>MODELOS RÁPIDOS (1 TOQUE)</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetsScroll}>
                   {MODELOS_AVISO_PADRAO.map((m) => {
                     const isAtivo = modeloAtivoId === m.id;
-                    const isFav = favoritosAvisos.includes(m.id);
                     return (
-                      <View
+                      <TouchableOpacity
                         key={m.id}
                         style={[
-                          styles.cardModeloAviso,
+                          styles.chipPreset,
                           { backgroundColor: theme.superficie2, borderColor: theme.borda },
-                          isAtivo && { borderColor: theme.ouro, backgroundColor: theme.ouroTranslucido },
+                          isAtivo && [styles.chipPresetAtivo, { backgroundColor: theme.ouroTranslucido, borderColor: theme.ouro }],
                         ]}
+                        onPress={() => handleSelecionarModelo(m)}
+                        activeOpacity={0.7}
                       >
-                        <TouchableOpacity
-                          style={styles.cardModeloConteudo}
-                          onPress={() => handleSelecionarModelo(m)}
-                          activeOpacity={0.8}
+                        <Text style={styles.chipPresetIcone}>{m.icone}</Text>
+                        <Text
+                          style={[
+                            styles.chipPresetTexto,
+                            { color: theme.textoPrimario },
+                            isAtivo && { color: theme.ouroTexto, fontFamily: FontFamily.bold },
+                          ]}
                         >
-                          <View style={styles.cardModeloTopo}>
-                            <Text style={styles.cardModeloIcone}>{m.icone}</Text>
-                            <TouchableOpacity
-                              onPress={() => handleToggleFavorito(m.id)}
-                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            >
-                              <Star
-                                size={16}
-                                color={isFav ? theme.ouro : theme.textoDesabilitado}
-                                fill={isFav ? theme.ouro : 'none'}
-                              />
-                            </TouchableOpacity>
-                          </View>
-                          <Text
-                            style={[
-                              styles.cardModeloTitulo,
-                              { color: theme.textoPrimario },
-                              isAtivo && { color: theme.ouroTexto, fontFamily: FontFamily.bold },
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {m.titulo}
-                          </Text>
-                        </TouchableOpacity>
-
-                        {/* Botão de Disparo Rápido em 1 Clique para favoritos */}
-                        {isFav && (
-                          <View style={[styles.disparoRapidoRow, { borderTopColor: theme.borda }]}>
-                            <TouchableOpacity
-                              style={[styles.btnDisparoMicro, { backgroundColor: theme.superficie }]}
-                              onPress={() => handleDisparoRapido(m, 'app')}
-                              activeOpacity={0.7}
-                            >
-                              <Text style={[styles.btnDisparoMicroTexto, { color: theme.ouroTexto }]}>App</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={[styles.btnDisparoMicro, { backgroundColor: theme.superficie }]}
-                              onPress={() => handleDisparoRapido(m, 'whats')}
-                              activeOpacity={0.7}
-                            >
-                              <Text style={[styles.btnDisparoMicroTexto, { color: '#25D366' }]}>Whats</Text>
-                            </TouchableOpacity>
-                          </View>
-                        )}
-                      </View>
+                          {m.nome}
+                        </Text>
+                      </TouchableOpacity>
                     );
                   })}
                 </ScrollView>
               </View>
 
-              {/* 2. Controle Total da Mensagem (Caixa de Edição) */}
-              <View style={styles.secaoAvisosBloco}>
-                <View style={styles.secaoAvisosHeaderRow}>
-                  <Text style={[styles.secaoAvisosLabel, { color: theme.ouroTexto }]}>MENSAGEM DO AVISO (CONTROLE TOTAL)</Text>
-                  <Text style={[styles.secaoAvisosDica, { color: theme.textoSecundario }]}>{textoAviso.length} caracteres</Text>
+              {/* 2. Mensagem do Comunicado (Editável) */}
+              <View style={styles.secaoControleLinha}>
+                <View style={styles.editorSecaoHeaderRow}>
+                  <Text style={[styles.secaoControleLabel, { color: theme.ouroTexto }]}>MENSAGEM DO COMUNICADO</Text>
+                  <Text style={[styles.editorSecaoDica, { color: theme.textoSecundario }]}>{textoAviso.length} carac.</Text>
                 </View>
                 <TextInput
                   style={[
-                    styles.inputAvisoMultiline,
+                    styles.inputEditorMultiline,
                     { backgroundColor: theme.superficie2, borderColor: theme.borda, color: theme.textoPrimario },
                   ]}
-                  placeholder="Digite a mensagem do aviso que será enviada aos clientes..."
+                  placeholder="Digite aqui o comunicado para os clientes..."
                   placeholderTextColor={theme.textoDesabilitado}
                   value={textoAviso}
                   onChangeText={setTextoAviso}
@@ -1665,167 +1611,222 @@ export default function TelaBarbeiroHoje() {
                 />
               </View>
 
-              {/* 3. Visual para Stories / Status das Redes Sociais */}
-              <View style={styles.secaoAvisosBloco}>
-                <View style={styles.secaoAvisosHeaderRow}>
-                  <Text style={[styles.secaoAvisosLabel, { color: theme.ouroTexto }]}>CARD PARA STATUS & STORIES</Text>
-                  <View style={styles.chipsEstiloRow}>
-                    {(['dark', 'gold', 'classico'] as const).map((estilo) => (
-                      <TouchableOpacity
-                        key={estilo}
-                        style={[
-                          styles.chipEstilo,
-                          { backgroundColor: theme.superficie2, borderColor: theme.borda },
-                          estiloCardAviso === estilo && { backgroundColor: theme.ouro, borderColor: theme.ouro },
-                        ]}
-                        onPress={() => setEstiloCardAviso(estilo)}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          style={[
-                            styles.chipEstiloTexto,
-                            { color: theme.textoSecundario },
-                            estiloCardAviso === estilo && { color: '#09090B', fontFamily: FontFamily.bold },
-                          ]}
-                        >
-                          {estilo === 'dark' ? 'Dark' : estilo === 'gold' ? 'Ouro' : 'Clássico'}
+              {/* 3. Quando Compartilhar */}
+              <View style={styles.secaoControleLinha}>
+                <Text style={[styles.secaoControleLabel, { color: theme.ouroTexto }]}>QUANDO COMPARTILHAR</Text>
+                <View style={styles.chipsQuandoRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.chipQuando,
+                      { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                      quandoCompartilhar === 'agora' && [styles.chipQuandoAtivo, { backgroundColor: theme.ouro, borderColor: theme.ouro }],
+                    ]}
+                    onPress={() => setQuandoCompartilhar('agora')}
+                    activeOpacity={0.7}
+                  >
+                    <Zap size={13} color={quandoCompartilhar === 'agora' ? '#09090B' : theme.textoSecundario} />
+                    <Text
+                      style={[
+                        styles.chipQuandoTexto,
+                        { color: theme.textoSecundario },
+                        quandoCompartilhar === 'agora' && { color: '#09090B', fontFamily: FontFamily.bold },
+                      ]}
+                    >
+                      Agora (Imediato)
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.chipQuando,
+                      { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                      quandoCompartilhar === 'horario' && [styles.chipQuandoAtivo, { backgroundColor: theme.ouro, borderColor: theme.ouro }],
+                    ]}
+                    onPress={() => setQuandoCompartilhar('horario')}
+                    activeOpacity={0.7}
+                  >
+                    <Clock size={13} color={quandoCompartilhar === 'horario' ? '#09090B' : theme.textoSecundario} />
+                    <Text
+                      style={[
+                        styles.chipQuandoTexto,
+                        { color: theme.textoSecundario },
+                        quandoCompartilhar === 'horario' && { color: '#09090B', fontFamily: FontFamily.bold },
+                      ]}
+                    >
+                      Agendar Horário
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Bloco de Horário Personalizável quando "horario" está ativo */}
+                {quandoCompartilhar === 'horario' && (
+                  <View style={[styles.boxHorarioPersonalizado, { backgroundColor: theme.superficie2, borderColor: theme.bordaOuro }]}>
+                    <Text style={[styles.boxHorarioLabel, { color: theme.textoPrimario }]}>
+                      Selecione ou digite o horário de envio:
+                    </Text>
+
+                    {/* Chips rápidos de horários */}
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsHorariosScroll}>
+                      {['11:30', '12:00', '12:30', '13:00', '14:00', '15:00', '18:00'].map((h) => {
+                        const selecionado = horarioEnvio === h;
+                        return (
+                          <TouchableOpacity
+                            key={h}
+                            style={[
+                              styles.chipHorarioPredefinido,
+                              { backgroundColor: theme.superficie, borderColor: theme.borda },
+                              selecionado && [styles.chipHorarioPredefinidoAtivo, { backgroundColor: theme.ouroTranslucido, borderColor: theme.ouro }],
+                            ]}
+                            onPress={() => setHorarioEnvio(h)}
+                            activeOpacity={0.7}
+                          >
+                            <Text
+                              style={[
+                                styles.chipHorarioPredefinidoTexto,
+                                { color: theme.textoSecundario },
+                                selecionado && { color: theme.ouroTexto, fontFamily: FontFamily.bold },
+                              ]}
+                            >
+                              {h}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+
+                    {/* Input manual de horário */}
+                    <View style={styles.inputHorarioRow}>
+                      <View style={[styles.inputHorarioWrapper, { backgroundColor: theme.superficie, borderColor: theme.borda }]}>
+                        <Clock size={14} color={theme.ouroTexto} />
+                        <TextInput
+                          style={[styles.inputHorarioCustom, { color: theme.textoPrimario }]}
+                          placeholder="12:00"
+                          placeholderTextColor={theme.textoDesabilitado}
+                          value={horarioEnvio}
+                          onChangeText={(v) => {
+                            const limpo = v.replace(/[^\d:]/g, '');
+                            setHorarioEnvio(limpo);
+                          }}
+                          keyboardType="numbers-and-punctuation"
+                          maxLength={5}
+                        />
+                      </View>
+                      <View style={styles.horarioBadgeStatus}>
+                        <Text style={[styles.horarioBadgeStatusTexto, { color: theme.ouroTexto }]}>
+                          ⏰ Envio programado às {horarioEnvio || '12:00'}
                         </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-
-                {/* Preview Interativo do Card */}
-                <View
-                  style={[
-                    styles.previewStoryCard,
-                    estiloCardAviso === 'dark' && styles.previewStoryDark,
-                    estiloCardAviso === 'gold' && styles.previewStoryGold,
-                    estiloCardAviso === 'classico' && styles.previewStoryClassico,
-                  ]}
-                >
-                  <View style={styles.previewStoryHeader}>
-                    <LogoBarbearia
-                      tamanho={38}
-                      tipo="avatar"
-                      variante="compacto"
-                      uri={barbearia?.logo_url}
-                      slug={barbearia?.slug}
-                    />
-                    <View style={styles.previewStoryMarca}>
-                      <Text
-                        style={[
-                          styles.previewStoryNome,
-                          estiloCardAviso === 'gold' ? { color: '#09090B' } : { color: '#FFFFFF' },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {nomeBarbearia}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.previewStorySub,
-                          estiloCardAviso === 'gold' ? { color: '#71717A' } : { color: '#D4AF37' },
-                        ]}
-                      >
-                        {redesSociais.instagram ? `@${redesSociais.instagram}` : 'COMUNICADO OFICIAL'}
-                      </Text>
+                      </View>
                     </View>
                   </View>
+                )}
+              </View>
 
-                  <View style={styles.previewStoryCorpo}>
-                    <Text
-                      style={[
-                        styles.previewStoryTitulo,
-                        estiloCardAviso === 'gold' ? { color: '#09090B' } : { color: '#FFFFFF' },
-                      ]}
-                    >
-                      {tituloAviso}
+              {/* 4. Onde Compartilhar */}
+              <View style={styles.secaoControleLinha}>
+                <View style={styles.secaoOndeHeader}>
+                  <Text style={[styles.secaoControleLabel, { color: theme.ouroTexto }]}>ONDE COMPARTILHAR</Text>
+                  <TouchableOpacity onPress={handleToggleTodosCanais} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Text style={[styles.linkTodosCanais, { color: theme.ouroTexto }]}>
+                      {canais.app && canais.whats && canais.stories ? 'Desmarcar todos' : 'Marcar todos'}
                     </Text>
-                    <Text
-                      style={[
-                        styles.previewStoryTexto,
-                        estiloCardAviso === 'gold' ? { color: '#18181B' } : { color: 'rgba(255,255,255,0.9)' },
-                      ]}
-                    >
-                      {textoAviso}
-                    </Text>
-                  </View>
+                  </TouchableOpacity>
+                </View>
 
-                  <View style={styles.previewStoryFooter}>
+                <View style={styles.canaisSelecaoGrid}>
+                  {/* Canal: App */}
+                  <TouchableOpacity
+                    style={[
+                      styles.chipCanalSelecao,
+                      { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                      canais.app && [styles.chipCanalSelecaoAtivo, { backgroundColor: theme.ouroTranslucido, borderColor: theme.ouro }],
+                    ]}
+                    onPress={() => handleToggleCanal('app')}
+                    activeOpacity={0.7}
+                  >
+                    <Smartphone size={16} color={canais.app ? theme.ouroTexto : theme.textoSecundario} />
                     <Text
                       style={[
-                        styles.previewStoryFooterTexto,
-                        estiloCardAviso === 'gold' ? { color: '#52525B' } : { color: 'rgba(255,255,255,0.5)' },
+                        styles.chipCanalSelecaoTexto,
+                        { color: theme.textoSecundario },
+                        canais.app && { color: theme.ouroTexto, fontFamily: FontFamily.bold },
                       ]}
                     >
-                      ✦ Na Régua ✦ • Agendamento Online
+                      No App
                     </Text>
-                  </View>
+                    {canais.app && <Check size={14} color={theme.ouroTexto} />}
+                  </TouchableOpacity>
+
+                  {/* Canal: WhatsApp */}
+                  <TouchableOpacity
+                    style={[
+                      styles.chipCanalSelecao,
+                      { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                      canais.whats && [styles.chipCanalSelecaoAtivo, { backgroundColor: 'rgba(37, 211, 102, 0.15)', borderColor: '#25D366' }],
+                    ]}
+                    onPress={() => handleToggleCanal('whats')}
+                    activeOpacity={0.7}
+                  >
+                    <MessageCircle size={16} color={canais.whats ? '#25D366' : theme.textoSecundario} />
+                    <Text
+                      style={[
+                        styles.chipCanalSelecaoTexto,
+                        { color: theme.textoSecundario },
+                        canais.whats && { color: '#25D366', fontFamily: FontFamily.bold },
+                      ]}
+                    >
+                      WhatsApp
+                    </Text>
+                    {canais.whats && <Check size={14} color="#25D366" />}
+                  </TouchableOpacity>
+
+                  {/* Canal: Stories / Redes */}
+                  <TouchableOpacity
+                    style={[
+                      styles.chipCanalSelecao,
+                      { backgroundColor: theme.superficie2, borderColor: theme.borda },
+                      canais.stories && [styles.chipCanalSelecaoAtivo, { backgroundColor: 'rgba(225, 48, 108, 0.15)', borderColor: '#E1306C' }],
+                    ]}
+                    onPress={() => handleToggleCanal('stories')}
+                    activeOpacity={0.7}
+                  >
+                    <Instagram size={16} color={canais.stories ? '#E1306C' : theme.textoSecundario} />
+                    <Text
+                      style={[
+                        styles.chipCanalSelecaoTexto,
+                        { color: theme.textoSecundario },
+                        canais.stories && { color: '#E1306C', fontFamily: FontFamily.bold },
+                      ]}
+                    >
+                      Redes
+                    </Text>
+                    {canais.stories && <Check size={14} color="#E1306C" />}
+                  </TouchableOpacity>
                 </View>
               </View>
 
-              {/* 4. Canais de Disparo (1 Toque) */}
-              <View style={styles.secaoAvisosBloco}>
-                <Text style={[styles.secaoAvisosLabel, { color: theme.ouroTexto }]}>ONDE ENVIAR (SELECIONE O CANAL)</Text>
-
-                <View style={styles.canaisGrid}>
-                  {/* Canal 1: Notificação no App */}
-                  <TouchableOpacity
-                    style={[styles.btnCanal, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
-                    onPress={handleEnviarNoApp}
-                    disabled={disparandoAviso}
-                    activeOpacity={0.8}
-                  >
-                    <View style={[styles.btnCanalIcone, { backgroundColor: theme.ouroTranslucido }]}>
-                      <Smartphone size={20} color={theme.ouroTexto} />
-                    </View>
-                    <View style={styles.btnCanalTexto}>
-                      <Text style={[styles.btnCanalTitulo, { color: theme.textoPrimario }]}>Disparar no App</Text>
-                      <Text style={[styles.btnCanalSub, { color: theme.textoSecundario }]}>
-                        Notifica clientes no app (sem rede social)
-                      </Text>
-                    </View>
-                    <ChevronRight size={16} color={theme.textoSecundario} />
-                  </TouchableOpacity>
-
-                  {/* Canal 2: Status do WhatsApp */}
-                  <TouchableOpacity
-                    style={[styles.btnCanal, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
-                    onPress={handleCompartilharWhatsApp}
-                    activeOpacity={0.8}
-                  >
-                    <View style={[styles.btnCanalIcone, { backgroundColor: 'rgba(37, 211, 102, 0.12)' }]}>
-                      <MessageCircle size={20} color="#25D366" />
-                    </View>
-                    <View style={styles.btnCanalTexto}>
-                      <Text style={[styles.btnCanalTitulo, { color: theme.textoPrimario }]}>Status do WhatsApp</Text>
-                      <Text style={[styles.btnCanalSub, { color: theme.textoSecundario }]}>
-                        Postar no Status ou enviar a clientes
-                      </Text>
-                    </View>
-                    <ChevronRight size={16} color={theme.textoSecundario} />
-                  </TouchableOpacity>
-
-                  {/* Canal 3: Stories & Redes Sociais */}
-                  <TouchableOpacity
-                    style={[styles.btnCanal, { backgroundColor: theme.superficie2, borderColor: theme.borda }]}
-                    onPress={handleCompartilharStories}
-                    activeOpacity={0.8}
-                  >
-                    <View style={[styles.btnCanalIcone, { backgroundColor: 'rgba(225, 48, 108, 0.12)' }]}>
-                      <Instagram size={20} color="#E1306C" />
-                    </View>
-                    <View style={styles.btnCanalTexto}>
-                      <Text style={[styles.btnCanalTitulo, { color: theme.textoPrimario }]}>Stories / Redes Sociais</Text>
-                      <Text style={[styles.btnCanalSub, { color: theme.textoSecundario }]}>
-                        {redesSociais.instagram ? `@${redesSociais.instagram} • Compartilhar` : 'Compartilhar nos Stories'}
-                      </Text>
-                    </View>
-                    <ChevronRight size={16} color={theme.textoSecundario} />
-                  </TouchableOpacity>
-                </View>
-              </View>
+              {/* 5. Botão Principal de Disparo */}
+              <TouchableOpacity
+                style={[
+                  styles.btnCompartilharPrincipal,
+                  { backgroundColor: theme.ouro },
+                  enviandoAviso && { opacity: 0.7 },
+                ]}
+                onPress={handleCompartilharCanva}
+                disabled={enviandoAviso}
+                activeOpacity={0.85}
+              >
+                {enviandoAviso ? (
+                  <>
+                    <ActivityIndicator size="small" color="#09090B" />
+                    <Text style={styles.btnCompartilharPrincipalTexto}>Enviando Comunicado...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Send size={18} color="#09090B" />
+                    <Text style={styles.btnCompartilharPrincipalTexto}>Compartilhar Comunicado</Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </ScrollView>
           </Pressable>
         </Pressable>
@@ -2776,7 +2777,7 @@ const createStyles = (theme: ThemePalette) =>
       fontSize: 11.5,
     },
 
-    /* ─── MODAL ENVIAR AVISOS & COMUNICADOS ─── */
+    /* ─── MODAL AVISOS (CANVA MINIMALISTA) ─── */
     modalConteudoAvisos: {
       backgroundColor: theme.superficie,
       borderTopLeftRadius: Radii.xl,
@@ -2786,7 +2787,7 @@ const createStyles = (theme: ThemePalette) =>
       paddingBottom: Spacing.giant,
       borderWidth: 1,
       borderColor: theme.borda,
-      maxHeight: '92%',
+      maxHeight: '94%',
     },
     btnConfigRedesTopo: {
       flexDirection: 'row',
@@ -2803,186 +2804,185 @@ const createStyles = (theme: ThemePalette) =>
     },
     modalAvisosScroll: {
       gap: Spacing.md,
-      paddingVertical: Spacing.sm,
+      paddingVertical: Spacing.xs,
       paddingBottom: Spacing.giant,
     },
-    secaoAvisosBloco: {
+    canvaContainerPrincipal: {
+      width: '100%',
+      alignItems: 'center',
+      paddingVertical: Spacing.xs,
+    },
+    secaoControleLinha: {
+      gap: 8,
+    },
+    secaoControleLabel: {
+      fontFamily: FontFamily.bold,
+      fontSize: 10.5,
+      letterSpacing: 0.8,
+    },
+    chipsQuandoRow: {
+      flexDirection: 'row',
       gap: Spacing.xs,
     },
-    secaoAvisosHeaderRow: {
+    chipQuando: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    secaoAvisosLabel: {
-      fontFamily: FontFamily.bold,
-      fontSize: 11,
-      letterSpacing: 0.5,
-    },
-    secaoAvisosDica: {
-      fontFamily: FontFamily.regular,
-      fontSize: 11,
-    },
-    modelosScroll: {
-      gap: Spacing.xs,
-      paddingVertical: 2,
-    },
-    cardModeloAviso: {
-      width: 140,
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 10,
+      paddingHorizontal: Spacing.sm,
       borderRadius: Radii.md,
       borderWidth: 1,
-      overflow: 'hidden',
     },
-    cardModeloConteudo: {
-      padding: 10,
-      gap: 6,
-    },
-    cardModeloTopo: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    cardModeloIcone: {
-      fontSize: 20,
-    },
-    cardModeloTitulo: {
+    chipQuandoAtivo: {},
+    chipQuandoTexto: {
       fontFamily: FontFamily.medium,
       fontSize: 12,
     },
-    disparoRapidoRow: {
-      flexDirection: 'row',
-      borderTopWidth: 1,
-      gap: 4,
-      padding: 4,
-    },
-    btnDisparoMicro: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 4,
-      borderRadius: Radii.sm,
-    },
-    btnDisparoMicroTexto: {
-      fontFamily: FontFamily.bold,
-      fontSize: 10.5,
-    },
-    inputAvisoMultiline: {
-      borderWidth: 1,
+    boxHorarioPersonalizado: {
       borderRadius: Radii.md,
       padding: Spacing.sm,
-      minHeight: 80,
-      fontFamily: FontFamily.regular,
-      fontSize: FontSize.bodyMd,
-    },
-    chipsEstiloRow: {
-      flexDirection: 'row',
-      gap: 6,
-    },
-    chipEstilo: {
       borderWidth: 1,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: Radii.full,
+      gap: 8,
+      marginTop: 4,
     },
-    chipEstiloTexto: {
+    boxHorarioLabel: {
       fontFamily: FontFamily.medium,
-      fontSize: 11,
-    },
-    previewStoryCard: {
-      borderRadius: Radii.lg,
-      padding: Spacing.md,
-      gap: Spacing.sm,
-      borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.1)',
-      ...Shadows.card,
-    },
-    previewStoryDark: {
-      backgroundColor: '#121214',
-      borderLeftWidth: 3,
-      borderLeftColor: '#D4AF37',
-    },
-    previewStoryGold: {
-      backgroundColor: '#E5C07B',
-      borderWidth: 1,
-      borderColor: '#B89730',
-    },
-    previewStoryClassico: {
-      backgroundColor: '#1A1D24',
-      borderLeftWidth: 3,
-      borderLeftColor: '#3B82F6',
-    },
-    previewStoryHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.sm,
-    },
-    previewStoryMarca: {
-      flex: 1,
-      gap: 1,
-    },
-    previewStoryNome: {
-      fontFamily: FontFamily.bold,
-      fontSize: 13.5,
-    },
-    previewStorySub: {
-      fontFamily: FontFamily.semiBold,
-      fontSize: 10.5,
-      letterSpacing: 0.5,
-      textTransform: 'uppercase',
-    },
-    previewStoryCorpo: {
-      gap: 4,
-      paddingVertical: 4,
-    },
-    previewStoryTitulo: {
-      fontFamily: FontFamily.bold,
-      fontSize: 15,
-    },
-    previewStoryTexto: {
-      fontFamily: FontFamily.regular,
-      fontSize: 12.5,
-      lineHeight: 18,
-    },
-    previewStoryFooter: {
-      borderTopWidth: 1,
-      borderTopColor: 'rgba(255, 255, 255, 0.1)',
-      paddingTop: 6,
-      alignItems: 'center',
-    },
-    previewStoryFooterTexto: {
-      fontFamily: FontFamily.medium,
-      fontSize: 10.5,
-      letterSpacing: 0.5,
-    },
-    canaisGrid: {
-      gap: Spacing.xs,
-      marginTop: 2,
-    },
-    btnCanal: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      padding: Spacing.sm,
-      borderRadius: Radii.lg,
-      borderWidth: 1,
-      gap: Spacing.sm,
-    },
-    btnCanalIcone: {
-      width: 40,
-      height: 40,
-      borderRadius: Radii.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    btnCanalTexto: {
-      flex: 1,
-      gap: 2,
-    },
-    btnCanalTitulo: {
-      fontFamily: FontFamily.semiBold,
-      fontSize: FontSize.bodyMd,
-    },
-    btnCanalSub: {
-      fontFamily: FontFamily.regular,
       fontSize: 11.5,
     },
+    chipsHorariosScroll: {
+      gap: 6,
+      paddingVertical: 2,
+    },
+    chipHorarioPredefinido: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: Radii.sm,
+      borderWidth: 1,
+    },
+    chipHorarioPredefinidoAtivo: {},
+    chipHorarioPredefinidoTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: 11.5,
+    },
+    inputHorarioRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+      marginTop: 2,
+    },
+    inputHorarioWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderRadius: Radii.sm,
+      paddingHorizontal: 10,
+      height: 38,
+      gap: 6,
+      minWidth: 105,
+    },
+    inputHorarioCustom: {
+      fontFamily: FontFamily.bold,
+      fontSize: 13,
+      paddingVertical: 0,
+      minWidth: 55,
+    },
+    horarioBadgeStatus: {
+      flex: 1,
+      alignItems: 'flex-end',
+    },
+    horarioBadgeStatusTexto: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: 11,
+    },
+    secaoOndeHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    linkTodosCanais: {
+      fontFamily: FontFamily.semiBold,
+      fontSize: 11,
+    },
+    canaisSelecaoGrid: {
+      flexDirection: 'row',
+      gap: Spacing.xs,
+    },
+    chipCanalSelecao: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 10,
+      paddingHorizontal: 6,
+      borderRadius: Radii.md,
+      borderWidth: 1,
+    },
+    chipCanalSelecaoAtivo: {},
+    chipCanalSelecaoTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: 11.5,
+    },
+    btnCompartilharPrincipal: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: Radii.lg,
+      marginTop: Spacing.xs,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    btnCompartilharPrincipalTexto: {
+      fontFamily: FontFamily.bold,
+      fontSize: FontSize.bodyMd,
+      color: '#09090B',
+    },
+    editorSecaoHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    editorSecaoDica: {
+      fontFamily: FontFamily.regular,
+      fontSize: 11,
+    },
+    presetsScroll: {
+      gap: Spacing.xs,
+      paddingVertical: 2,
+    },
+    chipPreset: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: Radii.full,
+      borderWidth: 1,
+    },
+    chipPresetAtivo: {},
+    chipPresetIcone: {
+      fontSize: 14,
+    },
+    chipPresetTexto: {
+      fontFamily: FontFamily.medium,
+      fontSize: 12,
+    },
+    inputEditorMultiline: {
+      borderWidth: 1,
+      borderRadius: Radii.md,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 10,
+      fontFamily: FontFamily.regular,
+      fontSize: FontSize.bodySm,
+      minHeight: 85,
+    },
   });
+
